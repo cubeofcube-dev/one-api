@@ -6,9 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/cubeofcube-dev/one-api/common"
+	"github.com/cubeofcube-dev/one-api/common/config"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/config"
 )
 
 var timeFormat = "2006-01-02T15:04:05.000Z"

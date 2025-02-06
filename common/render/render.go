@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cubeofcube-dev/one-api/common"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common"
 )
 
 func StringData(c *gin.Context, str string) {

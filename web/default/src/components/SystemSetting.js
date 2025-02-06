@@ -528,7 +528,7 @@ const SystemSetting = () => {
             <Header.Subheader>
               用以支持通过微信进行登录注册，
               <a
-                href='https://github.com/songquanpeng/wechat-server'
+                href='https://github.com/cubeofcube-dev/wechat-server'
                 target='_blank'
               >
                 点击此处
@@ -572,7 +572,7 @@ const SystemSetting = () => {
             <Header.Subheader>
               用以推送报警信息，
               <a
-                href='https://github.com/songquanpeng/message-pusher'
+                href='https://github.com/cubeofcube-dev/message-pusher'
                 target='_blank'
               >
                 点击此处

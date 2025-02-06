@@ -3,16 +3,17 @@ package zhipu
 import (
 	"errors"
 	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/relay/adaptor"
-	"github.com/songquanpeng/one-api/relay/adaptor/openai"
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
-	"github.com/songquanpeng/one-api/relay/relaymode"
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/cubeofcube-dev/one-api/common/helper"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/openai"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
+	"github.com/cubeofcube-dev/one-api/relay/relaymode"
+	"github.com/gin-gonic/gin"
 )
 
 type Adaptor struct {

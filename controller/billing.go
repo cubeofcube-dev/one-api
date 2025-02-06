@@ -1,11 +1,11 @@
 package controller
 
 import (
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/ctxkey"
+	"github.com/cubeofcube-dev/one-api/model"
+	relaymodel "github.com/cubeofcube-dev/one-api/relay/model"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/ctxkey"
-	"github.com/songquanpeng/one-api/model"
-	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
 
 func GetSubscription(c *gin.Context) {

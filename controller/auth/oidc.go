@@ -5,15 +5,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/gin-contrib/sessions"
-	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/controller"
-	"github.com/songquanpeng/one-api/model"
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/controller"
+	"github.com/cubeofcube-dev/one-api/model"
+	"github.com/gin-contrib/sessions"
+	"github.com/gin-gonic/gin"
 )
 
 type OidcResponse struct {

@@ -2,7 +2,6 @@ package image_test
 
 import (
 	"encoding/base64"
-	"github.com/songquanpeng/one-api/common/client"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -13,7 +12,9 @@ import (
 	"strings"
 	"testing"
 
-	img "github.com/songquanpeng/one-api/common/image"
+	"github.com/cubeofcube-dev/one-api/common/client"
+
+	img "github.com/cubeofcube-dev/one-api/common/image"
 
 	"github.com/stretchr/testify/assert"
 	_ "golang.org/x/image/webp"

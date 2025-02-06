@@ -3,10 +3,11 @@ package openai
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/relay/model"
 	"io"
 	"net/http"
+
+	"github.com/cubeofcube-dev/one-api/relay/model"
+	"github.com/gin-gonic/gin"
 )
 
 func ImageHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *model.Usage) {

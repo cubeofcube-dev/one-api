@@ -3,13 +3,13 @@ package vertexai
 import (
 	"net/http"
 
+	"github.com/cubeofcube-dev/one-api/common/ctxkey"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/anthropic"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"github.com/songquanpeng/one-api/common/ctxkey"
-	"github.com/songquanpeng/one-api/relay/adaptor/anthropic"
 
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
 )
 
 var ModelList = []string{

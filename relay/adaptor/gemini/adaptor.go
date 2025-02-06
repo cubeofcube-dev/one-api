@@ -6,14 +6,14 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/helper"
+	channelhelper "github.com/cubeofcube-dev/one-api/relay/adaptor"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/openai"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
+	"github.com/cubeofcube-dev/one-api/relay/relaymode"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/helper"
-	channelhelper "github.com/songquanpeng/one-api/relay/adaptor"
-	"github.com/songquanpeng/one-api/relay/adaptor/openai"
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
-	"github.com/songquanpeng/one-api/relay/relaymode"
 )
 
 type Adaptor struct {

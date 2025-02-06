@@ -8,10 +8,10 @@
 ## 鉴权
 One API 支持两种鉴权方式：Cookie 和 Token，对于 Token，参照下图获取：
 
-![image](https://github.com/songquanpeng/songquanpeng.github.io/assets/39998050/c15281a7-83ed-47cb-a1f6-913cb6bf4a7c)
+![image](https://github.com/cubeofcube-dev/cubeofcube-dev.github.io/assets/39998050/c15281a7-83ed-47cb-a1f6-913cb6bf4a7c)
 
 之后，将 Token 作为请求头的 Authorization 字段的值即可，例如下面使用 Token 调用测试渠道的 API：
-![image](https://github.com/songquanpeng/songquanpeng.github.io/assets/39998050/1273b7ae-cb60-4c0d-93a6-b1cbc039c4f8)
+![image](https://github.com/cubeofcube-dev/cubeofcube-dev.github.io/assets/39998050/1273b7ae-cb60-4c0d-93a6-b1cbc039c4f8)
 
 ## 请求格式与响应格式
 One API 使用 JSON 格式进行请求和响应。

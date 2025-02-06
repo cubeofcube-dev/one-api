@@ -1,21 +1,21 @@
 package openai
 
 import (
-	"github.com/songquanpeng/one-api/relay/adaptor/ai360"
-	"github.com/songquanpeng/one-api/relay/adaptor/baichuan"
-	"github.com/songquanpeng/one-api/relay/adaptor/deepseek"
-	"github.com/songquanpeng/one-api/relay/adaptor/doubao"
-	"github.com/songquanpeng/one-api/relay/adaptor/groq"
-	"github.com/songquanpeng/one-api/relay/adaptor/lingyiwanwu"
-	"github.com/songquanpeng/one-api/relay/adaptor/minimax"
-	"github.com/songquanpeng/one-api/relay/adaptor/mistral"
-	"github.com/songquanpeng/one-api/relay/adaptor/moonshot"
-	"github.com/songquanpeng/one-api/relay/adaptor/novita"
-	"github.com/songquanpeng/one-api/relay/adaptor/siliconflow"
-	"github.com/songquanpeng/one-api/relay/adaptor/stepfun"
-	"github.com/songquanpeng/one-api/relay/adaptor/togetherai"
-	"github.com/songquanpeng/one-api/relay/adaptor/xai"
-	"github.com/songquanpeng/one-api/relay/channeltype"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/ai360"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/baichuan"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/deepseek"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/doubao"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/groq"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/lingyiwanwu"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/minimax"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/mistral"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/moonshot"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/novita"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/siliconflow"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/stepfun"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/togetherai"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/xai"
+	"github.com/cubeofcube-dev/one-api/relay/channeltype"
 )
 
 var CompatibleChannels = []int{

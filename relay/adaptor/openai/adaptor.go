@@ -7,15 +7,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cubeofcube-dev/one-api/relay/adaptor"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/doubao"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/minimax"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/novita"
+	"github.com/cubeofcube-dev/one-api/relay/channeltype"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
+	"github.com/cubeofcube-dev/one-api/relay/relaymode"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/relay/adaptor"
-	"github.com/songquanpeng/one-api/relay/adaptor/doubao"
-	"github.com/songquanpeng/one-api/relay/adaptor/minimax"
-	"github.com/songquanpeng/one-api/relay/adaptor/novita"
-	"github.com/songquanpeng/one-api/relay/channeltype"
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
-	"github.com/songquanpeng/one-api/relay/relaymode"
 )
 
 type Adaptor struct {
@@ -42,7 +42,7 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 		task := strings.TrimPrefix(requestURL, "/v1/")
 		model_ := meta.ActualModelName
 		model_ = strings.Replace(model_, ".", "", -1)
-		//https://github.com/songquanpeng/one-api/issues/1191
+		//https://github.com/cubeofcube-dev/one-api/issues/1191
 		// {your endpoint}/openai/deployments/{your azure_model}/chat/completions?api-version={api_version}
 		requestURL = fmt.Sprintf("/openai/deployments/%s/%s", model_, task)
 		return GetFullRequestURL(meta.BaseURL, requestURL, meta.ChannelType), nil
@@ -65,7 +65,7 @@ func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *me
 	}
 	req.Header.Set("Authorization", "Bearer "+meta.APIKey)
 	if meta.ChannelType == channeltype.OpenRouter {
-		req.Header.Set("HTTP-Referer", "https://github.com/songquanpeng/one-api")
+		req.Header.Set("HTTP-Referer", "https://github.com/cubeofcube-dev/one-api")
 		req.Header.Set("X-Title", "One API")
 	}
 	return nil

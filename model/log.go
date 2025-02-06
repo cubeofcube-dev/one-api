@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/common"
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/helper"
+	"github.com/cubeofcube-dev/one-api/common/logger"
 	"gorm.io/gorm"
 )
 

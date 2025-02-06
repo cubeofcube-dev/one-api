@@ -1,6 +1,6 @@
 package vertexai
 
-import "github.com/songquanpeng/one-api/relay/adaptor/anthropic"
+import "github.com/cubeofcube-dev/one-api/relay/adaptor/anthropic"
 
 type Request struct {
 	// AnthropicVersion must be "vertex-2023-10-16"

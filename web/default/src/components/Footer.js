@@ -38,13 +38,13 @@ const Footer = () => {
         ) : (
           <div className='custom-footer'>
             <a
-              href='https://github.com/songquanpeng/one-api'
+              href='https://github.com/cubeofcube-dev/one-api'
               target='_blank'
             >
               {systemName} {process.env.REACT_APP_VERSION}{' '}
             </a>
             由{' '}
-            <a href='https://github.com/songquanpeng' target='_blank'>
+            <a href='https://github.com/cubeofcube-dev' target='_blank'>
               JustSong
             </a>{' '}
             构建，源代码遵循{' '}

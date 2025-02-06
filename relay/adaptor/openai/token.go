@@ -3,14 +3,15 @@ package openai
 import (
 	"errors"
 	"fmt"
-	"github.com/pkoukk/tiktoken-go"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/image"
-	"github.com/songquanpeng/one-api/common/logger"
-	billingratio "github.com/songquanpeng/one-api/relay/billing/ratio"
-	"github.com/songquanpeng/one-api/relay/model"
 	"math"
 	"strings"
+
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/image"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	billingratio "github.com/cubeofcube-dev/one-api/relay/billing/ratio"
+	"github.com/cubeofcube-dev/one-api/relay/model"
+	"github.com/pkoukk/tiktoken-go"
 )
 
 // tokenEncoderMap won't grow after initialization

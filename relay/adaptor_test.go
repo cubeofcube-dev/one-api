@@ -1,9 +1,10 @@
 package relay
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"github.com/songquanpeng/one-api/relay/apitype"
 	"testing"
+
+	"github.com/cubeofcube-dev/one-api/relay/apitype"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestGetAdaptor(t *testing.T) {

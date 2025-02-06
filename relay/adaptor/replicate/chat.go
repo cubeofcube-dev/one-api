@@ -8,13 +8,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cubeofcube-dev/one-api/common"
+	"github.com/cubeofcube-dev/one-api/common/render"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/openai"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/render"
-	"github.com/songquanpeng/one-api/relay/adaptor/openai"
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
 )
 
 func ChatHandler(c *gin.Context, resp *http.Response) (

@@ -7,10 +7,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cubeofcube-dev/one-api/relay/adaptor"
+	"github.com/cubeofcube-dev/one-api/relay/meta"
+	"github.com/cubeofcube-dev/one-api/relay/model"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/relay/adaptor"
-	"github.com/songquanpeng/one-api/relay/meta"
-	"github.com/songquanpeng/one-api/relay/model"
 )
 
 type Adaptor struct {

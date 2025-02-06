@@ -5,11 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"fmt"
-	"github.com/songquanpeng/one-api/common/config"
 	"net"
 	"net/smtp"
 	"strings"
 	"time"
+
+	"github.com/cubeofcube-dev/one-api/common/config"
 )
 
 func shouldAuth() bool {

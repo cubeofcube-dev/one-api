@@ -3,8 +3,9 @@ package billing
 import (
 	"context"
 	"fmt"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/model"
+
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/model"
 )
 
 func ReturnPreConsumedQuota(ctx context.Context, preConsumedQuota int64, tokenId int) {

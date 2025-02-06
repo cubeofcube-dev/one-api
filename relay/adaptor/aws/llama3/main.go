@@ -9,20 +9,20 @@ import (
 	"net/http"
 	"text/template"
 
-	"github.com/songquanpeng/one-api/common/ctxkey"
-	"github.com/songquanpeng/one-api/common/random"
+	"github.com/cubeofcube-dev/one-api/common/ctxkey"
+	"github.com/cubeofcube-dev/one-api/common/random"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime/types"
+	"github.com/cubeofcube-dev/one-api/common"
+	"github.com/cubeofcube-dev/one-api/common/helper"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/aws/utils"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/openai"
+	relaymodel "github.com/cubeofcube-dev/one-api/relay/model"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/relay/adaptor/aws/utils"
-	"github.com/songquanpeng/one-api/relay/adaptor/openai"
-	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
 
 // Only support llama-3-8b and llama-3-70b instruction models

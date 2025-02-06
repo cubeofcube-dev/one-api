@@ -1,12 +1,13 @@
 package model
 
 import (
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/logger"
-	billingratio "github.com/songquanpeng/one-api/relay/billing/ratio"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	billingratio "github.com/cubeofcube-dev/one-api/relay/billing/ratio"
 )
 
 type Option struct {

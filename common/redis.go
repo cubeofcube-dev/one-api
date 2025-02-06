@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cubeofcube-dev/one-api/common/logger"
 	"github.com/go-redis/redis/v8"
-	"github.com/songquanpeng/one-api/common/logger"
 )
 
 var RDB redis.Cmdable

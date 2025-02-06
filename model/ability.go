@@ -2,10 +2,11 @@ package model
 
 import (
 	"context"
-	"github.com/songquanpeng/one-api/common"
-	"gorm.io/gorm"
 	"sort"
 	"strings"
+
+	"github.com/cubeofcube-dev/one-api/common"
+	"gorm.io/gorm"
 )
 
 type Ability struct {

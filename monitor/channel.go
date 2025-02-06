@@ -2,10 +2,11 @@ package monitor
 
 import (
 	"fmt"
-	"github.com/songquanpeng/one-api/common/config"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/common/message"
-	"github.com/songquanpeng/one-api/model"
+
+	"github.com/cubeofcube-dev/one-api/common/config"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/common/message"
+	"github.com/cubeofcube-dev/one-api/model"
 )
 
 func notifyRootUser(subject string, content string) {

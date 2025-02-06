@@ -5,20 +5,21 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/songquanpeng/one-api/common/render"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/cubeofcube-dev/one-api/common/render"
+
+	"github.com/cubeofcube-dev/one-api/common"
+	"github.com/cubeofcube-dev/one-api/common/client"
+	"github.com/cubeofcube-dev/one-api/common/logger"
+	"github.com/cubeofcube-dev/one-api/relay/adaptor/openai"
+	"github.com/cubeofcube-dev/one-api/relay/constant"
+	"github.com/cubeofcube-dev/one-api/relay/model"
 	"github.com/gin-gonic/gin"
-	"github.com/songquanpeng/one-api/common"
-	"github.com/songquanpeng/one-api/common/client"
-	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/relay/adaptor/openai"
-	"github.com/songquanpeng/one-api/relay/constant"
-	"github.com/songquanpeng/one-api/relay/model"
 )
 
 // https://cloud.baidu.com/doc/WENXINWORKSHOP/s/flfmc9do2
