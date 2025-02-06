@@ -84,7 +84,7 @@ func init() {
 		}
 	}
 	for _, channelType := range openai.CompatibleChannels {
-		if channelType == channeltype.Azure {
+		if channelType == channeltype.AzureAI || channelType == channeltype.AzureOpenAI {
 			continue
 		}
 		channelName, channelModelList := openai.GetCompatibleChannelMeta(channelType)

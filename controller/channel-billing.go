@@ -295,7 +295,9 @@ func updateChannelBalance(channel *model.Channel) (float64, error) {
 		if channel.GetBaseURL() != "" {
 			baseURL = channel.GetBaseURL()
 		}
-	case channeltype.Azure:
+	case channeltype.AzureAI:
+		return 0, errors.New("尚未实现")
+	case channeltype.AzureOpenAI:
 		return 0, errors.New("尚未实现")
 	case channeltype.Custom:
 		baseURL = channel.GetBaseURL()

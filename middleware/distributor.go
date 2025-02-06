@@ -73,7 +73,11 @@ func SetupContextForSelectedChannel(c *gin.Context, channel *model.Channel, mode
 	// this is for backward compatibility
 	if channel.Other != nil {
 		switch channel.Type {
-		case channeltype.Azure:
+		case channeltype.AzureAI:
+			if cfg.APIVersion == "" {
+				cfg.APIVersion = *channel.Other
+			}
+		case channeltype.AzureOpenAI:
 			if cfg.APIVersion == "" {
 				cfg.APIVersion = *channel.Other
 			}
