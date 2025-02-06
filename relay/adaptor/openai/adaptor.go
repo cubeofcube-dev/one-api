@@ -28,7 +28,7 @@ func (a *Adaptor) Init(meta *meta.Meta) {
 
 func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 	switch meta.ChannelType {
-	case channeltype.Azure:
+	case channeltype.AzureOpenAI:
 		if meta.Mode == relaymode.ImagesGenerations {
 			// https://learn.microsoft.com/en-us/azure/ai-services/openai/dall-e-quickstart?tabs=dalle3%2Ccommand-line&pivots=rest-api
 			// https://{resource_name}.openai.azure.com/openai/deployments/dall-e-3/images/generations?api-version=2024-03-01-preview
@@ -46,6 +46,13 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 		// {your endpoint}/openai/deployments/{your azure_model}/chat/completions?api-version={api_version}
 		requestURL = fmt.Sprintf("/openai/deployments/%s/%s", model_, task)
 		return GetFullRequestURL(meta.BaseURL, requestURL, meta.ChannelType), nil
+	case channeltype.AzureAI:
+		requestURL := strings.Split(meta.RequestURLPath, "?")[0]
+		requestURL = fmt.Sprintf("%s?api-version=%s", requestURL, meta.Config.APIVersion)
+		task := strings.TrimPrefix(requestURL, "/v1/")
+		// {your endpoint}/chat/completions?api-version={api_version}
+		requestURL = fmt.Sprintf("/%s", task)
+		return GetFullRequestURL(meta.BaseURL, requestURL, meta.ChannelType), nil
 	case channeltype.Minimax:
 		return minimax.GetRequestURL(meta)
 	case channeltype.Doubao:
@@ -59,7 +66,7 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 
 func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *meta.Meta) error {
 	adaptor.SetupCommonRequestHeader(c, req, meta)
-	if meta.ChannelType == channeltype.Azure {
+	if meta.ChannelType == channeltype.AzureAI || meta.ChannelType == channeltype.AzureOpenAI {
 		req.Header.Set("api-key", meta.APIKey)
 		return nil
 	}

@@ -19,7 +19,7 @@ import (
 )
 
 var CompatibleChannels = []int{
-	channeltype.Azure,
+	channeltype.AzureAI,
 	channeltype.AI360,
 	channeltype.Moonshot,
 	channeltype.Baichuan,
@@ -38,7 +38,7 @@ var CompatibleChannels = []int{
 
 func GetCompatibleChannelMeta(channelType int) (string, []string) {
 	switch channelType {
-	case channeltype.Azure:
+	case channeltype.AzureAI:
 		return "azure", ModelList
 	case channeltype.AI360:
 		return "360", ai360.ModelList

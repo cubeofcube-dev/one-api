@@ -4,7 +4,7 @@ const (
 	Unknown = iota
 	OpenAI
 	API2D
-	Azure
+	AzureAI
 	CloseAI
 	OpenAISB
 	OpenAIMax
@@ -49,4 +49,5 @@ const (
 	XAI
 	Replicate
 	Dummy
+	AzureOpenAI
 )

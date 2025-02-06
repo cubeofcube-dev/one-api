@@ -122,7 +122,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	}
 
 	fullRequestURL := openai.GetFullRequestURL(baseURL, requestURL, channelType)
-	if channelType == channeltype.Azure {
+	if channelType == channeltype.AzureOpenAI {
 		apiVersion := meta.Config.APIVersion
 		if relayMode == relaymode.AudioTranscription {
 			// https://learn.microsoft.com/en-us/azure/ai-services/openai/whisper-quickstart?tabs=command-line#rest-api
@@ -146,7 +146,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		return openai.ErrorWrapper(err, "new_request_failed", http.StatusInternalServerError)
 	}
 
-	if (relayMode == relaymode.AudioTranscription || relayMode == relaymode.AudioSpeech) && channelType == channeltype.Azure {
+	if (relayMode == relaymode.AudioTranscription || relayMode == relaymode.AudioSpeech) && (channelType == channeltype.AzureOpenAI || channelType == channeltype.AzureAI) {
 		// https://learn.microsoft.com/en-us/azure/ai-services/openai/whisper-quickstart?tabs=command-line#rest-api
 		apiKey := c.Request.Header.Get("Authorization")
 		apiKey = strings.TrimPrefix(apiKey, "Bearer ")

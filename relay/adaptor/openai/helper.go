@@ -23,7 +23,7 @@ func GetFullRequestURL(baseURL string, requestURL string, channelType int) strin
 		switch channelType {
 		case channeltype.OpenAI:
 			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/v1"))
-		case channeltype.Azure:
+		case channeltype.AzureOpenAI:
 			fullRequestURL = fmt.Sprintf("%s%s", baseURL, strings.TrimPrefix(requestURL, "/openai/deployments"))
 		}
 	}

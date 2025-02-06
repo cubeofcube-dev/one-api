@@ -134,7 +134,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	c.Set("response_format", imageRequest.ResponseFormat)
 
 	var requestBody io.Reader
-	if isModelMapped || meta.ChannelType == channeltype.Azure { // make Azure channel request body
+	if isModelMapped || meta.ChannelType == channeltype.AzureAI || meta.ChannelType == channeltype.AzureOpenAI { // make Azure channel request body
 		jsonStr, err := json.Marshal(imageRequest)
 		if err != nil {
 			return openai.ErrorWrapper(err, "marshal_image_request_failed", http.StatusInternalServerError)
