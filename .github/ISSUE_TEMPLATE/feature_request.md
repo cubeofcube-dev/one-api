@@ -8,6 +8,8 @@ assignees: ""
 
 ## Routine Check
 
+> > Any language is welcome, don't hesitate to report issues in your native language.
+
 [//]: # "Remove space in brackets and fill with x"
 
 - [ ] I have confirmed there are no similar issues
