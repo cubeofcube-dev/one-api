@@ -1,6 +1,7 @@
 package message
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/base64"
@@ -25,10 +26,18 @@ func LoginAuth(username, password string) smtp.Auth {
 	return &loginAuth{username, password}
 }
 
+// Start implements smtp.Auth for the LOGIN mechanism.
+// It refuses to proceed unless TLS is active to prevent sending credentials over plaintext connections.
 func (a *loginAuth) Start(server *smtp.ServerInfo) (string, []byte, error) {
+	if server == nil || !server.TLS {
+		return "", nil, errors.Errorf("refusing LOGIN without TLS")
+	}
+
 	return "LOGIN", []byte{}, nil
 }
 
+// Next responds to server challenges for the LOGIN mechanism.
+// It supplies the username and password when prompted, and returns an error for unexpected challenges.
 func (a *loginAuth) Next(fromServer []byte, more bool) ([]byte, error) {
 	if more {
 		switch string(fromServer) {
@@ -104,6 +113,9 @@ func SendEmail(subject string, receiver string, content string) error {
 		Timeout: 30 * time.Second,
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	// Try to establish connection based on port
 	// For port 465, try implicit TLS first, if fails, try plain connection with STARTTLS
 	if config.SMTPPort == 465 {
@@ -111,21 +123,39 @@ func SendEmail(subject string, receiver string, content string) error {
 		tlsConfig := &tls.Config{
 			InsecureSkipVerify: !config.ForceEmailTLSVerify,
 			ServerName:         config.SMTPServer,
+			// MinVersion:         tls.VersionTLS13,
 		}
 		conn, err = tls.DialWithDialer(dialer, "tcp", addr, tlsConfig)
 		if err != nil {
 			// If implicit TLS fails, try plain connection (some misconfigured servers)
-			conn, err = dialer.Dial("tcp", addr)
+			conn, err = dialer.DialContext(ctx, "tcp", addr)
 			if err != nil {
 				return errors.Wrap(err, "failed to connect to SMTP server")
 			}
-			
+
 			client, err = smtp.NewClient(conn, config.SMTPServer)
 			if err != nil {
 				conn.Close()
 				return errors.Wrap(err, "failed to create SMTP client")
 			}
-			
+			// EHLO to discover capabilities
+			if err = client.Hello(domain); err != nil {
+				client.Close()
+				return errors.Wrap(err, "EHLO failed")
+			}
+			// Try STARTTLS on port 465 if implicit TLS failed
+			if ok, _ := client.Extension("STARTTLS"); ok {
+				if err = client.StartTLS(tlsConfig); err != nil {
+					client.Close()
+					return errors.Wrap(err, "failed to start TLS on port 465")
+				}
+				// EHLO again after STARTTLS
+				if err = client.Hello(domain); err != nil {
+					client.Close()
+					return errors.Wrap(err, "post-STARTTLS EHLO failed")
+				}
+			}
+
 			// Try STARTTLS on port 465 if implicit TLS failed
 			if ok, _ := client.Extension("STARTTLS"); ok {
 				if err = client.StartTLS(tlsConfig); err != nil {
@@ -143,7 +173,7 @@ func SendEmail(subject string, receiver string, content string) error {
 		}
 	} else {
 		// For other ports (25, 587, etc.): plain connection with STARTTLS
-		conn, err = dialer.Dial("tcp", addr)
+		conn, err = dialer.DialContext(ctx, "tcp", addr)
 		if err != nil {
 			return errors.Wrap(err, "failed to connect to SMTP server")
 		}
