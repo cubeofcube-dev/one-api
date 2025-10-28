@@ -9,6 +9,7 @@ import (
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
 
+// GetSubscription returns the user's subscription-style quota summary in the OpenAI billing format.
 func GetSubscription(c *gin.Context) {
 	var remainQuota int64
 	var usedQuota int64
@@ -59,6 +60,7 @@ func GetSubscription(c *gin.Context) {
 	c.JSON(200, subscription)
 }
 
+// GetUsage returns the user's quota consumption wrapped in the OpenAI usage response shape.
 func GetUsage(c *gin.Context) {
 	var quota int64
 	var err error

@@ -43,6 +43,7 @@ func isLocalhost(name string) bool {
 	}
 }
 
+// Start implements smtp.Auth for the PLAIN mechanism, validating the server identity before proceeding.
 func (a *plainAuthCompat) Start(server *smtp.ServerInfo) (string, []byte, error) {
 	if server == nil {
 		return "", nil, errors.New("missing SMTP server info for PLAIN auth")
@@ -58,6 +59,7 @@ func (a *plainAuthCompat) Start(server *smtp.ServerInfo) (string, []byte, error)
 	return "PLAIN", resp, nil
 }
 
+// Next completes the PLAIN authentication exchange, returning an error on unexpected challenges.
 func (a *plainAuthCompat) Next(fromServer []byte, more bool) ([]byte, error) {
 	if more {
 		return nil, errors.Errorf("unexpected server challenge: %s", string(fromServer))
@@ -170,6 +172,8 @@ func dialSMTPClient(ctx context.Context, addr, localName string) (*smtp.Client, 
 	return client, authMechs, usingTLS, nil
 }
 
+// SendEmail transmits an HTML email using the configured SMTP server, authenticating when credentials are provided.
+// It returns an error when the message cannot be constructed or delivered.
 func SendEmail(subject string, receiver string, content string) error {
 	if receiver == "" {
 		return errors.Errorf("receiver is empty")

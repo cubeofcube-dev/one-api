@@ -1,5 +1,6 @@
 package utils
 
+// DeDuplication removes duplicate strings from the slice while preserving no particular order.
 func DeDuplication(slice []string) []string {
 	m := make(map[string]bool)
 	for _, v := range slice {

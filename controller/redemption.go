@@ -14,6 +14,7 @@ import (
 	"github.com/songquanpeng/one-api/model"
 )
 
+// GetAllRedemptions lists redemption codes with pagination.
 func GetAllRedemptions(c *gin.Context) {
 	p, _ := strconv.Atoi(c.Query("p"))
 	if p < 0 {
@@ -56,6 +57,7 @@ func GetAllRedemptions(c *gin.Context) {
 	})
 }
 
+// SearchRedemptions performs a keyword search for redemption codes and returns paginated results.
 func SearchRedemptions(c *gin.Context) {
 	keyword := c.Query("keyword")
 	p, _ := strconv.Atoi(c.Query("p"))
@@ -90,6 +92,7 @@ func SearchRedemptions(c *gin.Context) {
 	})
 }
 
+// GetRedemption fetches a single redemption code by its identifier.
 func GetRedemption(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -114,6 +117,7 @@ func GetRedemption(c *gin.Context) {
 	})
 }
 
+// AddRedemption creates one or more redemption codes based on the supplied payload.
 func AddRedemption(c *gin.Context) {
 	redemption := model.Redemption{}
 	err := c.ShouldBindJSON(&redemption)
@@ -177,6 +181,7 @@ func AddRedemption(c *gin.Context) {
 	})
 }
 
+// DeleteRedemption removes a redemption code by ID.
 func DeleteRedemption(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	err := model.DeleteRedemptionById(id)
@@ -193,6 +198,7 @@ func DeleteRedemption(c *gin.Context) {
 	})
 }
 
+// UpdateRedemption modifies redemption metadata or status depending on the request.
 func UpdateRedemption(c *gin.Context) {
 	statusOnly := c.Query("status_only")
 	redemption := model.Redemption{}

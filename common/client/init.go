@@ -13,10 +13,16 @@ import (
 	"github.com/songquanpeng/one-api/common/logger"
 )
 
+// HTTPClient is the default outbound client used for relay requests.
 var HTTPClient *http.Client
+
+// ImpatientHTTPClient is a short-timeout client for quick health checks or metadata requests.
 var ImpatientHTTPClient *http.Client
+
+// UserContentRequestHTTPClient fetches user-supplied resources, optionally via a dedicated proxy.
 var UserContentRequestHTTPClient *http.Client
 
+// Init builds the shared HTTP clients with proxy and timeout settings derived from configuration.
 func Init() {
 	// Create a transport with HTTP/2 disabled to avoid stream errors in CI environments
 	createTransport := func(proxyURL *url.URL) *http.Transport {

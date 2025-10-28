@@ -9,11 +9,15 @@ import (
 )
 
 const (
-	ByAll           = "all"
-	ByEmail         = "email"
+	// ByAll dispatches notifications via both email and message pusher channels.
+	ByAll = "all"
+	// ByEmail delivers notifications exclusively through email.
+	ByEmail = "email"
+	// ByMessagePusher delivers notifications through the configured message pusher integration.
 	ByMessagePusher = "message_pusher"
 )
 
+// Notify routes the notification to the requested channel(s) and returns any delivery errors.
 func Notify(by string, title string, description string, content string) error {
 	switch by {
 	case ByAll:

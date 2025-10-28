@@ -14,21 +14,25 @@ import (
 // PrometheusRedisHook implements redis.Hook for monitoring Redis operations
 type PrometheusRedisHook struct{}
 
+// BeforeProcess records the start time of a Redis command so latency can be measured after execution.
 func (p *PrometheusRedisHook) BeforeProcess(ctx context.Context, cmd redis.Cmder) (context.Context, error) {
 	ctx = context.WithValue(ctx, "redis_start_time", time.Now())
 	return ctx, nil
 }
 
+// AfterProcess computes and emits metrics for a single Redis command once it completes.
 func (p *PrometheusRedisHook) AfterProcess(ctx context.Context, cmd redis.Cmder) error {
 	p.recordMetrics(ctx, cmd)
 	return nil
 }
 
+// BeforeProcessPipeline records the start time before a Redis pipeline executes.
 func (p *PrometheusRedisHook) BeforeProcessPipeline(ctx context.Context, cmds []redis.Cmder) (context.Context, error) {
 	ctx = context.WithValue(ctx, "redis_start_time", time.Now())
 	return ctx, nil
 }
 
+// AfterProcessPipeline iterates over every command in a pipeline to emit latency and success metrics.
 func (p *PrometheusRedisHook) AfterProcessPipeline(ctx context.Context, cmds []redis.Cmder) error {
 	// For pipeline, we'll record metrics for each command
 	for _, cmd := range cmds {
@@ -58,7 +62,7 @@ func (p *PrometheusRedisHook) recordMetrics(ctx context.Context, cmd redis.Cmder
 	metrics.GlobalRecorder.RecordRedisCommand(startTime, cmdName, success)
 }
 
-// InitPrometheusRedisMonitoring adds Prometheus monitoring to Redis client
+// InitPrometheusRedisMonitoring attaches Prometheus hooks to the Redis client and periodically updates pool metrics.
 func InitPrometheusRedisMonitoring() {
 	if RDB != nil {
 		// Try to cast to concrete Redis client type to add hooks

@@ -19,6 +19,7 @@ import (
 	"github.com/songquanpeng/one-api/relay/pricing"
 )
 
+// GetAllChannels lists channel records with pagination and optional sorting parameters.
 func GetAllChannels(c *gin.Context) {
 	p, _ := strconv.Atoi(c.Query("p"))
 	if p < 0 {
@@ -67,6 +68,7 @@ func GetAllChannels(c *gin.Context) {
 	})
 }
 
+// SearchChannels performs a keyword search across channels and returns the matching results.
 func SearchChannels(c *gin.Context) {
 	keyword := c.Query("keyword")
 	sortBy := c.Query("sort")
@@ -90,6 +92,7 @@ func SearchChannels(c *gin.Context) {
 	})
 }
 
+// GetChannel retrieves a single channel by ID and returns its full configuration.
 func GetChannel(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -114,6 +117,7 @@ func GetChannel(c *gin.Context) {
 	})
 }
 
+// AddChannel creates one or more channels using the posted configuration payload.
 func AddChannel(c *gin.Context) {
 	channel := model.Channel{}
 	err := c.ShouldBindJSON(&channel)
@@ -200,6 +204,7 @@ func AddChannel(c *gin.Context) {
 	})
 }
 
+// DeleteChannel removes the channel identified by the path parameter.
 func DeleteChannel(c *gin.Context) {
 	id, _ := strconv.Atoi(c.Param("id"))
 	channel := model.Channel{Id: id}
@@ -217,6 +222,7 @@ func DeleteChannel(c *gin.Context) {
 	})
 }
 
+// DeleteDisabledChannel removes all channels currently marked as disabled and returns the affected row count.
 func DeleteDisabledChannel(c *gin.Context) {
 	rows, err := model.DeleteDisabledChannel()
 	if err != nil {
@@ -233,6 +239,7 @@ func DeleteDisabledChannel(c *gin.Context) {
 	})
 }
 
+// UpdateChannel updates the channel configuration or status based on the posted payload.
 func UpdateChannel(c *gin.Context) {
 	statusOnly := c.Query("status_only")
 	channel := model.Channel{}
@@ -292,6 +299,7 @@ func UpdateChannel(c *gin.Context) {
 	})
 }
 
+// GetChannelPricing returns the pricing configuration associated with the specified channel.
 func GetChannelPricing(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -337,6 +345,7 @@ func GetChannelPricing(c *gin.Context) {
 	})
 }
 
+// UpdateChannelPricing replaces the channel pricing configuration using either legacy ratios or the unified model config format.
 func UpdateChannelPricing(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -443,6 +452,7 @@ func UpdateChannelPricing(c *gin.Context) {
 	})
 }
 
+// GetChannelDefaultPricing returns adapter-provided default pricing metadata for the supplied channel type.
 func GetChannelDefaultPricing(c *gin.Context) {
 	channelType, err := strconv.Atoi(c.Query("type"))
 	if err != nil {

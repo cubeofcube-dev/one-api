@@ -47,6 +47,8 @@ var dataReplacer = strings.NewReplacer(
 	"\n", "\ndata:",
 	"\r", "\\r")
 
+// CustomEvent represents a server-sent event that can be streamed to clients.
+// The fields map directly to the SSE specification, with Data carrying the message body.
 type CustomEvent struct {
 	Event string
 	Id    string
@@ -68,11 +70,14 @@ func writeData(w stringWriter, data any) error {
 	return nil
 }
 
+// Render applies the SSE headers and writes the event payload to the provided ResponseWriter.
+// It returns any error produced while encoding the event data.
 func (r CustomEvent) Render(w http.ResponseWriter) error {
 	r.WriteContentType(w)
 	return encode(w, r)
 }
 
+// WriteContentType sets the Content-Type and Cache-Control headers expected for SSE responses.
 func (r CustomEvent) WriteContentType(w http.ResponseWriter) {
 	header := w.Header()
 	header["Content-Type"] = contentType

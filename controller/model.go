@@ -145,6 +145,7 @@ func init() {
 	}
 }
 
+// DashboardListModels returns the complete channel-to-model mapping for administrative dashboards.
 func DashboardListModels(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -153,6 +154,7 @@ func DashboardListModels(c *gin.Context) {
 	})
 }
 
+// ListAllModels returns every known model in the OpenAI-compatible format regardless of user permissions.
 func ListAllModels(c *gin.Context) {
 	c.JSON(200, gin.H{
 		"object": "list",
@@ -445,6 +447,7 @@ func ListModels(c *gin.Context) {
 	})
 }
 
+// RetrieveModel returns details about a specific model or an error when it does not exist.
 func RetrieveModel(c *gin.Context) {
 	modelId := c.Param("model")
 	if model, ok := modelsMap[modelId]; ok {
@@ -458,6 +461,7 @@ func RetrieveModel(c *gin.Context) {
 	}
 }
 
+// GetUserAvailableModels lists the model identifiers the authenticated user can access.
 func GetUserAvailableModels(c *gin.Context) {
 	ctx := gmw.Ctx(c)
 	id := c.GetInt(ctxkey.Id)
@@ -495,7 +499,7 @@ func GetUserAvailableModels(c *gin.Context) {
 	})
 }
 
-// GetAvailableModelsByToken get available models by API token
+// GetAvailableModelsByToken reports the models allowed for the current API token when explicitly restricted.
 func GetAvailableModelsByToken(c *gin.Context) {
 	// Get token information to determine status
 	tokenID := c.GetInt(ctxkey.TokenId)

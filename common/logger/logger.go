@@ -20,6 +20,7 @@ import (
 )
 
 var (
+	// Logger is the primary structured logger shared by the entire application.
 	Logger       glog.Logger
 	setupLogOnce sync.Once
 	initLogOnce  sync.Once

@@ -19,6 +19,8 @@ import (
 	"github.com/songquanpeng/one-api/common/random"
 )
 
+// OpenBrowser attempts to launch the system browser pointing at the provided URL.
+// Any failure is logged but not returned to the caller.
 func OpenBrowser(url string) {
 	var err error
 
@@ -45,6 +47,7 @@ func RespondError(c *gin.Context, err error) {
 	})
 }
 
+// GetIp returns the first detected non-loopback IPv4 address for the host, preferring private ranges.
 func GetIp() (ip string) {
 	ips, err := net.InterfaceAddrs()
 	if err != nil {
@@ -76,6 +79,7 @@ var sizeKB = 1024
 var sizeMB = sizeKB * 1024
 var sizeGB = sizeMB * 1024
 
+// Bytes2Size converts a byte count into a human-readable string using the largest appropriate unit.
 func Bytes2Size(num int64) string {
 	numStr := ""
 	unit := "B"
@@ -94,6 +98,7 @@ func Bytes2Size(num int64) string {
 	return numStr + " " + unit
 }
 
+// Interface2String converts primitive types into their string representation, returning a default marker otherwise.
 func Interface2String(inter any) string {
 	switch inter := inter.(type) {
 	case string:
@@ -106,10 +111,12 @@ func Interface2String(inter any) string {
 	return "Not Implemented"
 }
 
+// UnescapeHTML marks the string as trusted HTML so it bypasses escaping in templates.
 func UnescapeHTML(x string) any {
 	return template.HTML(x)
 }
 
+// IntMax returns the greater of the two integer arguments.
 func IntMax(a int, b int) int {
 	if a >= b {
 		return a
@@ -118,17 +125,20 @@ func IntMax(a int, b int) int {
 	}
 }
 
+// GenRequestID generates a request identifier combining time-based and random components.
 func GenRequestID() string {
 	return GetTimeString() + random.GetRandomNumberString(8)
 }
 
 // Removed std context ID extractors; callers must pass IDs explicitly via gin.Context
 
+// GetResponseID formats the gin context request ID into an OpenAI-style response identifier.
 func GetResponseID(c *gin.Context) string {
 	logID := c.GetString(RequestIdKey)
 	return fmt.Sprintf("chatcmpl-%s", logID)
 }
 
+// Max returns the greater of the two integer arguments.
 func Max(a int, b int) int {
 	if a >= b {
 		return a
@@ -137,6 +147,7 @@ func Max(a int, b int) int {
 	}
 }
 
+// AssignOrDefault returns value when non-empty, otherwise defaultValue.
 func AssignOrDefault(value string, defaultValue string) string {
 	if len(value) != 0 {
 		return value
@@ -144,10 +155,12 @@ func AssignOrDefault(value string, defaultValue string) string {
 	return defaultValue
 }
 
+// MessageWithRequestId appends the request identifier to the supplied message for log clarity.
 func MessageWithRequestId(message string, id string) string {
 	return fmt.Sprintf("%s (request id: %s)", message, id)
 }
 
+// String2Int converts the string into an integer, returning zero on parse failure.
 func String2Int(str string) int {
 	num, err := strconv.Atoi(str)
 	if err != nil {
@@ -156,6 +169,7 @@ func String2Int(str string) int {
 	return num
 }
 
+// Float64PtrMax caps the referenced float64 at maxValue while preserving nil pointers.
 func Float64PtrMax(p *float64, maxValue float64) *float64 {
 	if p == nil {
 		return nil
@@ -166,6 +180,7 @@ func Float64PtrMax(p *float64, maxValue float64) *float64 {
 	return p
 }
 
+// Float64PtrMin raises the referenced float64 to at least minValue while preserving nil pointers.
 func Float64PtrMin(p *float64, minValue float64) *float64 {
 	if p == nil {
 		return nil

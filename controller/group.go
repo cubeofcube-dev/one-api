@@ -8,6 +8,7 @@ import (
 	billingratio "github.com/songquanpeng/one-api/relay/billing/ratio"
 )
 
+// GetGroups returns the list of configured billing groups.
 func GetGroups(c *gin.Context) {
 	groupNames := make([]string, 0)
 	for groupName := range billingratio.GroupRatio {

@@ -36,6 +36,7 @@ func isIpInSubnet(ctx context.Context, ip string, subnet string) bool {
 	return ipNet.Contains(net.ParseIP(ip))
 }
 
+// IsValidSubnets verifies that every comma-separated subnet string parses as a CIDR block.
 func IsValidSubnets(subnets string) error {
 	for _, subnet := range splitSubnets(subnets) {
 		if err := isValidSubnet(subnet); err != nil {
@@ -45,6 +46,7 @@ func IsValidSubnets(subnets string) error {
 	return nil
 }
 
+// IsIpInSubnets evaluates whether the provided IP address belongs to any subnet in the comma-separated list.
 func IsIpInSubnets(ctx context.Context, ip string, subnets string) bool {
 	for _, subnet := range splitSubnets(subnets) {
 		if isIpInSubnet(ctx, ip, subnet) {

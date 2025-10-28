@@ -119,13 +119,14 @@ type OpenRouterResponse struct {
 	} `json:"data"`
 }
 
-// GetAuthHeader get auth header
+// GetAuthHeader builds a bearer Authorization header using the provided token.
 func GetAuthHeader(token string) http.Header {
 	h := http.Header{}
 	h.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	return h
 }
 
+// GetResponseBody issues an HTTP request with the given headers and returns the raw response body.
 func GetResponseBody(method, url string, channel *model.Channel, headers http.Header) ([]byte, error) {
 	req, err := http.NewRequest(method, url, nil)
 	if err != nil {
@@ -375,6 +376,7 @@ func updateChannelBalance(channel *model.Channel) (float64, error) {
 	return balance, nil
 }
 
+// UpdateChannelBalance refreshes the balance information for the specified channel and returns the result.
 func UpdateChannelBalance(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -434,6 +436,7 @@ func updateAllChannelsBalance() error {
 	return nil
 }
 
+// UpdateAllChannelsBalance triggers a full channel balance refresh and immediately responds success.
 func UpdateAllChannelsBalance(c *gin.Context) {
 	//err := updateAllChannelsBalance()
 	//if err != nil {
@@ -449,6 +452,7 @@ func UpdateAllChannelsBalance(c *gin.Context) {
 	})
 }
 
+// AutomaticallyUpdateChannels periodically calls the balance updater at the provided minute interval.
 func AutomaticallyUpdateChannels(frequency int) {
 	for {
 		time.Sleep(time.Duration(frequency) * time.Minute)

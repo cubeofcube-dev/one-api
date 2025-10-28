@@ -308,6 +308,7 @@ func responseStatus(resp *http.Response) int {
 	return resp.StatusCode
 }
 
+// TestChannel executes a live request against the specified channel to verify availability.
 func TestChannel(c *gin.Context) {
 	lg := gmw.GetLogger(c).Named("test_channel")
 
@@ -486,6 +487,7 @@ func testChannels(ctx context.Context, notify bool, scope string) error {
 	return nil
 }
 
+// TestChannels initiates a background test sweep across a set of channels defined by scope.
 func TestChannels(c *gin.Context) {
 	ctx := gmw.Ctx(c)
 	scope := c.Query("scope")
@@ -506,6 +508,7 @@ func TestChannels(c *gin.Context) {
 	})
 }
 
+// AutomaticallyTestChannels continuously runs channel tests at the provided interval in minutes.
 func AutomaticallyTestChannels(frequency int) {
 	lg := logger.Logger.Named("auto_test_channels")
 	ctx := context.Background()

@@ -16,6 +16,7 @@ import (
 	"github.com/songquanpeng/one-api/model"
 )
 
+// GetStatus returns application metadata and feature toggles for the public status endpoint.
 func GetStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -49,6 +50,7 @@ func GetStatus(c *gin.Context) {
 	})
 }
 
+// GetNotice returns the configured notice content for the UI.
 func GetNotice(c *gin.Context) {
 	config.OptionMapRWMutex.RLock()
 	defer config.OptionMapRWMutex.RUnlock()
@@ -59,6 +61,7 @@ func GetNotice(c *gin.Context) {
 	})
 }
 
+// GetAbout returns the configured about content for the UI.
 func GetAbout(c *gin.Context) {
 	config.OptionMapRWMutex.RLock()
 	defer config.OptionMapRWMutex.RUnlock()
@@ -69,6 +72,7 @@ func GetAbout(c *gin.Context) {
 	})
 }
 
+// GetHomePageContent returns the configured homepage content block.
 func GetHomePageContent(c *gin.Context) {
 	config.OptionMapRWMutex.RLock()
 	defer config.OptionMapRWMutex.RUnlock()
@@ -79,6 +83,7 @@ func GetHomePageContent(c *gin.Context) {
 	})
 }
 
+// SendEmailVerification issues a verification code to the provided email address.
 func SendEmailVerification(c *gin.Context) {
 	email := c.Query("email")
 	if err := common.Validate.Var(email, "required,email"); err != nil {
@@ -138,6 +143,7 @@ func SendEmailVerification(c *gin.Context) {
 	})
 }
 
+// SendPasswordResetEmail sends a password reset link to the supplied email address when registered.
 func SendPasswordResetEmail(c *gin.Context) {
 	email := c.Query("email")
 	if err := common.Validate.Var(email, "required,email"); err != nil {
@@ -191,6 +197,7 @@ type PasswordResetRequest struct {
 	Token string `json:"token"`
 }
 
+// ResetPassword validates the reset token and assigns a new random password to the account.
 func ResetPassword(c *gin.Context) {
 	var req PasswordResetRequest
 	err := json.NewDecoder(c.Request.Body).Decode(&req)
@@ -225,6 +232,7 @@ func ResetPassword(c *gin.Context) {
 	})
 }
 
+// GetChannelStatus returns a paginated view of channel health and recent test metrics.
 func GetChannelStatus(c *gin.Context) {
 	// Parse pagination parameters
 	p, _ := strconv.Atoi(c.Query("p"))

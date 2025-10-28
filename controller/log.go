@@ -11,6 +11,7 @@ import (
 	"github.com/songquanpeng/one-api/model"
 )
 
+// GetAllLogs lists logs across all users with pagination, filtering, and sorting options.
 func GetAllLogs(c *gin.Context) {
 	p, _ := strconv.Atoi(c.Query("p"))
 	if p < 0 {
@@ -84,6 +85,7 @@ func GetAllLogs(c *gin.Context) {
 	})
 }
 
+// GetUserLogs lists logs scoped to the current user, honoring filter and sorting options.
 func GetUserLogs(c *gin.Context) {
 	p, _ := strconv.Atoi(c.Query("p"))
 	if p < 0 {
@@ -152,6 +154,7 @@ func GetUserLogs(c *gin.Context) {
 	})
 }
 
+// SearchAllLogs performs full-text search across all logs and returns paginated results.
 func SearchAllLogs(c *gin.Context) {
 	keyword := c.Query("keyword")
 	p, _ := strconv.Atoi(c.Query("p"))
@@ -187,6 +190,7 @@ func SearchAllLogs(c *gin.Context) {
 	})
 }
 
+// SearchUserLogs searches logs belonging to the current user and returns paginated results.
 func SearchUserLogs(c *gin.Context) {
 	keyword := c.Query("keyword")
 	userId := c.GetInt(ctxkey.Id)
@@ -223,6 +227,7 @@ func SearchUserLogs(c *gin.Context) {
 	})
 }
 
+// GetLogsStat summarizes quota usage metrics across logs matching the provided filters.
 func GetLogsStat(c *gin.Context) {
 	logType, _ := strconv.Atoi(c.Query("type"))
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
@@ -243,6 +248,7 @@ func GetLogsStat(c *gin.Context) {
 	})
 }
 
+// GetLogsSelfStat reports quota usage metrics for the authenticated user over the requested range.
 func GetLogsSelfStat(c *gin.Context) {
 	username := c.GetString(ctxkey.Username)
 	logType, _ := strconv.Atoi(c.Query("type"))
@@ -263,6 +269,7 @@ func GetLogsSelfStat(c *gin.Context) {
 	})
 }
 
+// DeleteHistoryLogs purges log entries older than the provided timestamp.
 func DeleteHistoryLogs(c *gin.Context) {
 	targetTimestamp, _ := strconv.ParseInt(c.Query("target_timestamp"), 10, 64)
 	if targetTimestamp == 0 {

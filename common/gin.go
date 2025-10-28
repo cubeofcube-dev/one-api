@@ -15,6 +15,8 @@ import (
 	"github.com/songquanpeng/one-api/common/ctxkey"
 )
 
+// GetRequestBody reads and caches the request body so it can be reused later in the handler chain.
+// It returns the raw body bytes and wraps any I/O error encountered during the read.
 func GetRequestBody(c *gin.Context) (requestBody []byte, err error) {
 	if requestBodyCache, _ := c.Get(ctxkey.KeyRequestBody); requestBodyCache != nil {
 		return requestBodyCache.([]byte), nil
@@ -29,6 +31,8 @@ func GetRequestBody(c *gin.Context) (requestBody []byte, err error) {
 	return requestBody, nil
 }
 
+// UnmarshalBodyReusable unmarshals the request body into the provided pointer while keeping the body reusable.
+// It supports JSON and form payloads based on the Content-Type header.
 func UnmarshalBodyReusable(c *gin.Context, v any) error {
 	requestBody, err := GetRequestBody(c)
 	if err != nil {
@@ -61,6 +65,7 @@ func UnmarshalBodyReusable(c *gin.Context, v any) error {
 	return nil
 }
 
+// SetEventStreamHeaders configures the standard headers required for server-sent event responses.
 func SetEventStreamHeaders(c *gin.Context) {
 	c.Writer.Header().Set("Content-Type", "text/event-stream")
 	c.Writer.Header().Set("Cache-Control", "no-cache")

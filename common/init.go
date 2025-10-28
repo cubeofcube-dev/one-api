@@ -12,10 +12,17 @@ import (
 )
 
 var (
-	Port         = flag.Int("port", 3000, "the listening port")
+	// Port holds the CLI flag indicating which port the HTTP server listens on.
+	Port = flag.Int("port", 3000, "the listening port")
+
+	// PrintVersion toggles a CLI mode that prints the binary version and exits.
 	PrintVersion = flag.Bool("version", false, "print version and exit")
-	PrintHelp    = flag.Bool("help", false, "print help and exit")
-	LogDir       = flag.String("log-dir", "./logs", "specify the log directory")
+
+	// PrintHelp toggles a CLI mode that prints usage information and exits.
+	PrintHelp = flag.Bool("help", false, "print help and exit")
+
+	// LogDir captures the CLI flag that points to the directory storing log files.
+	LogDir = flag.String("log-dir", "./logs", "specify the log directory")
 )
 
 // func printHelp() {
@@ -25,6 +32,7 @@ var (
 // 	fmt.Println("Usage: one-api [--port <port>] [--log-dir <log directory>] [--version] [--help]")
 // }
 
+// Init parses CLI flags, normalizes configuration defaults, and prepares logging destinations.
 func Init() {
 	flag.Parse()
 

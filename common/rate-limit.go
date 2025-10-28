@@ -5,12 +5,16 @@ import (
 	"time"
 )
 
+// InMemoryRateLimiter keeps per-key request timestamps to enforce simple in-memory quotas.
+// It is safe for concurrent use within a single process.
 type InMemoryRateLimiter struct {
 	store              map[string]*[]int64
 	mutex              sync.Mutex
 	expirationDuration time.Duration
 }
 
+// Init prepares the rate limiter with an optional expiration window for idle keys.
+// When expirationDuration is greater than zero, a background goroutine periodically prunes stale entries.
 func (l *InMemoryRateLimiter) Init(expirationDuration time.Duration) {
 	if l.store == nil {
 		l.mutex.Lock()
@@ -41,7 +45,8 @@ func (l *InMemoryRateLimiter) clearExpiredItems() {
 	}
 }
 
-// Request parameter duration's unit is seconds
+// Request evaluates whether the key can issue another request under the provided constraints.
+// maxRequestNum limits the number of requests recorded within the sliding duration window, whose unit is seconds.
 func (l *InMemoryRateLimiter) Request(key string, maxRequestNum int, duration int64) bool {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()

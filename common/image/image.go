@@ -29,6 +29,7 @@ import (
 // Regex to match data URL pattern
 var dataURLPattern = regexp.MustCompile(`data:image/([^;]+);base64,(.*)`)
 
+// IsImageUrl performs a lightweight check to confirm the URL points to a fetchable image within the configured size limit.
 func IsImageUrl(url string) (bool, error) {
 	resp, err := client.UserContentRequestHTTPClient.Head(url)
 	if err != nil {
@@ -64,6 +65,7 @@ func IsImageUrl(url string) (bool, error) {
 	return true, nil
 }
 
+// GetImageSizeFromUrl downloads the image metadata and returns its width and height in pixels.
 func GetImageSizeFromUrl(url string) (width int, height int, err error) {
 	isImage, err := IsImageUrl(url)
 	if err != nil {
@@ -85,6 +87,7 @@ func GetImageSizeFromUrl(url string) (width int, height int, err error) {
 	return img.Width, img.Height, nil
 }
 
+// GetImageFromUrl retrieves the image bytes or data URL content, returning the MIME type and base64-encoded payload.
 func GetImageFromUrl(url string) (mimeType string, data string, err error) {
 	// Check if the URL is a data URL
 	matches := dataURLPattern.FindStringSubmatch(url)
@@ -138,6 +141,7 @@ var readerPool = sync.Pool{
 	},
 }
 
+// GetImageSizeFromBase64 decodes the base64 image data to determine its dimensions.
 func GetImageSizeFromBase64(encoded string) (width int, height int, err error) {
 	decoded, err := base64.StdEncoding.DecodeString(reg.ReplaceAllString(encoded, ""))
 	if err != nil {
@@ -156,6 +160,7 @@ func GetImageSizeFromBase64(encoded string) (width int, height int, err error) {
 	return img.Width, img.Height, nil
 }
 
+// GetImageSize detects whether the input is an inline data URL or remote URL and returns the image dimensions accordingly.
 func GetImageSize(image string) (width int, height int, err error) {
 	if strings.HasPrefix(image, "data:image/") {
 		return GetImageSizeFromBase64(image)
@@ -163,7 +168,7 @@ func GetImageSize(image string) (width int, height int, err error) {
 	return GetImageSizeFromUrl(image)
 }
 
-// GenerateTextImage creates a PNG image with the specified text and returns it as base64 encoded data.
+// GenerateTextImage renders the supplied text into a PNG image and returns the raw bytes and MIME type.
 // This is useful for creating fallback images when image downloads fail, particularly for vision-capable models.
 // The function creates a white background with black text, automatically sizing the image based on the text content.
 func GenerateTextImage(text string) (imageData []byte, mimeType string, err error) {
@@ -250,7 +255,7 @@ func GenerateTextImage(text string) (imageData []byte, mimeType string, err erro
 	return buf.Bytes(), "image/png", nil
 }
 
-// ValidateDataURLImage checks whether the provided data URL contains a decodable image.
+// ValidateDataURLImage ensures the provided data URL has a valid image payload by attempting to decode its metadata.
 func ValidateDataURLImage(dataURL string) error {
 	if !strings.HasPrefix(dataURL, "data:image/") {
 		return errors.New("data URL does not start with data:image/")
@@ -263,8 +268,8 @@ func ValidateDataURLImage(dataURL string) error {
 	return nil
 }
 
-// GenerateTextImageBase64 creates a PNG image with the specified text and returns it as base64 encoded string.
-// This is a convenience function that wraps GenerateTextImage and returns base64 encoded data.
+// GenerateTextImageBase64 creates a PNG image containing the text and returns its base64 encoding alongside the MIME type.
+// This is a convenience wrapper around GenerateTextImage for inline usage.
 func GenerateTextImageBase64(text string) (base64Data string, mimeType string, err error) {
 	imageData, mimeType, err := GenerateTextImage(text)
 	if err != nil {
