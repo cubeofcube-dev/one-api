@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,6 +23,19 @@ var (
 	Logger       glog.Logger
 	setupLogOnce sync.Once
 	initLogOnce  sync.Once
+)
+
+var (
+	logRotationState = struct {
+		mu          sync.Mutex
+		currentDate string
+		file        *os.File
+		stopCh      chan struct{}
+		stoppedCh   chan struct{}
+	}{}
+	rotationMu               sync.Mutex
+	nowFunc                  = time.Now
+	logRotationCheckInterval = time.Minute
 )
 
 // init initializes the logger automatically when the package is imported
@@ -45,33 +59,49 @@ func initLogger() {
 	})
 }
 
+// SetupLogger sets up the logger to write logs to files in addition to stdout
 func SetupLogger() {
 	setupLogOnce.Do(func() {
-		if LogDir != "" {
-			if err := os.MkdirAll(LogDir, 0o755); err != nil {
-				Logger.Error("failed to ensure log directory", zap.String("log_dir", LogDir), zap.Error(err))
-				return
-			}
+		if LogDir == "" {
+			Logger.Info("log directory not configured; file logging disabled")
+			return
+		}
 
-			var logPath string
-			if config.OnlyOneLogFile {
-				logPath = filepath.Join(LogDir, "oneapi.log")
-			} else {
-				logPath = filepath.Join(LogDir, fmt.Sprintf("oneapi-%s.log", time.Now().Format("20060102")))
-			}
+		if err := os.MkdirAll(LogDir, 0o755); err != nil {
+			Logger.Error("failed to ensure log directory", zap.String("log_dir", LogDir), zap.Error(err))
+			return
+		}
 
-			fd, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
-			if err != nil {
-				Logger.Error("failed to open log file, falling back to stdout", zap.String("log_path", logPath), zap.Error(err))
-				return
-			}
+		now := nowFunc()
+		logPath, logDate := determineLogFile(now)
+		fd, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+		if err != nil {
+			Logger.Error("failed to open log file, falling back to stdout", zap.String("log_path", logPath), zap.Error(err))
+			return
+		}
 
-			if err = configureGlobalLogger(logPath); err != nil {
-				Logger.Error("failed to attach log file sink", zap.String("log_path", logPath), zap.Error(err))
-			}
+		prevLogger := Logger
+		if confErr := configureGlobalLogger(logPath); confErr != nil {
+			Logger.Error("failed to attach log file sink", zap.String("log_path", logPath), zap.Error(confErr))
+			_ = fd.Close()
+			return
+		}
 
-			gin.DefaultWriter = io.MultiWriter(os.Stdout, fd)
-			gin.DefaultErrorWriter = io.MultiWriter(os.Stderr, fd)
+		applyGinWriters(fd)
+
+		releaseFile := swapLogFileState(logDate, fd)
+		if releaseFile != nil {
+			_ = releaseFile.Close()
+		}
+
+		if prevLogger != nil {
+			_ = prevLogger.Sync()
+		}
+
+		Logger.Info("log file configured", zap.String("log_path", logPath))
+
+		if !config.OnlyOneLogFile {
+			startLogRotationLoop()
 		}
 	})
 }
@@ -92,6 +122,144 @@ func configureGlobalLogger(logPath string) error {
 	}
 
 	Logger = newLogger
+	return nil
+}
+
+// determineLogFile builds the absolute log file path and corresponding date suffix using the
+// provided timestamp, honoring the OnlyOneLogFile configuration switch.
+func determineLogFile(ts time.Time) (string, string) {
+	date := ts.Format("20060102")
+	name := "oneapi.log"
+	if !config.OnlyOneLogFile {
+		name = fmt.Sprintf("oneapi-%s.log", date)
+	}
+
+	return filepath.Join(LogDir, name), date
+}
+
+// applyGinWriters updates gin's default writers so request logging mirrors the Zap sinks.
+func applyGinWriters(fd *os.File) {
+	gin.DefaultWriter = io.MultiWriter(os.Stdout, fd)
+	gin.DefaultErrorWriter = io.MultiWriter(os.Stderr, fd)
+}
+
+// swapLogFileState records the active log date and file pointer, returning the previous file so callers
+// may close it once the new sinks are in place.
+func swapLogFileState(date string, fd *os.File) *os.File {
+	logRotationState.mu.Lock()
+	defer logRotationState.mu.Unlock()
+
+	old := logRotationState.file
+	logRotationState.file = fd
+	logRotationState.currentDate = date
+
+	return old
+}
+
+// startLogRotationLoop kicks off a background ticker that checks once per interval whether a fresh
+// daily log file should be created. It is a no-op when rotation is already running.
+func startLogRotationLoop() {
+	logRotationState.mu.Lock()
+	if logRotationState.stopCh != nil {
+		logRotationState.mu.Unlock()
+		return
+	}
+
+	stopCh := make(chan struct{})
+	stoppedCh := make(chan struct{})
+	logRotationState.stopCh = stopCh
+	logRotationState.stoppedCh = stoppedCh
+	logRotationState.mu.Unlock()
+
+	go func() {
+		ticker := time.NewTicker(logRotationCheckInterval)
+		defer func() {
+			ticker.Stop()
+			close(stoppedCh)
+		}()
+
+		for {
+			select {
+			case <-stopCh:
+				return
+			case tickTime := <-ticker.C:
+				if err := rotateLogFileIfNeeded(tickTime); err != nil {
+					Logger.Warn("log rotation failed", zap.Error(err))
+				}
+			}
+		}
+	}()
+}
+
+// stopLogRotationLoop halts the rotation ticker, waiting until the goroutine exits before returning.
+func stopLogRotationLoop() {
+	logRotationState.mu.Lock()
+	stopCh := logRotationState.stopCh
+	stoppedCh := logRotationState.stoppedCh
+	logRotationState.stopCh = nil
+	logRotationState.stoppedCh = nil
+	logRotationState.mu.Unlock()
+
+	if stopCh == nil {
+		return
+	}
+
+	close(stopCh)
+	if stoppedCh != nil {
+		<-stoppedCh
+	}
+}
+
+// rotateLogFileIfNeeded ensures a new log file is opened when the day changes. The supplied timestamp
+// determines which date suffix to use for the next log file.
+func rotateLogFileIfNeeded(ts time.Time) error {
+	if config.OnlyOneLogFile {
+		return nil
+	}
+
+	if strings.TrimSpace(LogDir) == "" {
+		return nil
+	}
+
+	rotationMu.Lock()
+	defer rotationMu.Unlock()
+
+	logRotationState.mu.Lock()
+	currentDate := logRotationState.currentDate
+	logRotationState.mu.Unlock()
+
+	logPath, newDate := determineLogFile(ts)
+	if newDate == currentDate {
+		return nil
+	}
+
+	if err := os.MkdirAll(LogDir, 0o755); err != nil {
+		return errors.Wrap(err, "ensure log directory")
+	}
+
+	fd, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		return errors.Wrap(err, "open log file")
+	}
+
+	prevLogger := Logger
+	if confErr := configureGlobalLogger(logPath); confErr != nil {
+		_ = fd.Close()
+		return errors.Wrap(confErr, "attach log file sink")
+	}
+
+	applyGinWriters(fd)
+	old := swapLogFileState(newDate, fd)
+	if prevLogger != nil {
+		_ = prevLogger.Sync()
+	}
+
+	if old != nil && old != fd {
+		_ = old.Close()
+	}
+
+	Logger.Info("rotated log file", zap.String("log_path", logPath), zap.String("log_date", newDate))
+
 	return nil
 }
 

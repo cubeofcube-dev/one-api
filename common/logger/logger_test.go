@@ -10,6 +10,7 @@ import (
 
 	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/common/config"
 )
@@ -254,4 +255,57 @@ func TestStartLogRetentionCleaner(t *testing.T) {
 		}
 		t.Fatalf("unexpected error checking fresh log file: %v", err)
 	}
+}
+
+func TestDailyLogRotationCreatesNewFiles(t *testing.T) {
+	dir := t.TempDir()
+	originalLogger := Logger
+	originalLogDir := LogDir
+	originalOnlyOne := config.OnlyOneLogFile
+	originalDefaultWriter := gin.DefaultWriter
+	originalDefaultErrorWriter := gin.DefaultErrorWriter
+
+	t.Cleanup(func() {
+		Logger = originalLogger
+		LogDir = originalLogDir
+		config.OnlyOneLogFile = originalOnlyOne
+		gin.DefaultWriter = originalDefaultWriter
+		gin.DefaultErrorWriter = originalDefaultErrorWriter
+		ResetSetupLogOnceForTests()
+		ResetLogRotationForTests()
+	})
+
+	ResetSetupLogOnceForTests()
+	ResetLogRotationForTests()
+
+	baseTime := time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC)
+	currentTime := baseTime
+	SetNowFuncForTests(func() time.Time {
+		return currentTime
+	})
+
+	LogDir = dir
+	config.OnlyOneLogFile = false
+
+	SetupLogger()
+	StopLogRotationLoopForTests()
+
+	Logger.Info("first day entry")
+	_ = Logger.Sync()
+
+	firstPath := filepath.Join(dir, "oneapi-"+baseTime.Format("20060102")+".log")
+	firstContent, err := os.ReadFile(firstPath)
+	require.NoError(t, err)
+	require.Contains(t, string(firstContent), "first day entry")
+
+	currentTime = currentTime.Add(25 * time.Hour)
+	require.NoError(t, ForceLogRotationForTests(currentTime))
+
+	Logger.Info("second day entry")
+	_ = Logger.Sync()
+
+	secondPath := filepath.Join(dir, "oneapi-"+currentTime.Format("20060102")+".log")
+	secondContent, err := os.ReadFile(secondPath)
+	require.NoError(t, err)
+	require.Contains(t, string(secondContent), "second day entry")
 }
