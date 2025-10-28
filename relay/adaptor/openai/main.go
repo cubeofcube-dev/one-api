@@ -70,6 +70,12 @@ const (
 
 // Optionally: record when upstream streaming is completed (non-standard event)
 func recordUpstreamCompleted(c *gin.Context) {
+	// Only attempt to record trace timestamp when DB is initialized. In tests or
+	// lightweight environments the global DB may be nil which would cause a
+	// panic inside the model package. Guard to keep handler robust.
+	if relaymodel.DB == nil {
+		return
+	}
 	tracing.RecordTraceTimestamp(c, relaymodel.TimestampUpstreamCompleted)
 }
 
@@ -624,6 +630,9 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 	webSearchCount := 0
 	toolStates := make(map[string]*responseStreamToolCallState)
 
+	// Track output item IDs for which we've already forwarded delta content.
+	seenOutputItems := make(map[string]struct{})
+
 	getToolState := func(id string) *responseStreamToolCallState {
 		if id == "" {
 			return nil
@@ -717,8 +726,21 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 		}
 
 		// Update tool state tracking with metadata from the streaming event
+		// Derive a canonical event type string for both streaming events and
+		// full response events so the downstream emission logic can handle
+		// both uniformly.
+		eventType := ""
 		if streamEvent != nil {
-			eventType := streamEvent.Type
+			eventType = streamEvent.Type
+		} else if fullResponse != nil {
+			if responseAPIChunk.Status != "" {
+				eventType = "response." + responseAPIChunk.Status
+			} else {
+				eventType = "response.completed"
+			}
+		}
+
+		if eventType != "" {
 			if streamEvent.Item != nil && streamEvent.Item.Type == "function_call" {
 				if state := getToolState(streamEvent.Item.Id); state != nil {
 					if streamEvent.OutputIndex >= 0 {
@@ -752,6 +774,49 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 
 		// Convert Response API chunk to ChatCompletion streaming format with proper index context
 		chatCompletionChunk := ConvertResponseAPIStreamToChatCompletionWithIndex(&responseAPIChunk, outputIndex)
+
+		// If this is a done/complete event and the output item was already emitted
+		// from prior delta events, clear content to avoid duplicate text emission.
+		if streamEvent != nil {
+			eventType := streamEvent.Type
+			if !strings.Contains(eventType, "delta") {
+				seen := false
+				for _, out := range responseAPIChunk.Output {
+					if out.Id != "" {
+						if _, ok := seenOutputItems[out.Id]; ok {
+							seen = true
+							break
+						}
+					}
+				}
+
+				if seen {
+					// For intermediate done events (content_part.done, output_item.done), drop
+					// content to avoid duplicates (we already sent deltas). For the final
+					// response.completed event, re-emit a single terminal chunk with the
+					// accumulated responseText so clients receive a full-text final chunk
+					// but only once.
+					if eventType == "response.completed" {
+						if len(chatCompletionChunk.Choices) > 0 {
+							delta := &chatCompletionChunk.Choices[0].Delta
+							// Use accumulated responseText (from prior delta events) as the
+							// final content to avoid duplication while preserving the final
+							// combined message for clients.
+							delta.Content = responseText
+							delta.Reasoning = nil
+							delta.ToolCalls = nil
+						}
+					} else {
+						if len(chatCompletionChunk.Choices) > 0 {
+							delta := &chatCompletionChunk.Choices[0].Delta
+							delta.Content = ""
+							delta.Reasoning = nil
+							delta.ToolCalls = nil
+						}
+					}
+				}
+			}
+		}
 
 		if len(chatCompletionChunk.Choices) > 0 {
 			delta := &chatCompletionChunk.Choices[0].Delta
@@ -814,6 +879,18 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 					}
 				}
 			}
+
+			// Mark that we've seen delta content for this item id so later done events
+			// referencing the same item won't re-emit the full content.
+			if streamEvent != nil && strings.Contains(streamEvent.Type, "delta") {
+				itemId := streamEvent.ItemId
+				if itemId == "" && streamEvent.Item != nil {
+					itemId = streamEvent.Item.Id
+				}
+				if itemId != "" {
+					seenOutputItems[itemId] = struct{}{}
+				}
+			}
 		}
 
 		// Accumulate usage information
@@ -821,10 +898,31 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 			usage = chatCompletionChunk.Usage
 		}
 
-		// Decide whether to forward this chunk based on event semantics
-		shouldSendChunk := false
-		if streamEvent != nil {
-			eventType := streamEvent.Type
+		if eventType != "" {
+			// Prevent duplicate payloads for terminal events by clearing content deltas
+			if strings.HasPrefix(eventType, "response.completed") && len(chatCompletionChunk.Choices) > 0 {
+				// If this completed event corresponds to a fullResponse (not a
+				// streaming event) and we have accumulated deltas, prefer to
+				// re-emit the accumulated responseText as the final chunk
+				// rather than the upstream-provided content to avoid
+				// duplication.
+				if fullResponse != nil {
+					if len(chatCompletionChunk.Choices) > 0 {
+						delta := &chatCompletionChunk.Choices[0].Delta
+						delta.Content = responseText
+						delta.Reasoning = nil
+						delta.ToolCalls = nil
+					}
+				} else {
+					delta := &chatCompletionChunk.Choices[0].Delta
+					if content, ok := delta.Content.(string); ok && content != "" {
+						delta.Content = ""
+					}
+					delta.Reasoning = nil
+					delta.ToolCalls = nil
+				}
+			}
+
 			hasMeaningfulDelta := func() bool {
 				if len(chatCompletionChunk.Choices) == 0 {
 					return false
@@ -845,11 +943,21 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 				return false
 			}()
 
+			hasToolCalls := len(chatCompletionChunk.Choices) > 0 && len(chatCompletionChunk.Choices[0].Delta.ToolCalls) > 0
+			hasFinishReason := len(chatCompletionChunk.Choices) > 0 && chatCompletionChunk.Choices[0].FinishReason != nil
+			shouldSendChunk := false
+
 			if strings.Contains(eventType, "delta") {
 				shouldSendChunk = hasMeaningfulDelta
-			} else if len(chatCompletionChunk.Choices) > 0 && len(chatCompletionChunk.Choices[0].Delta.ToolCalls) > 0 {
+			} else if hasToolCalls {
 				shouldSendChunk = true
-			} else if hasMeaningfulDelta && !strings.Contains(eventType, "output_text.done") && !strings.Contains(eventType, "reasoning_summary_text.done") {
+			} else if eventType == "response.completed" && hasFinishReason {
+				shouldSendChunk = true
+			} else if hasMeaningfulDelta &&
+				!strings.Contains(eventType, "output_text.done") &&
+				!strings.Contains(eventType, "content_part.done") &&
+				!strings.Contains(eventType, "output_item.done") &&
+				!strings.Contains(eventType, "reasoning_summary_text.done") {
 				shouldSendChunk = true
 			}
 
@@ -863,11 +971,36 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 
 				c.Render(-1, common.CustomEvent{Data: "data: " + string(jsonStr)})
 			} else if eventType == "response.completed" && responseAPIChunk.Usage != nil {
-				// Special handling for response.completed event to send usage information
-				// Convert ResponseAPI usage to model.Usage format
+				// Special handling for response.completed when no terminal chunk was
+				// emitted above. Emit a single terminal chunk that includes the
+				// accumulated content (from deltas) and the usage payload so
+				// clients receive a final message plus billing info without
+				// duplication.
 				convertedUsage := responseAPIChunk.Usage.ToModelUsage()
 				if convertedUsage != nil {
-					// Create a usage-only streaming chunk with empty delta
+					finalContent := ""
+					var finalFinish *string
+					if len(chatCompletionChunk.Choices) > 0 {
+						// Prefer finish reason from the generated chunk if present
+						if chatCompletionChunk.Choices[0].FinishReason != nil {
+							fr := *chatCompletionChunk.Choices[0].FinishReason
+							finalFinish = &fr
+						}
+						if content, ok := chatCompletionChunk.Choices[0].Delta.Content.(string); ok && content != "" {
+							finalContent = content
+						}
+					}
+					// If upstream did not include final content (we suppressed it),
+					// fall back to the accumulated responseText built from deltas.
+					if finalContent == "" {
+						finalContent = responseText
+					}
+					// Ensure there's a finish reason
+					if finalFinish == nil {
+						fr := "stop"
+						finalFinish = &fr
+					}
+
 					usageChunk := ChatCompletionsStreamResponse{
 						Id:      responseAPIChunk.Id,
 						Object:  "chat.completion.chunk",
@@ -878,9 +1011,9 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 								Index: 0,
 								Delta: model.Message{
 									Role:    "assistant",
-									Content: "",
+									Content: finalContent,
 								},
-								FinishReason: nil, // Don't set finish reason in usage chunk
+								FinishReason: finalFinish,
 							},
 						},
 						Usage: convertedUsage,
@@ -897,8 +1030,7 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 					gmw.GetLogger(c).Debug("sent usage chunk from response.completed", zap.ByteString("chunk", jsonStr))
 				}
 			}
-			// ALL other events (done events, in_progress events, etc.) are completely discarded
-			// This prevents ANY duplicate content from reaching the client
+			// ALL other events (done events, in_progress events, etc.) are discarded to avoid duplicate content leakage
 		}
 	}
 
