@@ -22,6 +22,7 @@ import (
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/random"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/constant"
 	"github.com/songquanpeng/one-api/relay/meta"
@@ -86,7 +87,7 @@ func getToolCalls(response *ChatResponse) []model.Tool {
 	return toolCalls
 }
 
-func responseXunfei2OpenAI(response *ChatResponse) *openai.TextResponse {
+func responseXunfei2OpenAI(c *gin.Context, response *ChatResponse) *openai.TextResponse {
 	if len(response.Payload.Choices.Text) == 0 {
 		response.Payload.Choices.Text = []ChatResponseTextItem{
 			{
@@ -104,7 +105,7 @@ func responseXunfei2OpenAI(response *ChatResponse) *openai.TextResponse {
 		FinishReason: constant.StopFinishReason,
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
 		Choices: []openai.TextResponseChoice{choice},
@@ -113,7 +114,7 @@ func responseXunfei2OpenAI(response *ChatResponse) *openai.TextResponse {
 	return &fullTextResponse
 }
 
-func streamResponseXunfei2OpenAI(xunfeiResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
+func streamResponseXunfei2OpenAI(c *gin.Context, xunfeiResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
 	if len(xunfeiResponse.Payload.Choices.Text) == 0 {
 		xunfeiResponse.Payload.Choices.Text = []ChatResponseTextItem{{Content: ""}}
 	}
@@ -123,7 +124,7 @@ func streamResponseXunfei2OpenAI(xunfeiResponse *ChatResponse) *openai.ChatCompl
 		choice.FinishReason = &constant.StopFinishReason
 	}
 	response := openai.ChatCompletionsStreamResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: helper.GetTimestamp(),
 		Model:   "SparkDesk",
@@ -173,7 +174,7 @@ func StreamHandler(c *gin.Context, meta *meta.Meta, textRequest model.GeneralOpe
 			usage.PromptTokens += xunfeiResponse.Payload.Usage.Text.PromptTokens
 			usage.CompletionTokens += xunfeiResponse.Payload.Usage.Text.CompletionTokens
 			usage.TotalTokens += xunfeiResponse.Payload.Usage.Text.TotalTokens
-			response := streamResponseXunfei2OpenAI(&xunfeiResponse)
+			response := streamResponseXunfei2OpenAI(c, &xunfeiResponse)
 			jsonResponse, err := json.Marshal(response)
 			if err != nil {
 				lg.Error("error marshalling stream response", zap.Error(err))
@@ -217,7 +218,7 @@ func Handler(c *gin.Context, meta *meta.Meta, textRequest model.GeneralOpenAIReq
 	}
 	xunfeiResponse.Payload.Choices.Text[0].Content = content
 
-	response := responseXunfei2OpenAI(&xunfeiResponse)
+	response := responseXunfei2OpenAI(c, &xunfeiResponse)
 	jsonResponse, err := json.Marshal(response)
 	if err != nil {
 		return openai.ErrorWrapper(err, "marshal_response_body_failed", http.StatusInternalServerError), nil

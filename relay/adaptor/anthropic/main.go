@@ -21,6 +21,7 @@ import (
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/image"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai_compatible"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -776,7 +777,7 @@ func ResponseClaude2OpenAI(c *gin.Context, claudeResponse *Response) *openai.Tex
 		choice.Message.SetReasoningContent(c.Query("reasoning_format"), reasoningText)
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", claudeResponse.Id),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Model:   claudeResponse.Model,
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
@@ -962,7 +963,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 
 			if len(meta.Id) > 0 { // only message_start has an id, otherwise it's a finish_reason event.
 				modelName = meta.Model
-				id = fmt.Sprintf("chatcmpl-%s", meta.Id)
+				id = tracing.GenerateChatCompletionID(c)
 				continue
 			} else { // finish_reason case
 				if len(lastToolCallChoice.Delta.ToolCalls) > 0 {

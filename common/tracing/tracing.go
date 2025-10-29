@@ -157,3 +157,29 @@ func WithTraceIDFromContext(ctx context.Context, fields ...zap.Field) []zap.Fiel
 	traceField := zap.String("trace_id", traceID)
 	return append([]zap.Field{traceField}, fields...)
 }
+
+// GenerateChatCompletionID generates a chat completion ID from the trace ID.
+// This function creates a consistent ID format across all adaptors, enabling
+// request tracing through Prometheus, logging, and external systems.
+//
+// Format: chatcmpl-oneapi-{trace-id}
+//
+// For streaming responses, use the same ID for all chunks in the stream.
+// For non-streaming responses, use this ID for the single response.
+//
+// Returns: Chat completion ID string with "chatcmpl-oneapi-" prefix
+func GenerateChatCompletionID(c *gin.Context) string {
+	traceID := GetTraceID(c)
+	return "chatcmpl-oneapi-" + traceID
+}
+
+// GenerateChatCompletionIDFromContext generates a chat completion ID from standard context.
+// This is useful when only context.Context is available (not gin.Context).
+//
+// Format: chatcmpl-oneapi-{trace-id}
+//
+// Returns: Chat completion ID string with "chatcmpl-oneapi-" prefix
+func GenerateChatCompletionIDFromContext(ctx context.Context) string {
+	traceID := GetTraceIDFromContext(ctx)
+	return "chatcmpl-oneapi-" + traceID
+}

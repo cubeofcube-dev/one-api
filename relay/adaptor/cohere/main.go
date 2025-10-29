@@ -3,7 +3,6 @@ package cohere
 import (
 	"bufio"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -18,6 +17,7 @@ import (
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/model"
 )
@@ -119,7 +119,7 @@ func StreamResponseCohere2OpenAI(cohereResponse *StreamResponse) (*openai.ChatCo
 	return &openaiResponse, response
 }
 
-func ResponseCohere2OpenAI(cohereResponse *Response) *openai.TextResponse {
+func ResponseCohere2OpenAI(c *gin.Context, cohereResponse *Response) *openai.TextResponse {
 	choice := openai.TextResponseChoice{
 		Index: 0,
 		Message: model.Message{
@@ -130,7 +130,7 @@ func ResponseCohere2OpenAI(cohereResponse *Response) *openai.TextResponse {
 		FinishReason: stopReasonCohere2OpenAI(cohereResponse.FinishReason),
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", cohereResponse.ResponseID),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Model:   "model",
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
@@ -169,7 +169,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 			continue
 		}
 
-		response.Id = fmt.Sprintf("chatcmpl-%d", createdTime)
+		response.Id = tracing.GenerateChatCompletionID(c)
 		response.Model = c.GetString(ctxkey.RequestModel)
 		response.Created = createdTime
 
@@ -220,7 +220,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			StatusCode: resp.StatusCode,
 		}, nil
 	}
-	fullTextResponse := ResponseCohere2OpenAI(&cohereResponse)
+	fullTextResponse := ResponseCohere2OpenAI(c, &cohereResponse)
 	fullTextResponse.Model = modelName
 	usage := model.Usage{
 		PromptTokens:     cohereResponse.Meta.Tokens.InputTokens,
