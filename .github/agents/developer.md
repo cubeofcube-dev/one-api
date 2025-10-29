@@ -1,6 +1,6 @@
 ---
-name:
-description:
+name: developer
+description: Guidelines for developers contributing to the one-api project
 ---
 
 # Developer
