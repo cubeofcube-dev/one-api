@@ -16,8 +16,8 @@ import (
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/image"
 	"github.com/songquanpeng/one-api/common/logger"
-	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/geminiOpenaiCompatible"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/constant"
@@ -543,9 +543,9 @@ func getStreamingToolCalls(candidate *ChatCandidate) []model.Tool {
 	return toolCalls
 }
 
-func responseGeminiChat2OpenAI(response *ChatResponse) *openai.TextResponse {
+func responseGeminiChat2OpenAI(c *gin.Context, response *ChatResponse) *openai.TextResponse {
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
 		Choices: make([]openai.TextResponseChoice, 0, len(response.Candidates)),
@@ -613,7 +613,7 @@ func responseGeminiChat2OpenAI(response *ChatResponse) *openai.TextResponse {
 	return &fullTextResponse
 }
 
-func streamResponseGeminiChat2OpenAI(geminiResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
+func streamResponseGeminiChat2OpenAI(c *gin.Context, geminiResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
 	var choice openai.ChatCompletionsStreamResponseChoice
 	choice.Delta.Role = "assistant"
 
@@ -681,7 +681,7 @@ func streamResponseGeminiChat2OpenAI(geminiResponse *ChatResponse) *openai.ChatC
 
 	// Create response
 	var response openai.ChatCompletionsStreamResponse
-	response.Id = fmt.Sprintf("chatcmpl-%s", random.GetUUID())
+	response.Id = tracing.GenerateChatCompletionID(c)
 	response.Created = helper.GetTimestamp()
 	response.Object = "chat.completion.chunk"
 	response.Model = "gemini"
@@ -734,7 +734,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 			continue
 		}
 
-		response := streamResponseGeminiChat2OpenAI(&geminiResponse)
+		response := streamResponseGeminiChat2OpenAI(c, &geminiResponse)
 		if response == nil {
 			continue
 		}
@@ -788,7 +788,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			StatusCode: resp.StatusCode,
 		}, nil
 	}
-	fullTextResponse := responseGeminiChat2OpenAI(&geminiResponse)
+	fullTextResponse := responseGeminiChat2OpenAI(c, &geminiResponse)
 	fullTextResponse.Model = modelName
 
 	// Prioritize usageMetadata from Gemini response

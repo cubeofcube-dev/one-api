@@ -17,6 +17,7 @@ import (
 	"github.com/songquanpeng/one-api/common/conv"
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/coze/constant/messagetype"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -83,7 +84,7 @@ func StreamResponseCoze2OpenAI(cozeResponse *StreamResponse) (*openai.ChatComple
 	return &openaiResponse, response
 }
 
-func ResponseCoze2OpenAI(cozeResponse *Response) *openai.TextResponse {
+func ResponseCoze2OpenAI(c *gin.Context, cozeResponse *Response) *openai.TextResponse {
 	var responseText string
 	for _, message := range cozeResponse.Messages {
 		if message.Type == messagetype.Answer {
@@ -101,7 +102,7 @@ func ResponseCoze2OpenAI(cozeResponse *Response) *openai.TextResponse {
 		FinishReason: "stop",
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", cozeResponse.ConversationId),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Model:   "coze-bot",
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
@@ -190,7 +191,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			StatusCode: resp.StatusCode,
 		}, nil
 	}
-	fullTextResponse := ResponseCoze2OpenAI(&cozeResponse)
+	fullTextResponse := ResponseCoze2OpenAI(c, &cozeResponse)
 	fullTextResponse.Model = modelName
 	jsonResponse, err := json.Marshal(fullTextResponse)
 	if err != nil {

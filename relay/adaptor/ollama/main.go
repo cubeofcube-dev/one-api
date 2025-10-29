@@ -17,8 +17,8 @@ import (
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/image"
-	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/constant"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -65,7 +65,7 @@ func ConvertRequest(request model.GeneralOpenAIRequest) *ChatRequest {
 	return &ollamaRequest
 }
 
-func responseOllama2OpenAI(response *ChatResponse) *openai.TextResponse {
+func responseOllama2OpenAI(c *gin.Context, response *ChatResponse) *openai.TextResponse {
 	choice := openai.TextResponseChoice{
 		Index: 0,
 		Message: model.Message{
@@ -77,7 +77,7 @@ func responseOllama2OpenAI(response *ChatResponse) *openai.TextResponse {
 		choice.FinishReason = "stop"
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Model:   response.Model,
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
@@ -91,7 +91,7 @@ func responseOllama2OpenAI(response *ChatResponse) *openai.TextResponse {
 	return &fullTextResponse
 }
 
-func streamResponseOllama2OpenAI(ollamaResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
+func streamResponseOllama2OpenAI(c *gin.Context, ollamaResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
 	var choice openai.ChatCompletionsStreamResponseChoice
 	choice.Delta.Role = ollamaResponse.Message.Role
 	choice.Delta.Content = ollamaResponse.Message.Content
@@ -99,7 +99,7 @@ func streamResponseOllama2OpenAI(ollamaResponse *ChatResponse) *openai.ChatCompl
 		choice.FinishReason = &constant.StopFinishReason
 	}
 	response := openai.ChatCompletionsStreamResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: helper.GetTimestamp(),
 		Model:   ollamaResponse.Model,
@@ -146,7 +146,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 			usage.TotalTokens = ollamaResponse.PromptEvalCount + ollamaResponse.EvalCount
 		}
 
-		response := streamResponseOllama2OpenAI(&ollamaResponse)
+		response := streamResponseOllama2OpenAI(c, &ollamaResponse)
 		err = render.ObjectData(c, response)
 		if err != nil {
 			lg.Error("error rendering response", zap.Error(err))
@@ -262,7 +262,7 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 			StatusCode: resp.StatusCode,
 		}, nil
 	}
-	fullTextResponse := responseOllama2OpenAI(&ollamaResponse)
+	fullTextResponse := responseOllama2OpenAI(c, &ollamaResponse)
 	jsonResponse, err := json.Marshal(fullTextResponse)
 	if err != nil {
 		return openai.ErrorWrapper(err, "marshal_response_body_failed", http.StatusInternalServerError), nil

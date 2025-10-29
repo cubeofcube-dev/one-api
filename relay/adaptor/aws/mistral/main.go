@@ -203,7 +203,7 @@ func handleWithInvokeModel(c *gin.Context, awsCli *bedrockruntime.Client, mistra
 	}
 
 	// Convert to OpenAI format
-	openaiResp := ResponseMistral2OpenAI(&mistralResp, modelName)
+	openaiResp := ResponseMistral2OpenAI(c, &mistralResp, modelName)
 	openaiResp.Model = modelName
 
 	// Calculate token usage using accurate AWS Bedrock CountTokens API
@@ -258,7 +258,7 @@ func handleWithConverseAPI(c *gin.Context, awsCli *bedrockruntime.Client, mistra
 	}
 
 	// Convert Converse response to OpenAI format
-	openaiResp := convertConverseResponseToOpenAI(awsResp, c.GetString(ctxkey.RequestModel))
+	openaiResp := convertConverseResponseToOpenAI(c, awsResp, c.GetString(ctxkey.RequestModel))
 
 	// Extract actual usage from Converse API response
 	var usage relaymodel.Usage
@@ -284,7 +284,7 @@ func handleWithConverseAPI(c *gin.Context, awsCli *bedrockruntime.Client, mistra
 }
 
 // ResponseMistral2OpenAI converts Mistral response to OpenAI format
-func ResponseMistral2OpenAI(mistralResponse *Response, modelName string) *openai.TextResponse {
+func ResponseMistral2OpenAI(c *gin.Context, mistralResponse *Response, modelName string) *openai.TextResponse {
 	var responseText string
 	var finishReason string
 	var toolCalls []relaymodel.Tool
@@ -322,7 +322,7 @@ func ResponseMistral2OpenAI(mistralResponse *Response, modelName string) *openai
 	}
 
 	return &openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-oneapi-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
 		Model:   modelName,
@@ -404,7 +404,7 @@ func handleStreamWithInvokeModel(c *gin.Context, awsCli *bedrockruntime.Client, 
 			}
 
 			// Convert Mistral streaming response to OpenAI format
-			openaiResp := StreamResponseMistral2OpenAI(&mistralResp, c.GetString(ctxkey.RequestModel))
+			openaiResp := StreamResponseMistral2OpenAI(c, &mistralResp, c.GetString(ctxkey.RequestModel))
 			if openaiResp == nil {
 				return true
 			}
@@ -540,7 +540,7 @@ func handleStreamWithConverseAPI(c *gin.Context, awsCli *bedrockruntime.Client, 
 }
 
 // StreamResponseMistral2OpenAI converts Mistral streaming response to OpenAI format
-func StreamResponseMistral2OpenAI(mistralResponse *StreamResponse, modelName string) *openai.ChatCompletionsStreamResponse {
+func StreamResponseMistral2OpenAI(c *gin.Context, mistralResponse *StreamResponse, modelName string) *openai.ChatCompletionsStreamResponse {
 	if len(mistralResponse.Choices) == 0 {
 		return nil
 	}
@@ -548,7 +548,7 @@ func StreamResponseMistral2OpenAI(mistralResponse *StreamResponse, modelName str
 	choice := mistralResponse.Choices[0]
 
 	return &openai.ChatCompletionsStreamResponse{
-		Id:      "chatcmpl-oneapi-" + random.GetRandomString(29),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: time.Now().Unix(),
 		Model:   modelName,
@@ -664,7 +664,7 @@ func convertMistralToConverseRequest(mistralReq *Request, modelID string) (*bedr
 }
 
 // convertConverseResponseToOpenAI converts AWS Converse response to OpenAI format
-func convertConverseResponseToOpenAI(converseResp *bedrockruntime.ConverseOutput, modelName string) *openai.TextResponse {
+func convertConverseResponseToOpenAI(c *gin.Context, converseResp *bedrockruntime.ConverseOutput, modelName string) *openai.TextResponse {
 	var responseText string
 	var finishReason string
 
@@ -696,7 +696,7 @@ func convertConverseResponseToOpenAI(converseResp *bedrockruntime.ConverseOutput
 	}
 
 	return &openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-oneapi-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
 		Model:   modelName,

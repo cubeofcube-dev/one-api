@@ -16,8 +16,8 @@ import (
 
 	"github.com/songquanpeng/one-api/common"
 	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/constant"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -48,7 +48,7 @@ func aiProxyDocuments2Markdown(documents []LibraryDocument) string {
 	return content
 }
 
-func responseAIProxyLibrary2OpenAI(response *LibraryResponse) *openai.TextResponse {
+func responseAIProxyLibrary2OpenAI(c *gin.Context, response *LibraryResponse) *openai.TextResponse {
 	content := response.Answer + aiProxyDocuments2Markdown(response.Documents)
 	choice := openai.TextResponseChoice{
 		Index: 0,
@@ -59,7 +59,7 @@ func responseAIProxyLibrary2OpenAI(response *LibraryResponse) *openai.TextRespon
 		FinishReason: "stop",
 	}
 	fullTextResponse := openai.TextResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion",
 		Created: helper.GetTimestamp(),
 		Choices: []openai.TextResponseChoice{choice},
@@ -67,12 +67,12 @@ func responseAIProxyLibrary2OpenAI(response *LibraryResponse) *openai.TextRespon
 	return &fullTextResponse
 }
 
-func documentsAIProxyLibrary(documents []LibraryDocument) *openai.ChatCompletionsStreamResponse {
+func documentsAIProxyLibrary(c *gin.Context, documents []LibraryDocument) *openai.ChatCompletionsStreamResponse {
 	var choice openai.ChatCompletionsStreamResponseChoice
 	choice.Delta.Content = aiProxyDocuments2Markdown(documents)
 	choice.FinishReason = &constant.StopFinishReason
 	return &openai.ChatCompletionsStreamResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: helper.GetTimestamp(),
 		Model:   "",
@@ -80,11 +80,11 @@ func documentsAIProxyLibrary(documents []LibraryDocument) *openai.ChatCompletion
 	}
 }
 
-func streamResponseAIProxyLibrary2OpenAI(response *LibraryStreamResponse) *openai.ChatCompletionsStreamResponse {
+func streamResponseAIProxyLibrary2OpenAI(c *gin.Context, response *LibraryStreamResponse) *openai.ChatCompletionsStreamResponse {
 	var choice openai.ChatCompletionsStreamResponseChoice
 	choice.Delta.Content = response.Content
 	return &openai.ChatCompletionsStreamResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: helper.GetTimestamp(),
 		Model:   response.Model,
@@ -128,7 +128,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 		if len(AIProxyLibraryResponse.Documents) != 0 {
 			documents = AIProxyLibraryResponse.Documents
 		}
-		response := streamResponseAIProxyLibrary2OpenAI(&AIProxyLibraryResponse)
+		response := streamResponseAIProxyLibrary2OpenAI(c, &AIProxyLibraryResponse)
 		err = render.ObjectData(c, response)
 		if err != nil {
 			lg.Error("render object data error", zap.Error(err))
@@ -139,7 +139,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 		lg.Error("error reading stream", zap.Error(err))
 	}
 
-	response := documentsAIProxyLibrary(documents)
+	response := documentsAIProxyLibrary(c, documents)
 	err := render.ObjectData(c, response)
 	if err != nil {
 		lg.Error("render object data error", zap.Error(err))
@@ -179,7 +179,7 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 			StatusCode: resp.StatusCode,
 		}, nil
 	}
-	fullTextResponse := responseAIProxyLibrary2OpenAI(&AIProxyLibraryResponse)
+	fullTextResponse := responseAIProxyLibrary2OpenAI(c, &AIProxyLibraryResponse)
 	jsonResponse, err := json.Marshal(fullTextResponse)
 	if err != nil {
 		return openai.ErrorWrapper(err, "marshal_response_body_failed", http.StatusInternalServerError), nil

@@ -23,8 +23,8 @@ import (
 	"github.com/songquanpeng/one-api/common/conv"
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/render"
+	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/constant"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -133,9 +133,9 @@ func responseTencent2OpenAI(response *ChatResponse) *openai.TextResponse {
 	return &fullTextResponse
 }
 
-func streamResponseTencent2OpenAI(TencentResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
+func streamResponseTencent2OpenAI(c *gin.Context, TencentResponse *ChatResponse) *openai.ChatCompletionsStreamResponse {
 	response := openai.ChatCompletionsStreamResponse{
-		Id:      fmt.Sprintf("chatcmpl-%s", random.GetUUID()),
+		Id:      tracing.GenerateChatCompletionID(c),
 		Object:  "chat.completion.chunk",
 		Created: helper.GetTimestamp(),
 		Model:   "tencent-hunyuan",
@@ -173,7 +173,7 @@ func StreamHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusC
 			continue
 		}
 
-		response := streamResponseTencent2OpenAI(&tencentResponse)
+		response := streamResponseTencent2OpenAI(c, &tencentResponse)
 		if len(response.Choices) != 0 {
 			responseText += conv.AsString(response.Choices[0].Delta.Content)
 		}
