@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -234,7 +235,10 @@ func TestStartLogRetentionCleaner(t *testing.T) {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	t.Cleanup(func() {
+		cancel()
+		WaitForLogRetentionCleanerForTests()
+	})
 
 	StartLogRetentionCleaner(ctx, 1, dir)
 
@@ -262,6 +266,7 @@ func TestDailyLogRotationCreatesNewFiles(t *testing.T) {
 	originalLogger := Logger
 	originalLogDir := LogDir
 	originalOnlyOne := config.OnlyOneLogFile
+	originalRotationInterval := config.LogRotationInterval
 	originalDefaultWriter := gin.DefaultWriter
 	originalDefaultErrorWriter := gin.DefaultErrorWriter
 
@@ -269,43 +274,96 @@ func TestDailyLogRotationCreatesNewFiles(t *testing.T) {
 		Logger = originalLogger
 		LogDir = originalLogDir
 		config.OnlyOneLogFile = originalOnlyOne
+		config.LogRotationInterval = originalRotationInterval
 		gin.DefaultWriter = originalDefaultWriter
 		gin.DefaultErrorWriter = originalDefaultErrorWriter
 		ResetSetupLogOnceForTests()
-		ResetLogRotationForTests()
+		ResetRotationNowFuncForTests()
 	})
 
 	ResetSetupLogOnceForTests()
-	ResetLogRotationForTests()
 
 	baseTime := time.Date(2025, 1, 2, 10, 0, 0, 0, time.UTC)
 	currentTime := baseTime
-	SetNowFuncForTests(func() time.Time {
+	SetRotationNowFuncForTests(func() time.Time {
 		return currentTime
 	})
 
 	LogDir = dir
 	config.OnlyOneLogFile = false
+	config.LogRotationInterval = "daily"
 
 	SetupLogger()
-	StopLogRotationLoopForTests()
 
 	Logger.Info("first day entry")
 	_ = Logger.Sync()
 
-	firstPath := filepath.Join(dir, "oneapi-"+baseTime.Format("20060102")+".log")
-	firstContent, err := os.ReadFile(firstPath)
+	firstDayPath := filepath.Join(dir, "oneapi-20250102.log")
+	activeContent, err := os.ReadFile(firstDayPath)
 	require.NoError(t, err)
-	require.Contains(t, string(firstContent), "first day entry")
+	require.Contains(t, string(activeContent), "first day entry")
 
 	currentTime = currentTime.Add(25 * time.Hour)
-	require.NoError(t, ForceLogRotationForTests(currentTime))
 
 	Logger.Info("second day entry")
 	_ = Logger.Sync()
 
-	secondPath := filepath.Join(dir, "oneapi-"+currentTime.Format("20060102")+".log")
-	secondContent, err := os.ReadFile(secondPath)
+	rotatedContent, err := os.ReadFile(firstDayPath)
 	require.NoError(t, err)
-	require.Contains(t, string(secondContent), "second day entry")
+	require.Contains(t, string(rotatedContent), "first day entry")
+
+	secondDayPath := filepath.Join(dir, "oneapi-20250103.log")
+	newActiveContent, err := os.ReadFile(secondDayPath)
+	require.NoError(t, err)
+	require.Contains(t, string(newActiveContent), "second day entry")
+}
+
+func TestLogRetentionCleanerAllowsLoggerReconfigure(t *testing.T) {
+	dir := t.TempDir()
+
+	originalLogger := Logger
+	originalLogDir := LogDir
+	originalOnlyOne := config.OnlyOneLogFile
+	originalRotationInterval := config.LogRotationInterval
+	originalDefaultWriter := gin.DefaultWriter
+	originalDefaultErrorWriter := gin.DefaultErrorWriter
+
+	t.Cleanup(func() {
+		Logger = originalLogger
+		LogDir = originalLogDir
+		config.OnlyOneLogFile = originalOnlyOne
+		config.LogRotationInterval = originalRotationInterval
+		gin.DefaultWriter = originalDefaultWriter
+		gin.DefaultErrorWriter = originalDefaultErrorWriter
+		ResetSetupLogOnceForTests()
+		WaitForLogRetentionCleanerForTests()
+		ResetRotationNowFuncForTests()
+	})
+
+	ResetSetupLogOnceForTests()
+	LogDir = dir
+	config.OnlyOneLogFile = true
+	SetupLogger()
+	Logger.Info("first configuration active")
+	_ = Logger.Sync()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	StartLogRetentionCleaner(ctx, 1, dir)
+
+	ResetSetupLogOnceForTests()
+	config.OnlyOneLogFile = false
+	config.LogRotationInterval = "daily"
+	fixedTime := time.Date(2025, time.January, 5, 9, 0, 0, 0, time.UTC)
+	SetRotationNowFuncForTests(func() time.Time { return fixedTime })
+	SetupLogger()
+	Logger.Info("second configuration active")
+	_ = Logger.Sync()
+
+	cancel()
+	WaitForLogRetentionCleanerForTests()
+
+	activeLogPath := filepath.Join(dir, fmt.Sprintf("oneapi-%s.log", fixedTime.Format("20060102")))
+	activeContent, err := os.ReadFile(activeLogPath)
+	require.NoError(t, err)
+	require.Contains(t, string(activeContent), "second configuration active")
 }

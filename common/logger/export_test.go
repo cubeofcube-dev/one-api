@@ -11,39 +11,17 @@ func ResetSetupLogOnceForTests() {
 	setupLogOnce = sync.Once{}
 }
 
-// ResetLogRotationForTests stops the rotation loop and clears cached file handles so subsequent tests can
-// configure logging without inheriting prior state.
-func ResetLogRotationForTests() {
-	stopLogRotationLoop()
-	logRotationState.mu.Lock()
-	if logRotationState.file != nil {
-		_ = logRotationState.file.Close()
-		logRotationState.file = nil
-	}
-	logRotationState.currentDate = ""
-	logRotationState.mu.Unlock()
-
-	logRotationCheckInterval = time.Minute
-	nowFunc = time.Now
+// WaitForLogRetentionCleanerForTests blocks until all retention cleaner goroutines finish.
+func WaitForLogRetentionCleanerForTests() {
+	retentionWorkerGroup.Wait()
 }
 
-// ForceLogRotationForTests triggers the rotation logic using the supplied timestamp, allowing tests to
-// simulate date changes deterministically.
-func ForceLogRotationForTests(ts time.Time) error {
-	return rotateLogFileIfNeeded(ts)
+// SetRotationNowFuncForTests overrides the rotation clock to make time deterministic in tests.
+func SetRotationNowFuncForTests(f func() time.Time) {
+	rotationNow = f
 }
 
-// StopLogRotationLoopForTests halts the rotation ticker without resetting other state.
-func StopLogRotationLoopForTests() {
-	stopLogRotationLoop()
-}
-
-// SetNowFuncForTests overrides the time source used by SetupLogger and the rotation loop.
-func SetNowFuncForTests(f func() time.Time) {
-	nowFunc = f
-}
-
-// SetLogRotationCheckIntervalForTests adjusts how frequently the rotation loop checks for date changes.
-func SetLogRotationCheckIntervalForTests(d time.Duration) {
-	logRotationCheckInterval = d
+// ResetRotationNowFuncForTests restores the default wall clock used by rotation writers.
+func ResetRotationNowFuncForTests() {
+	rotationNow = defaultRotationNow
 }

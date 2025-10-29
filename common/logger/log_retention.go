@@ -5,51 +5,60 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	errors "github.com/Laisky/errors/v2"
+	glog "github.com/Laisky/go-utils/v5/log"
 	"github.com/Laisky/zap"
 )
+
+var retentionWorkerGroup sync.WaitGroup
 
 // StartLogRetentionCleaner launches a background worker that deletes log files older than the
 // configured retention period. The cleanup runs immediately and then once every 24 hours until
 // the provided context is cancelled. The ctx parameter controls the lifecycle, retentionDays sets
 // the age threshold in days, and logDir provides the directory containing log files.
 func StartLogRetentionCleaner(ctx context.Context, retentionDays int, logDir string) {
+	workerLogger := Logger.With(zap.String("component", "log-retention"))
+
 	if retentionDays <= 0 {
-		Logger.Debug("log retention disabled", zap.Int("log_retention_days", retentionDays))
+		workerLogger.Debug("log retention disabled", zap.Int("log_retention_days", retentionDays))
 		return
 	}
 
 	if strings.TrimSpace(logDir) == "" {
-		Logger.Warn("log retention enabled but log directory is empty", zap.Int("log_retention_days", retentionDays))
+		workerLogger.Warn("log retention enabled but log directory is empty", zap.Int("log_retention_days", retentionDays))
 		return
 	}
 
-	cleanup := func() {
+	cleanup := func(localLogger glog.Logger) {
 		if err := deleteExpiredLogFiles(retentionDays, logDir); err != nil {
-			Logger.Warn("log retention cleanup failed", zap.Error(err))
+			localLogger.Warn("log retention cleanup failed", zap.Error(err))
 		}
 	}
 
-	cleanup()
+	cleanup(workerLogger)
 
 	ticker := time.NewTicker(24 * time.Hour)
 
-	go func() {
+	retentionWorkerGroup.Add(1)
+
+	go func(localLogger glog.Logger) {
 		defer ticker.Stop()
+		defer retentionWorkerGroup.Done()
 		for {
 			select {
 			case <-ctx.Done():
-				Logger.Info("log retention cleaner stopped", zap.Error(ctx.Err()))
+				localLogger.Info("log retention cleaner stopped", zap.Error(ctx.Err()))
 				return
 			case <-ticker.C:
-				cleanup()
+				cleanup(localLogger)
 			}
 		}
-	}()
+	}(workerLogger)
 
-	Logger.Info("log retention cleaner started", zap.Int("log_retention_days", retentionDays), zap.String("log_dir", logDir))
+	workerLogger.Info("log retention cleaner started", zap.Int("log_retention_days", retentionDays), zap.String("log_dir", logDir))
 }
 
 // deleteExpiredLogFiles removes log files older than the retention window from the configured log directory.
@@ -72,7 +81,8 @@ func deleteExpiredLogFiles(retentionDays int, logDir string) error {
 		}
 
 		name := entry.Name()
-		if !strings.HasSuffix(strings.ToLower(name), ".log") {
+		lowerName := strings.ToLower(name)
+		if !(strings.HasSuffix(lowerName, ".log") || strings.Contains(lowerName, ".log.")) {
 			continue
 		}
 

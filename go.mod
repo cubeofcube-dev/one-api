@@ -7,7 +7,7 @@ require (
 	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/Laisky/errors/v2 v2.0.1
 	github.com/Laisky/gin-middlewares/v6 v6.1.1
-	github.com/Laisky/go-utils/v5 v5.1.2-0.20251013154908-ec9a3348760f
+	github.com/Laisky/go-utils/v5 v5.1.2-0.20251029012619-8d42ca8e3653
 	github.com/Laisky/zap v1.27.1-0.20241010063010-3154c45f2a1f
 	github.com/aws/aws-sdk-go-v2 v1.38.1
 	github.com/aws/aws-sdk-go-v2/config v1.31.3

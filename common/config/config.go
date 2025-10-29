@@ -133,6 +133,8 @@ var (
 
 	// OnlyOneLogFile merges all rotated logs into a single file when true.
 	OnlyOneLogFile = env.Bool("ONLY_ONE_LOG_FILE", false)
+	// LogRotationInterval selects how frequently the application rotates log files (hourly, daily, or weekly).
+	LogRotationInterval = strings.TrimSpace(strings.ToLower(env.String("LOG_ROTATION_INTERVAL", "daily")))
 
 	// LogRetentionDays determines how many days logs are kept before the retention worker purges them (0 disables cleanup).
 	LogRetentionDays = func() int {
