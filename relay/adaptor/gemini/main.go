@@ -16,6 +16,7 @@ import (
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/image"
 	"github.com/songquanpeng/one-api/common/logger"
+	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/render"
 	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/geminiOpenaiCompatible"

@@ -20,7 +20,6 @@ import (
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/relay/adaptor/aws/internal/streamfinalizer"
 	"github.com/songquanpeng/one-api/relay/adaptor/aws/utils"
