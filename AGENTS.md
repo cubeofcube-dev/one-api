@@ -4,6 +4,12 @@
 
 The purpose of the one‑api project is to let users freely use any of the ChatCompletion API, Response API, or Claude Messages API formats to request any model on any channel. one‑api transparently handles the request and response format conversions. Please make sure that all adapters support conversion among the three API formats.
 
+### Frontend Templates
+
+This project has three different frontend templates: Modern, Default, Berry, and Air.
+
+Modern is the most advanced template with the best user experience. Our focus is on developing new features for Modern. The three templates: Default, Berry, and Air, are kept for maintenance, ensuring that existing functionality continues to work.
+
 ## General
 
 ### Agents
