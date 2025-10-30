@@ -52,6 +52,8 @@ func relayHelper(c *gin.Context, relayMode int) *model.ErrorWithStatusCode {
 		err = rcontroller.RelayResponseAPIHelper(c)
 	case relaymode.ClaudeMessages:
 		err = rcontroller.RelayClaudeMessagesHelper(c)
+	case relaymode.Rerank:
+		err = rcontroller.RelayRerankHelper(c)
 	default:
 		err = rcontroller.RelayTextHelper(c)
 	}

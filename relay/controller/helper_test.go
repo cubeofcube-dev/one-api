@@ -77,16 +77,6 @@ func TestGetPromptTokens(t *testing.T) {
 			expectZero:  false,
 		},
 		{
-			name:      "Rerank with input",
-			relayMode: relaymode.Rerank,
-			request: &model.GeneralOpenAIRequest{
-				Model: "rerank-english-v2.0",
-				Input: "Query text for reranking",
-			},
-			expectError: false,
-			expectZero:  false,
-		},
-		{
 			name:      "Edits with instruction",
 			relayMode: relaymode.Edits,
 			request: &model.GeneralOpenAIRequest{

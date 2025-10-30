@@ -81,6 +81,13 @@ type Adaptor interface {
 	GetCompletionRatio(modelName string) float64
 }
 
+// RerankAdaptor represents adaptors that can natively consume the dedicated rerank DTO.
+// Adaptors must implement this interface to accept /v1/rerank requests; otherwise the
+// controller will reject the call as unsupported.
+type RerankAdaptor interface {
+	ConvertRerankRequest(c *gin.Context, request *model.RerankRequest) (any, error)
+}
+
 // DefaultPricingMethods provides default implementations for adapters without specific pricing
 type DefaultPricingMethods struct{}
 

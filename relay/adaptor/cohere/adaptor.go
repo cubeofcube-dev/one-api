@@ -14,6 +14,7 @@ import (
 	"github.com/songquanpeng/one-api/relay/adaptor"
 	"github.com/songquanpeng/one-api/relay/meta"
 	"github.com/songquanpeng/one-api/relay/model"
+	"github.com/songquanpeng/one-api/relay/relaymode"
 )
 
 type Adaptor struct {
@@ -31,7 +32,12 @@ func (a *Adaptor) Init(meta *meta.Meta) {
 }
 
 func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
-	return fmt.Sprintf("%s/v1/chat", meta.BaseURL), nil
+	switch meta.Mode {
+	case relaymode.Rerank:
+		return fmt.Sprintf("%s/v2/rerank", meta.BaseURL), nil
+	default:
+		return fmt.Sprintf("%s/v1/chat", meta.BaseURL), nil
+	}
 }
 
 func (a *Adaptor) SetupRequestHeader(c *gin.Context, req *http.Request, meta *meta.Meta) error {
@@ -45,6 +51,13 @@ func (a *Adaptor) ConvertRequest(c *gin.Context, relayMode int, request *model.G
 		return nil, errors.New("request is nil")
 	}
 	return ConvertRequest(*request), nil
+}
+
+func (a *Adaptor) ConvertRerankRequest(c *gin.Context, request *model.RerankRequest) (any, error) {
+	if request == nil {
+		return nil, errors.New("request is nil")
+	}
+	return ConvertRerankRequest(*request)
 }
 
 func (a *Adaptor) ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, error) {
@@ -197,7 +210,12 @@ func (a *Adaptor) DoResponse(c *gin.Context, resp *http.Response, meta *meta.Met
 	if meta.IsStream {
 		err, usage = StreamHandler(c, resp)
 	} else {
-		err, usage = Handler(c, resp, meta.PromptTokens, meta.ActualModelName)
+		switch meta.Mode {
+		case relaymode.Rerank:
+			err, usage = RerankHandler(c, resp, meta)
+		default:
+			err, usage = Handler(c, resp, meta.PromptTokens, meta.ActualModelName)
+		}
 	}
 	return
 }

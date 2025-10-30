@@ -27,4 +27,9 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"command-light-nightly-internet": {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2}, // $0.3/$0.6 per 1M tokens
 	"command-r-internet":             {Ratio: 0.5 * ratio.MilliTokensUsd, CompletionRatio: 3}, // $0.5/$1.5 per 1M tokens
 	"command-r-plus-internet":        {Ratio: 3 * ratio.MilliTokensUsd, CompletionRatio: 5},   // $3/$15 per 1M tokens
+
+	// Rerank Models (per-call pricing)
+	"rerank-v3.5":              {Ratio: (2.0 / 1000.0) * ratio.QuotaPerUsd},
+	"rerank-english-v3.0":      {Ratio: (2.0 / 1000.0) * ratio.QuotaPerUsd},
+	"rerank-multilingual-v3.0": {Ratio: (2.0 / 1000.0) * ratio.QuotaPerUsd},
 }

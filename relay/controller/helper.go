@@ -94,8 +94,6 @@ func getPromptTokens(ctx context.Context, textRequest *relaymodel.GeneralOpenAIR
 			totalTokens += openai.CountTokenText(input, textRequest.Model)
 		}
 		return totalTokens
-	case relaymode.Rerank:
-		return openai.CountTokenInput(textRequest.Input, textRequest.Model)
 	case relaymode.Edits:
 		return openai.CountTokenInput(textRequest.Instruction, textRequest.Model)
 	default:
