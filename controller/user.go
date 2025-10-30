@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Laisky/errors/v2"
 	gmw "github.com/Laisky/gin-middlewares/v6"
@@ -18,6 +19,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/songquanpeng/one-api/common"
+	"github.com/songquanpeng/one-api/common/blacklist"
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/common/helper"
@@ -25,6 +27,7 @@ import (
 	"github.com/songquanpeng/one-api/common/logger"
 	"github.com/songquanpeng/one-api/common/random"
 	"github.com/songquanpeng/one-api/common/utils"
+	"github.com/songquanpeng/one-api/dto"
 	"github.com/songquanpeng/one-api/middleware"
 	"github.com/songquanpeng/one-api/model"
 )
@@ -41,6 +44,17 @@ type TotpSetupRequest struct {
 type TotpSetupResponse struct {
 	Secret string `json:"secret"`
 	QRCode string `json:"qr_code"`
+}
+
+// rawFieldPresent reports whether a field key exists in the decoded JSON payload.
+func rawFieldPresent(raw map[string]json.RawMessage, key string) bool {
+	_, ok := raw[key]
+	return ok
+}
+
+// jsonRawIsNull returns true when the raw JSON value is an explicit null literal.
+func jsonRawIsNull(raw json.RawMessage) bool {
+	return strings.TrimSpace(string(raw)) == "null"
 }
 
 func Login(c *gin.Context) {
@@ -667,35 +681,42 @@ func GetSelf(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	ctx := gmw.Ctx(c)
-	var updatedUser model.User
-	err := json.NewDecoder(c.Request.Body).Decode(&updatedUser)
-	if err != nil || updatedUser.Id == 0 {
+	body, err := common.GetRequestBody(c)
+	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": i18n.Translate(c, "invalid_parameter"),
 		})
 		return
 	}
-	if updatedUser.Password == "" {
-		updatedUser.Password = "$I_LOVE_U" // make Validator happy :)
-	}
-	if err := common.Validate.Struct(&updatedUser); err != nil {
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": i18n.Translate(c, "invalid_input"),
+			"message": i18n.Translate(c, "invalid_parameter"),
 		})
 		return
 	}
-	// Disallow empty username/display name
-	if strings.TrimSpace(updatedUser.Username) == "" {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Username cannot be empty"})
+
+	var payload dto.UserAdminUpdatePayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": i18n.Translate(c, "invalid_parameter"),
+		})
 		return
 	}
-	if strings.TrimSpace(updatedUser.DisplayName) == "" {
-		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Display name cannot be empty"})
+
+	if payload.Id == 0 {
+		c.JSON(http.StatusOK, gin.H{
+			"success": false,
+			"message": i18n.Translate(c, "invalid_parameter"),
+		})
 		return
 	}
-	originUser, err := model.GetUserById(updatedUser.Id, false)
+
+	originUser, err := model.GetUserById(payload.Id, false)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -703,6 +724,7 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
+
 	myRole := c.GetInt(ctxkey.Role)
 	if myRole <= originUser.Role && myRole != model.RoleRootUser {
 		c.JSON(http.StatusOK, gin.H{
@@ -711,27 +733,252 @@ func UpdateUser(c *gin.Context) {
 		})
 		return
 	}
-	if myRole <= updatedUser.Role && myRole != model.RoleRootUser {
+
+	updates := make(map[string]any)
+	var (
+		quotaUpdated  bool
+		newQuota      int64
+		statusChanged bool
+		newStatus     int
+	)
+
+	if rawFieldPresent(raw, "username") {
+		if jsonRawIsNull(raw["username"]) {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Username cannot be null"})
+			return
+		}
+		var username string
+		if err := json.Unmarshal(raw["username"], &username); err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"success": false,
+				"message": i18n.Translate(c, "invalid_parameter"),
+			})
+			return
+		}
+		username = strings.TrimSpace(username)
+		if username == "" {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Username cannot be empty"})
+			return
+		}
+		if utf8.RuneCountInString(username) < 3 || utf8.RuneCountInString(username) > 30 {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "Username must be between 3 and 30 characters"})
+			return
+		}
+		if myRole <= originUser.Role && myRole != model.RoleRootUser && username != originUser.Username {
+			c.JSON(http.StatusOK, gin.H{"success": false, "message": "No permission to rename this user"})
+			return
+		}
+		updates["username"] = username
+	}
+
+	if rawFieldPresent(raw, "display_name") {
+		if jsonRawIsNull(raw["display_name"]) {
+			// nil => no change
+		} else {
+			var displayName string
+			if err := json.Unmarshal(raw["display_name"], &displayName); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			displayName = strings.TrimSpace(displayName)
+			if utf8.RuneCountInString(displayName) > 20 {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Display name cannot exceed 20 characters"})
+				return
+			}
+			updates["display_name"] = displayName
+		}
+	}
+
+	if rawFieldPresent(raw, "email") {
+		if jsonRawIsNull(raw["email"]) {
+			// nil => no change
+		} else {
+			var email string
+			if err := json.Unmarshal(raw["email"], &email); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			email = strings.TrimSpace(email)
+			if email != "" {
+				if utf8.RuneCountInString(email) > 50 {
+					c.JSON(http.StatusOK, gin.H{"success": false, "message": "Email cannot exceed 50 characters"})
+					return
+				}
+				if err := common.Validate.Var(email, "email"); err != nil {
+					c.JSON(http.StatusOK, gin.H{"success": false, "message": "Valid email is required"})
+					return
+				}
+			}
+			updates["email"] = email
+		}
+	}
+
+	if rawFieldPresent(raw, "group") {
+		if jsonRawIsNull(raw["group"]) {
+			// nil => no change
+		} else {
+			var group string
+			if err := json.Unmarshal(raw["group"], &group); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			group = strings.TrimSpace(group)
+			if group == "" {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Group cannot be empty"})
+				return
+			}
+			if utf8.RuneCountInString(group) > 32 {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Group cannot exceed 32 characters"})
+				return
+			}
+			updates["group"] = group
+		}
+	}
+
+	if rawFieldPresent(raw, "quota") {
+		if jsonRawIsNull(raw["quota"]) {
+			// nil => no change
+		} else {
+			if payload.Quota == nil {
+				var quotaValue int64
+				if err := json.Unmarshal(raw["quota"], &quotaValue); err != nil {
+					c.JSON(http.StatusOK, gin.H{
+						"success": false,
+						"message": i18n.Translate(c, "invalid_parameter"),
+					})
+					return
+				}
+				payload.Quota = &quotaValue
+			}
+			if *payload.Quota < 0 {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Quota must be non-negative"})
+				return
+			}
+			newQuota = *payload.Quota
+			updates["quota"] = newQuota
+			quotaUpdated = true
+		}
+	}
+
+	if rawFieldPresent(raw, "password") {
+		if jsonRawIsNull(raw["password"]) {
+			// nil => no change
+		} else {
+			var password string
+			if err := json.Unmarshal(raw["password"], &password); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			password = strings.TrimSpace(password)
+			if password == "" {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Password cannot be empty"})
+				return
+			}
+			if utf8.RuneCountInString(password) < 8 || utf8.RuneCountInString(password) > 20 {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Password length must be between 8 and 20 characters"})
+				return
+			}
+			hashed, hashErr := common.Password2Hash(password)
+			if hashErr != nil {
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": hashErr.Error()})
+				return
+			}
+			updates["password"] = hashed
+		}
+	}
+
+	if rawFieldPresent(raw, "role") {
+		if jsonRawIsNull(raw["role"]) {
+			// nil => no change
+		} else {
+			var roleValue int
+			if payload.Role != nil {
+				roleValue = *payload.Role
+			} else if err := json.Unmarshal(raw["role"], &roleValue); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			if myRole <= roleValue && myRole != model.RoleRootUser {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "No permission to promote other users to a permission level greater than or equal to your own",
+				})
+				return
+			}
+			updates["role"] = roleValue
+		}
+	}
+
+	if rawFieldPresent(raw, "status") {
+		if jsonRawIsNull(raw["status"]) {
+			// nil => no change
+		} else {
+			var statusValue int
+			if payload.Status != nil {
+				statusValue = *payload.Status
+			} else if err := json.Unmarshal(raw["status"], &statusValue); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": i18n.Translate(c, "invalid_parameter"),
+				})
+				return
+			}
+			switch statusValue {
+			case model.UserStatusEnabled, model.UserStatusDisabled, model.UserStatusDeleted:
+			default:
+				c.JSON(http.StatusOK, gin.H{"success": false, "message": "Invalid status provided"})
+				return
+			}
+			updates["status"] = statusValue
+			statusChanged = originUser.Status != statusValue
+			newStatus = statusValue
+		}
+	}
+
+	if len(updates) == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"success": false,
-			"message": "No permission to promote other users to a permission level greater than or equal to your own",
+			"success": true,
+			"message": "",
 		})
 		return
 	}
-	if updatedUser.Password == "$I_LOVE_U" {
-		updatedUser.Password = "" // rollback to what it should be
-	}
-	updatePassword := updatedUser.Password != ""
-	if err := updatedUser.Update(updatePassword); err != nil {
+
+	if err := model.DB.Model(&model.User{}).Where("id = ?", payload.Id).Updates(updates).Error; err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
-			"message": err.Error(),
+			"message": errors.Wrapf(err, "failed to update user: id=%d", payload.Id).Error(),
 		})
 		return
 	}
-	if originUser.Quota != updatedUser.Quota {
-		model.RecordLog(ctx, originUser.Id, model.LogTypeManage, fmt.Sprintf("Admin changed user quota from %s to %s", common.LogQuota(originUser.Quota), common.LogQuota(updatedUser.Quota)))
+
+	if statusChanged {
+		switch newStatus {
+		case model.UserStatusDisabled:
+			blacklist.BanUser(payload.Id)
+		case model.UserStatusEnabled:
+			blacklist.UnbanUser(payload.Id)
+		}
 	}
+
+	if quotaUpdated && originUser.Quota != newQuota {
+		model.RecordLog(ctx, originUser.Id, model.LogTypeManage, fmt.Sprintf("Admin changed user quota from %s to %s", common.LogQuota(originUser.Quota), common.LogQuota(newQuota)))
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",

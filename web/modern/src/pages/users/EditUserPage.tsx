@@ -24,10 +24,15 @@ const renderQuotaWithPrompt = (quota: number): string => {
 }
 
 const userSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  display_name: z.string().optional(),
+  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30, 'Username must be at most 30 characters'),
+  display_name: z.string().trim().max(20, 'Display name must be at most 20 characters').optional(),
   password: z.string().optional(),
-  email: z.string().email('Valid email is required').optional(),
+  email: z
+    .string()
+    .trim()
+    .max(50, 'Email must be at most 50 characters')
+    .refine((value) => value === '' || z.string().email().safeParse(value).success, { message: 'Valid email is required' })
+    .optional(),
   // Coerce to number since HTML inputs provide string values
   quota: z.coerce.number().min(0, 'Quota must be non-negative'),
   group: z.string().min(1, 'Group is required'),
@@ -41,6 +46,22 @@ interface Group {
   value: string
 }
 
+type UserSnapshot = {
+  username: string
+  display_name: string
+  email: string
+  quota: number
+  group: string
+}
+
+const snapshotUserForm = (values: UserForm): UserSnapshot => ({
+  username: values.username.trim(),
+  display_name: (values.display_name ?? '').trim(),
+  email: (values.email ?? '').trim(),
+  quota: values.quota,
+  group: values.group,
+})
+
 export function EditUserPage() {
   const params = useParams()
   const userId = params.id
@@ -50,6 +71,7 @@ export function EditUserPage() {
   const [loading, setLoading] = useState(isEdit)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [groupOptions, setGroupOptions] = useState<Group[]>([])
+  const [initialSnapshot, setInitialSnapshot] = useState<UserSnapshot | null>(null)
   const { notify } = useNotifications()
 
   const form = useForm<UserForm>({
@@ -78,10 +100,16 @@ export function EditUserPage() {
       const { success, message, data } = response.data
 
       if (success && data) {
-        form.reset({
-          ...data,
-          password: '', // Don't pre-fill password for security
-        })
+        const normalized: UserForm = {
+          username: (data.username ?? '') as string,
+          display_name: (data.display_name ?? '') as string,
+          password: '',
+          email: (data.email ?? '') as string,
+          quota: Number(data.quota ?? 0),
+          group: (data.group ?? 'default') as string,
+        }
+        form.reset(normalized)
+        setInitialSnapshot(snapshotUserForm(normalized))
       } else {
         throw new Error(message || 'Failed to load user')
       }
@@ -116,6 +144,7 @@ export function EditUserPage() {
       loadUser()
     } else {
       setLoading(false)
+      setInitialSnapshot(null)
     }
     loadGroups()
   }, [isEdit, userId])
@@ -123,18 +152,45 @@ export function EditUserPage() {
   const onSubmit = async (data: UserForm) => {
     setIsSubmitting(true)
     try {
-      let payload = { ...data }
-
-      // Don't send empty password
-      if (!payload.password) {
-        delete payload.password
-      }
-
+      const snapshot = snapshotUserForm(data)
       let response: any
+
       if (isEdit && userId) {
-        // Unified API call - complete URL with /api prefix
-        response = await api.put('/api/user/', { ...payload, id: parseInt(userId) })
+        const payload: Record<string, any> = { id: parseInt(userId, 10) }
+        const previous = initialSnapshot
+
+        if (!previous || snapshot.username !== previous.username) {
+          payload.username = snapshot.username
+        }
+        if (!previous || snapshot.display_name !== previous.display_name) {
+          payload.display_name = snapshot.display_name
+        }
+        if (!previous || snapshot.email !== previous.email) {
+          payload.email = snapshot.email
+        }
+        if (!previous || snapshot.quota !== previous.quota) {
+          payload.quota = snapshot.quota
+        }
+        if (!previous || snapshot.group !== previous.group) {
+          payload.group = snapshot.group
+        }
+        if (data.password) {
+          payload.password = data.password
+        }
+
+        response = await api.put('/api/user/', payload)
       } else {
+        const payload: Record<string, any> = {
+          username: snapshot.username,
+          display_name: snapshot.display_name,
+          email: snapshot.email,
+          quota: snapshot.quota,
+          group: snapshot.group,
+        }
+        if (data.password) {
+          payload.password = data.password
+        }
+
         response = await api.post('/api/user/', payload)
       }
 

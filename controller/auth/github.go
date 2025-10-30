@@ -2,14 +2,17 @@ package auth
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/Laisky/errors/v2"
 	gmw "github.com/Laisky/gin-middlewares/v6"
+	"github.com/Laisky/zap"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
@@ -31,10 +34,13 @@ type GitHubUser struct {
 	Email string `json:"email"`
 }
 
-func getGitHubUserInfoByCode(code string) (*GitHubUser, error) {
+func getGitHubUserInfoByCode(ctx context.Context, code string) (*GitHubUser, error) {
 	if code == "" {
 		return nil, errors.New("Invalid parameter")
 	}
+
+	logger := gmw.GetLogger(ctx)
+
 	values := map[string]string{"client_id": config.GitHubClientId, "client_secret": config.GitHubClientSecret, "code": code}
 	jsonData, err := json.Marshal(values)
 	if err != nil {
@@ -58,6 +64,8 @@ func getGitHubUserInfoByCode(code string) (*GitHubUser, error) {
 	if err = json.NewDecoder(res.Body).Decode(&oAuthResponse); err != nil {
 		return nil, errors.Wrap(err, "decode GitHub OAuth response")
 	}
+
+	// https://docs.github.com/en/rest/users/users?apiVersion=2022-11-28#get-the-authenticated-user
 	req, err = http.NewRequest("GET", "https://api.github.com/user", nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "build GitHub user info request")
@@ -68,8 +76,15 @@ func getGitHubUserInfoByCode(code string) (*GitHubUser, error) {
 		return nil, errors.Wrap(err, "unable to connect to GitHub server for user info")
 	}
 	defer res2.Body.Close()
+
+	githubUserBody, err := io.ReadAll(res2.Body)
+	if err != nil {
+		return nil, errors.Wrap(err, "read GitHub user info response body")
+	}
+	logger.Debug("got user info from github", zap.ByteString("payload", githubUserBody))
+
 	var githubUser GitHubUser
-	if err = json.NewDecoder(res2.Body).Decode(&githubUser); err != nil {
+	if err = json.Unmarshal(githubUserBody, &githubUser); err != nil {
 		return nil, errors.Wrap(err, "decode GitHub user info")
 	}
 	if githubUser.Login == "" {
@@ -103,7 +118,7 @@ func GitHubOAuth(c *gin.Context) {
 		return
 	}
 	code := c.Query("code")
-	githubUser, err := getGitHubUserInfoByCode(code)
+	githubUser, err := getGitHubUserInfoByCode(ctx, code)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
@@ -170,7 +185,7 @@ func GitHubBind(c *gin.Context) {
 		return
 	}
 	code := c.Query("code")
-	githubUser, err := getGitHubUserInfoByCode(code)
+	githubUser, err := getGitHubUserInfoByCode(gmw.Ctx(c), code)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
