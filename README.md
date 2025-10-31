@@ -140,7 +140,6 @@ Docker images available on Docker Hub:
 
 The initial default account and password are `root` / `123456`. Listening port can be configured via the `PORT` environment variable, default is `3000`.
 
-
 Run one-api using docker-compose:
 
 ```yaml
