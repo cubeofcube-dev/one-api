@@ -6,6 +6,7 @@ The Rerank API allows you to send a query and a list of documents, and receive a
 
 ```
 POST /v1/rerank
+POST /v2/rerank
 ```
 
 ## Request Format

@@ -20,6 +20,7 @@ func GetByPath(path string) int {
 		strings.HasSuffix(path, "embeddings"):
 		return Embeddings
 	case strings.HasPrefix(path, "/v1/rerank"),
+		strings.HasSuffix(path, "/v2/rerank"),
 		strings.HasSuffix(path, "/rerank"),
 		strings.HasSuffix(path, "/rerankers"):
 		return Rerank

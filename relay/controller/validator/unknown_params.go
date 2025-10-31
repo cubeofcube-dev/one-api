@@ -14,25 +14,30 @@ import (
 // GetKnownParameters extracts all valid JSON parameter names from GeneralOpenAIRequest struct
 func GetKnownParameters() map[string]bool {
 	knownParams := make(map[string]bool)
+	// Collect known parameters from multiple request structs that we accept
+	// This includes legacy/general OpenAI-style DTOs as well as rerank-specific DTO.
+	requestTypes := []reflect.Type{
+		reflect.TypeOf(model.GeneralOpenAIRequest{}),
+		reflect.TypeOf(model.RerankRequest{}),
+	}
 
-	// Get the struct type
-	requestType := reflect.TypeOf(model.GeneralOpenAIRequest{})
+	for _, requestType := range requestTypes {
+		// Iterate through all fields
+		for i := 0; i < requestType.NumField(); i++ {
+			field := requestType.Field(i)
 
-	// Iterate through all fields
-	for i := 0; i < requestType.NumField(); i++ {
-		field := requestType.Field(i)
+			// Get the JSON tag
+			jsonTag := field.Tag.Get("json")
+			if jsonTag == "" || jsonTag == "-" {
+				continue
+			}
 
-		// Get the JSON tag
-		jsonTag := field.Tag.Get("json")
-		if jsonTag == "" || jsonTag == "-" {
-			continue
-		}
-
-		// Parse the JSON tag (format: "name,omitempty" or just "name")
-		tagParts := strings.Split(jsonTag, ",")
-		if len(tagParts) > 0 && tagParts[0] != "" {
-			paramName := tagParts[0]
-			knownParams[paramName] = true
+			// Parse the JSON tag (format: "name,omitempty" or just "name")
+			tagParts := strings.Split(jsonTag, ",")
+			if len(tagParts) > 0 && tagParts[0] != "" {
+				paramName := tagParts[0]
+				knownParams[paramName] = true
+			}
 		}
 	}
 
