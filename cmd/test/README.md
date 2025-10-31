@@ -41,7 +41,7 @@ The command exits **non-zero** when at least one request fails (excluding skips)
 ### Sample output (trimmed)
 
 ```text
-=== One-API Regression Matrix ===
+=== One-API Compatibility Matrix ===
 ┌───────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┐
 │ Model         │ Chat (stream=false) │ Chat (stream=true)   │ Chat Tools (stream=false)  │ Chat Tools (stream=true)   │ Response (stream=false) │ Response (stream=true) │ Response Tools (stream=false) │ Response Tools (stream=true) │ Claude (stream=false) │ Claude (stream=true) │ Claude Tools (stream=false) │ Claude Tools (stream=true) │
 ├───────────────┼──────────────────────┼──────────────────────┼────────────────────────────┼────────────────────────────┼──────────────────────┼──────────────────────┼────────────────────────────┼────────────────────────────┼──────────────────────┼──────────────────────┼────────────────────────────┼────────────────────────────┤

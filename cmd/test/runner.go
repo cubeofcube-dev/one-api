@@ -115,13 +115,13 @@ func executeModelSweep(ctx context.Context, client *http.Client, cfg config, mod
 		s := spec
 		if skip, reason := shouldSkipVariant(model, s); skip {
 			outcome := testResult{
-				Model:       model,
-				Variant:     s.Variant,
-				Label:       s.Label,
-				Type:        s.Type,
-				Stream:      s.Stream,
-				Skipped:     true,
-				ErrorReason: reason,
+				Model:         model,
+				RequestFormat: s.RequestFormat,
+				Label:         s.Label,
+				Type:          s.Type,
+				Stream:        s.Stream,
+				Skipped:       true,
+				ErrorReason:   reason,
 			}
 			select {
 			case results <- outcome:
@@ -156,13 +156,13 @@ func buildRequestSpecs(model string, variants []requestVariant) []requestSpec {
 			body = claudeMessagesPayload(model, variant.Stream, variant.Expectation)
 		}
 		specs = append(specs, requestSpec{
-			Variant:     variant.Key,
-			Label:       variant.Header,
-			Type:        variant.Type,
-			Path:        variant.Path,
-			Body:        body,
-			Stream:      variant.Stream,
-			Expectation: variant.Expectation,
+			RequestFormat: variant.Key,
+			Label:         variant.Header,
+			Type:          variant.Type,
+			Path:          variant.Path,
+			Body:          body,
+			Stream:        variant.Stream,
+			Expectation:   variant.Expectation,
 		})
 	}
 
@@ -173,7 +173,7 @@ func buildRequestSpecs(model string, variants []requestVariant) []requestSpec {
 // The second return value describes the reason when the combination is unsupported.
 func shouldSkipVariant(model string, spec requestSpec) (bool, string) {
 	if spec.Expectation == expectationStructuredOutput {
-		if reasons, ok := structuredVariantSkips[spec.Variant]; ok {
+		if reasons, ok := structuredVariantSkips[spec.RequestFormat]; ok {
 			if reason, exists := reasons[strings.ToLower(model)]; exists {
 				return true, reason
 			}

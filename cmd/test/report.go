@@ -35,7 +35,7 @@ func buildReport(models []string, variants []requestVariant, results []testResul
 			modelMap = make(map[string]testResult)
 			byModel[res.Model] = modelMap
 		}
-		modelMap[res.Variant] = res
+		modelMap[res.RequestFormat] = res
 		if res.Skipped {
 			skipped++
 			continue
@@ -67,11 +67,11 @@ func renderReport(rep report) {
 	}
 
 	fmt.Println()
-	fmt.Println("=== One-API Regression Matrix ===")
+	fmt.Println("=== One-API Compatibility Matrix ===")
 	fmt.Println()
 
 	tw := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(tw, "Variant")
+	fmt.Fprintf(tw, "Request Format")
 	for _, model := range rep.models {
 		fmt.Fprintf(tw, "\t%s", model)
 	}

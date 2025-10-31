@@ -15,11 +15,11 @@ import (
 func performRequest(ctx context.Context, client *http.Client, baseURL, token string, spec requestSpec, model string) (result testResult) {
 	start := time.Now()
 	result = testResult{
-		Model:   model,
-		Variant: spec.Variant,
-		Label:   spec.Label,
-		Type:    spec.Type,
-		Stream:  spec.Stream,
+		Model:         model,
+		RequestFormat: spec.RequestFormat,
+		Label:         spec.Label,
+		Type:          spec.Type,
+		Stream:        spec.Stream,
 	}
 	defer func() {
 		result.Duration = time.Since(start)

@@ -34,27 +34,27 @@ const (
 
 // testResult captures the outcome for a single request.
 type testResult struct {
-	Model        string
-	Variant      string
-	Label        string
-	Type         requestType
-	Stream       bool
-	Success      bool
-	Skipped      bool
-	StatusCode   int
-	Duration     time.Duration
-	ErrorReason  string
-	RequestBody  string
-	ResponseBody string
+	Model         string
+	RequestFormat string
+	Label         string
+	Type          requestType
+	Stream        bool
+	Success       bool
+	Skipped       bool
+	StatusCode    int
+	Duration      time.Duration
+	ErrorReason   string
+	RequestBody   string
+	ResponseBody  string
 }
 
 // requestSpec contains the fully constructed request that will be executed.
 type requestSpec struct {
-	Variant     string
-	Label       string
-	Type        requestType
-	Path        string
-	Body        any
-	Stream      bool
-	Expectation expectation
+	RequestFormat string
+	Label         string
+	Type          requestType
+	Path          string
+	Body          any
+	Stream        bool
+	Expectation   expectation
 }

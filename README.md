@@ -2,14 +2,23 @@
 
 ## Synopsis
 
-One‑API is a **single‑endpoint gateway** that lets you manage and call dozens of AI SaaS models without the headache of custom adapters. 🌐 Simply change the `model_name` and you can reach OpenAI, Anthropic, Gemini, Groq, DeepSeek, and many others—all through the same request format.
+Open‑source version of OpenRouter, managed through a unified gateway that handles all AI SaaS model calls. Core functions include:
+
+1. Aggregating chat, image, speech, TTS, embeddings, rerank and other capabilities.
+2. Aggregating multiple model providers such as OpenAI, Anthropic, Azure, Google Vertex, OpenRouter, DeepSeek, Replicate, AWS Bedrock, etc.
+3. Aggregating various upstream API request formats like Chat Completion, Response, Claude Messages.
+4. Supporting different request formats; users can issue requests via Chat Completion, Response, or Claude Messages, which are automatically and transparently converted to the native request format of the upstream model.
+5. Supporting multi‑tenant management, allowing each tenant to set distinct quotas and permissions.
+6. Supporting generation of sub‑API Keys; each tenant can create multiple sub‑API Keys, each of which can be bound to different models and quotas.
 
 ![](https://s3.laisky.com/uploads/2025/07/oneapi.drawio.png)
 
-```plain
-=== One-API Regression Matrix ===
+Also welcome to register and use my deployed one-api gateway, which supports various mainstream models. For usage instructions, please refer to <https://wiki.laisky.com/projects/gpt/pay/>.
 
-Variant                             gpt-4o-mini  gpt-5-mini                              claude-haiku-4-5  gemini-2.5-flash  openai/gpt-oss-20b  deepseek-chat                           grok-4-fast-non-reasoning  azure-gpt-5-nano
+```plain
+=== One-API Compatibility Matrix ===
+
+Request Format                      gpt-4o-mini  gpt-5-mini                              claude-haiku-4-5  gemini-2.5-flash  openai/gpt-oss-20b  deepseek-chat                           grok-4-fast-non-reasoning  azure-gpt-5-nano
 Chat (stream=false)                 PASS 6.03s   PASS 12.39s                             PASS 7.08s        PASS 3.08s        PASS 2.96s          PASS 6.11s                              PASS 2.99s                 PASS 8.99s
 Chat (stream=true)                  PASS 5.70s   PASS 10.19s                             PASS 3.49s        PASS 4.98s        PASS 7.22s          PASS 3.73s                              PASS 2.71s                 PASS 15.24s
 Chat Tools (stream=false)           PASS 6.02s   PASS 9.29s                              PASS 4.17s        PASS 3.19s        PASS 1.78s          PASS 5.16s                              PASS 3.03s                 PASS 15.86s
@@ -52,31 +61,9 @@ Skipped (unsupported combinations):
 
 The original author stopped maintaining the project, leaving critical PRs and new features unaddressed. As a long‑time contributor, I’ve forked the repository and rebuilt the core to keep the ecosystem alive and evolving.
 
-### What’s new
-
-- **🔧 Complete billing overhaul** – per‑channel pricing for the same model, discounted rates for cached inputs, and transparent usage reports.
-- **🖥️ Refreshed UI/UX** – a fully rewritten front‑end that makes tenant, quota, and cost management a breeze.
-- **🔀 Transparent API conversion** – send a request in **ChatCompletion**, **Response**, or **Claude Messages** format and One‑API will automatically translate it to the target provider’s native schema.
-- **🔄 Drop‑in database compatibility** – the original One‑API schema is fully supported, so you can migrate without data loss or schema changes.
-- **🐳 Multi‑architecture support** – runs on Linux x86_64, ARM64, and Windows out of the box.
-
-Docker images available on Docker Hub:
-
-- `ppcelery/one-api:latest`
-- `ppcelery/one-api:arm64-latest`
-
-One‑API empowers developers to:
-
-- Centralize **tenant management** and **quota control**.
-- Route AI calls to the right model with a single endpoint.
-- Track usage and costs in real time.
-
-Also welcome to register and use my deployed one-api gateway, which supports various mainstream models. For usage instructions, please refer to <https://wiki.laisky.com/projects/gpt/pay/>.
-
 - [One API](#one-api)
   - [Synopsis](#synopsis)
     - [Why this fork exists](#why-this-fork-exists)
-    - [What’s new](#whats-new)
   - [Tutorial](#tutorial)
     - [Docker Compose Deployment](#docker-compose-deployment)
     - [Kubernetes Deployment](#kubernetes-deployment)
@@ -145,6 +132,11 @@ Also welcome to register and use my deployed one-api gateway, which supports var
 ## Tutorial
 
 ### Docker Compose Deployment
+
+Docker images available on Docker Hub:
+
+- `ppcelery/one-api:latest`
+- `ppcelery/one-api:arm64-latest`
 
 Run one-api using docker-compose:
 
