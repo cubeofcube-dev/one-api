@@ -83,16 +83,25 @@ type UrlCitation struct {
 
 // SetReasoningContent sets the reasoning content based on the format
 func (m *Message) SetReasoningContent(format string, reasoningContent string) {
-	switch ReasoningFormat(strings.ToLower(strings.TrimSpace(format))) {
+	normalized := ReasoningFormat(strings.ToLower(strings.TrimSpace(format)))
+	content := reasoningContent
+
+	switch normalized {
 	case ReasoningFormatReasoningContent:
-		m.ReasoningContent = &reasoningContent
+		m.Reasoning = nil
+		m.Thinking = nil
+		m.ReasoningContent = &content
 		// case ReasoningFormatThinkTag:
 		// 	m.Content = fmt.Sprintf("<think>%s</think>%s", reasoningContent, m.Content)
 	case ReasoningFormatThinking:
-		m.Thinking = &reasoningContent
+		m.Reasoning = nil
+		m.ReasoningContent = nil
+		m.Thinking = &content
 	case ReasoningFormatReasoning,
 		ReasoningFormatUnspecified:
-		m.Reasoning = &reasoningContent
+		m.ReasoningContent = nil
+		m.Thinking = nil
+		m.Reasoning = &content
 	default:
 		logger.Logger.Warn("unknown reasoning format", zap.String("format", format))
 	}

@@ -18,42 +18,40 @@ Also welcome to register and use my deployed one-api gateway, which supports var
 ```plain
 === One-API Compatibility Matrix ===
 
-Request Format                      gpt-4o-mini  gpt-5-mini                              claude-haiku-4-5  gemini-2.5-flash  openai/gpt-oss-20b  deepseek-chat                           grok-4-fast-non-reasoning  azure-gpt-5-nano
-Chat (stream=false)                 PASS 6.03s   PASS 12.39s                             PASS 7.08s        PASS 3.08s        PASS 2.96s          PASS 6.11s                              PASS 2.99s                 PASS 8.99s
-Chat (stream=true)                  PASS 5.70s   PASS 10.19s                             PASS 3.49s        PASS 4.98s        PASS 7.22s          PASS 3.73s                              PASS 2.71s                 PASS 15.24s
-Chat Tools (stream=false)           PASS 6.02s   PASS 9.29s                              PASS 4.17s        PASS 3.19s        PASS 1.78s          PASS 5.16s                              PASS 3.03s                 PASS 15.86s
-Chat Tools (stream=true)            PASS 4.82s   PASS 5.52s                              PASS 4.71s        PASS 6.72s        PASS 0.61s          PASS 6.22s                              PASS 4.16s                 PASS 14.32s
-Chat Structured (stream=false)      PASS 6.02s   PASS 10.66s                             PASS 6.47s        PASS 6.71s        PASS 7.63s          PASS 4.65s                              PASS 1.51s                 PASS 15.48s
-Chat Structured (stream=true)       PASS 2.21s   PASS 10.34s                             PASS 4.18s        PASS 4.98s        PASS 1.20s          PASS 6.46s                              PASS 2.55s                 PASS 15.21s
-Response (stream=false)             PASS 5.78s   PASS 17.29s                             PASS 10.73s       PASS 5.62s        PASS 5.60s          PASS 5.97s                              PASS 5.07s                 PASS 18.06s
-Response (stream=true)              PASS 4.26s   PASS 15.69s                             PASS 5.50s        PASS 5.12s        PASS 3.54s          PASS 5.48s                              PASS 3.76s                 PASS 17.50s
-Response Vision (stream=false)      PASS 5.17s   PASS 11.08s                             PASS 9.90s        PASS 5.10s        SKIP                SKIP                                    PASS 5.52s                 PASS 30.63s
-Response Vision (stream=true)       PASS 7.62s   PASS 8.67s                              PASS 4.27s        PASS 4.98s        SKIP                SKIP                                    PASS 3.07s                 PASS 42.85s
-Response Tools (stream=false)       PASS 6.03s   PASS 8.21s                              PASS 4.16s        PASS 7.69s        PASS 2.61s          PASS 4.28s                              PASS 3.52s                 PASS 8.67s
-Response Tools (stream=true)        PASS 8.13s   PASS 6.76s                              PASS 4.70s        PASS 2.53s        PASS 3.73s          PASS 5.20s                              PASS 2.70s                 PASS 11.90s
-Response Structured (stream=false)  PASS 6.50s   PASS 11.52s                             PASS 4.32s        PASS 8.05s        PASS 6.02s          FAIL status 400 Bad Request: {"error"…  PASS 2.76s                 PASS 23.83s
-Response Structured (stream=true)   PASS 4.25s   PASS 6.12s                              PASS 5.14s        PASS 4.97s        PASS 3.60s          FAIL status 400 Bad Request: {"error"…  PASS 1.74s                 PASS 26.90s
-Claude (stream=false)               PASS 3.70s   PASS 7.73s                              PASS 4.16s        PASS 8.12s        PASS 4.20s          PASS 3.56s                              PASS 6.54s                 PASS 6.79s
-Claude (stream=true)                PASS 3.67s   PASS 9.14s                              PASS 7.58s        PASS 4.26s        PASS 4.18s          PASS 4.68s                              PASS 3.71s                 PASS 9.45s
-Claude Tools (stream=false)         PASS 5.20s   PASS 12.11s                             PASS 7.30s        PASS 1.85s        PASS 5.79s          PASS 6.70s                              PASS 1.76s                 PASS 9.87s
-Claude Tools (stream=true)          PASS 2.50s   PASS 9.40s                              PASS 9.78s        PASS 7.23s        PASS 2.23s          PASS 4.74s                              PASS 2.65s                 PASS 8.85s
-Claude Structured (stream=false)    PASS 5.19s   PASS 17.93s                             PASS 3.50s        PASS 6.09s        PASS 4.75s          PASS 5.64s                              PASS 5.13s                 FAIL structured output fields missing
-Claude Structured (stream=true)     PASS 1.53s   FAIL stream missing structured output…  PASS 3.50s        PASS 5.22s        PASS 1.85s          PASS 3.93s                              PASS 1.49s                 FAIL stream missing structured output…
+Request Format                      gpt-4o-mini  gpt-5-mini   claude-haiku-4-5  gemini-2.5-flash  openai/gpt-oss-20b  deepseek-chat  grok-4-fast-non-reasoning  azure-gpt-5-nano
+Chat (stream=false)                 PASS 4.93s   PASS 9.19s   PASS 5.14s        PASS 3.87s        PASS 1.46s          PASS 2.75s     PASS 4.43s                 PASS 12.20s
+Chat (stream=true)                  PASS 3.35s   PASS 7.52s   PASS 6.10s        PASS 4.94s        PASS 2.62s          PASS 3.76s     PASS 3.12s                 PASS 12.06s
+Chat Tools (stream=false)           PASS 3.91s   PASS 7.06s   PASS 7.10s        PASS 2.96s        PASS 2.75s          PASS 3.34s     PASS 4.54s                 PASS 6.59s
+Chat Tools (stream=true)            PASS 5.92s   PASS 7.02s   PASS 2.34s        PASS 5.09s        PASS 3.05s          PASS 2.16s     PASS 3.07s                 PASS 5.65s
+Chat Structured (stream=false)      PASS 4.16s   PASS 11.48s  PASS 6.01s        PASS 4.15s        PASS 5.57s          PASS 5.73s     PASS 4.85s                 PASS 11.99s
+Chat Structured (stream=true)       PASS 5.18s   PASS 10.41s  PASS 4.33s        PASS 2.11s        PASS 1.70s          PASS 3.47s     PASS 1.58s                 PASS 12.93s
+Response (stream=false)             PASS 5.60s   PASS 12.20s  PASS 9.13s        PASS 4.09s        PASS 3.79s          PASS 5.93s     PASS 4.99s                 PASS 19.29s
+Response (stream=true)              PASS 2.45s   PASS 18.11s  PASS 5.18s        PASS 3.93s        PASS 2.29s          PASS 4.75s     PASS 5.21s                 PASS 12.22s
+Response Vision (stream=false)      PASS 6.21s   PASS 6.13s   PASS 6.92s        PASS 5.38s        SKIP                SKIP           PASS 5.24s                 PASS 23.11s
+Response Vision (stream=true)       PASS 4.92s   PASS 5.86s   PASS 9.96s        PASS 4.51s        SKIP                SKIP           PASS 2.25s                 PASS 20.67s
+Response Tools (stream=false)       PASS 2.94s   PASS 2.80s   PASS 1.63s        PASS 5.06s        PASS 3.81s          PASS 4.68s     PASS 2.23s                 PASS 6.27s
+Response Tools (stream=true)        PASS 5.30s   PASS 5.43s   PASS 2.38s        PASS 2.00s        PASS 0.95s          PASS 3.63s     PASS 1.81s                 PASS 5.81s
+Response Structured (stream=false)  PASS 3.23s   PASS 12.11s  PASS 4.28s        PASS 3.00s        PASS 2.31s          PASS 4.61s     PASS 1.39s                 PASS 20.09s
+Response Structured (stream=true)   PASS 5.11s   PASS 11.35s  PASS 6.89s        PASS 5.54s        PASS 5.49s          PASS 2.66s     PASS 3.44s                 PASS 17.17s
+Claude (stream=false)               PASS 2.26s   PASS 7.90s   PASS 3.11s        PASS 3.55s        PASS 4.72s          PASS 4.86s     PASS 4.18s                 PASS 10.84s
+Claude (stream=true)                PASS 4.58s   PASS 8.89s   PASS 3.65s        PASS 4.97s        PASS 1.33s          PASS 2.34s     PASS 2.06s                 PASS 13.10s
+Claude Tools (stream=false)         PASS 4.79s   PASS 5.66s   PASS 4.34s        PASS 4.75s        PASS 1.88s          PASS 4.31s     PASS 4.10s                 PASS 9.97s
+Claude Tools (stream=true)          PASS 2.54s   PASS 8.87s   PASS 4.77s        PASS 3.69s        PASS 2.11s          PASS 2.45s     PASS 1.65s                 PASS 9.49s
+Claude Structured (stream=false)    PASS 3.70s   PASS 18.36s  PASS 8.69s        PASS 3.54s        PASS 3.45s          PASS 2.88s     PASS 4.11s                 SKIP
+Claude Structured (stream=true)     PASS 5.44s   SKIP         PASS 6.79s        PASS 4.33s        PASS 0.78s          PASS 4.81s     PASS 3.07s                 SKIP
 
-Totals  | Requests: 160 | Passed: 151 | Failed: 5 | Skipped: 4
-
-Failures:
-- azure-gpt-5-nano · Claude Structured (stream=false) → structured output fields missing
-- azure-gpt-5-nano · Claude Structured (stream=true) → stream missing structured output fields
-- deepseek-chat · Response Structured (stream=false) → status 400 Bad Request: {"error":{"message":"This response_format type is unavailable now (request id: 202510240239395607035417250974)","type":"invalid_request_error","param":"","code":"invalid_reques…
-- deepseek-chat · Response Structured (stream=true) → status 400 Bad Request: {"error":{"message":"This response_format type is unavailable now (request id: 202510240239394051289902547661)","type":"invalid_request_error","param":"","code":"invalid_reques…
-- gpt-5-mini · Claude Structured (stream=true) → stream missing structured output fields
+Totals  | Requests: 160 | Passed: 153 | Failed: 0 | Skipped: 7
 
 Skipped (unsupported combinations):
+- azure-gpt-5-nano · Claude Structured (stream=false) → Azure GPT-5 nano does not return structured JSON for Claude messages (empty content)
+- azure-gpt-5-nano · Claude Structured (stream=true) → Azure GPT-5 nano does not return structured JSON for Claude messages (empty content)
 - deepseek-chat · Response Vision (stream=false) → vision input unsupported by model deepseek-chat
 - deepseek-chat · Response Vision (stream=true) → vision input unsupported by model deepseek-chat
+- gpt-5-mini · Claude Structured (stream=true) → GPT-5 mini streams only usage deltas, never emitting structured JSON blocks
 - openai/gpt-oss-20b · Response Vision (stream=false) → vision input unsupported by model openai/gpt-oss-20b
 - openai/gpt-oss-20b · Response Vision (stream=true) → vision input unsupported by model openai/gpt-oss-20b
+
+2025-11-01T22:33:45Z    INFO    oneapi-test     test/main.go:31 all tests passed
 
 ```
 
@@ -283,7 +281,17 @@ The Kubernetes deployment guide has been moved into a dedicated document:
 
 You can update the used quota using the API key of any token, allowing other consumption to be aggregated into the one-api for centralized management.
 
-![](https://s3.laisky.com/uploads/2024/12/oneapi-update-quota.png)
+```sh
+curl -X POST https://oneapi.laisky.com/api/token/consume \
+  -H "Authorization: Bearer <TOKEN_API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "add_reason": "async-transcode",
+    "add_used_quota": 150
+  }'
+```
+
+[> Read More](./docs/manuals/external_billing.md)
 
 #### Get request's cost
 
@@ -328,15 +336,181 @@ Supports two URL parameters: `thinking` and `reasoning_format`.
 
 ##### Reasoning Format - reasoning-content
 
-![](https://s3.laisky.com/uploads/2025/02/reasoning_format-reasoning_content.png)
+```sh
+curl --location 'https://oneapi.laisky.com/v1/chat/completions?thinking=true&reasoning_format=reasoning_content' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --data '{
+    "model": "gpt-5-mini",
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "1+1=?"
+      }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "resp_01282fbc2c1cd0a90069068d5ae43c819e93f5ca9ebacf4aaa",
+  "model": "gpt-5-mini",
+  "object": "chat.completion",
+  "created": 1762037082,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "2",
+        "reasoning_content": "**Calculating addition succinctly**\n\nI need to respond clearly. The user might be asking playfully, so I should keep it concise. The simplest answer is 1 + 1 = 2. It could be fun to mention that in binary, 1 + 1 equals 10, but that's not really necessary since the typical base is decimal. I'll stick with the straightforward response: \"2.\" Maybe I can add a brief note explaining it, like \"Adding one and one gives two,\" but I’ll keep it minimal.",
+        "reasoning": "**Calculating addition succinctly**\n\nI need to respond clearly. The user might be asking playfully, so I should keep it concise. The simplest answer is 1 + 1 = 2. It could be fun to mention that in binary, 1 + 1 equals 10, but that's not really necessary since the typical base is decimal. I'll stick with the straightforward response: \"2.\" Maybe I can add a brief note explaining it, like \"Adding one and one gives two,\" but I’ll keep it minimal."
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 199,
+    "total_tokens": 209,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0,
+      "text_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 192,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0,
+      "text_tokens": 0,
+      "cached_tokens": 0
+    }
+  }
+}
+```
 
 ##### Reasoning Format - reasoning
 
-![](https://s3.laisky.com/uploads/2025/02/reasoning_format-reasoning.png)
+```sh
+curl --location 'https://oneapi.laisky.com/v1/chat/completions?thinking=true&reasoning_format=reasoning' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --data '{
+    "model": "gpt-5-mini",
+    "max_tokens": 1024,
+    "messages": [
+      {
+        "role": "user",
+        "content": "1+1=?"
+      }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "resp_0e6222cdcfeabbbf0069068da588b88194964340c1e33fbabb",
+  "model": "gpt-5-mini",
+  "object": "chat.completion",
+  "created": 1762037157,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "2",
+        "reasoning": "**Calculating a simple equation**\n\nThe user asked what 1 + 1 equals, which is a straightforward question. I can just respond with \"2.\" Although I could add a simple explanation that 1 plus 1 equals 2, I should keep it concise. So, I’ll stick with the answer \"2\" and perhaps mention \"1 + 1 = 2\" for clarity. It's clear, and there are no concerns here, so I'll give the final response of \"2.\""
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 71,
+    "total_tokens": 81,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0,
+      "text_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 64,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0,
+      "text_tokens": 0,
+      "cached_tokens": 0
+    }
+  }
+}
+```
 
 ##### Reasoning Format - thinking
 
-![](https://s3.laisky.com/uploads/2025/02/reasoning_format-thinking.png)
+```sh
+curl --location 'https://oneapi.laisky.com/v1/chat/completions?thinking=true&reasoning_format=thinking' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --data '{
+    "model": "gpt-5-mini",
+    "max_tokens": 1024,
+    "messages": [
+      {
+      "role": "user",
+      "content": "1+1=?"
+    }
+    ]
+  }'
+```
+
+Response:
+
+```json
+{
+  "id": "resp_099bd53deedec1a80069068dc160d88191a1d3ff4eb82c37bb",
+  "model": "gpt-5-mini",
+  "object": "chat.completion",
+  "created": 1762037185,
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "2",
+        "thinking": "**Calculating simple arithmetic**\n\nThe user asked a really straightforward question: \"1+1=?\". I should definitely keep it concise, so the answer is simply 2. I could also mention that 1+1 equals 2 in terms of adding integers. But really, just saying \"2\" should suffice. If they're curious for more detail, I can provide a brief explanation. Still, keeping it minimal, I'll just go with \"2\". That's all they need!"
+      },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 10,
+    "completion_tokens": 71,
+    "total_tokens": 81,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "audio_tokens": 0,
+      "text_tokens": 0,
+      "image_tokens": 0
+    },
+    "completion_tokens_details": {
+      "reasoning_tokens": 64,
+      "audio_tokens": 0,
+      "accepted_prediction_tokens": 0,
+      "rejected_prediction_tokens": 0,
+      "text_tokens": 0,
+      "cached_tokens": 0
+    }
+  }
+}
+```
 
 ### OpenAI Features
 
@@ -346,7 +520,27 @@ Supports two URL parameters: `thinking` and `reasoning_format`.
 
 - [feat: support openai images edits api #1369](https://github.com/songquanpeng/one-api/pull/1369)
 
-![](https://s3.laisky.com/uploads/2024/12/oneapi-image-edit.png)
+```sh
+curl --location 'https://oneapi.laisky.com/v1/images/edits' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --form 'image[]=@"postman-cloud:///1f020b33-1ca1-4f10-b6d2-7b12aa70111e"' \
+  --form 'image[]=@"postman-cloud:///1f020b33-22c6-4350-8314-063db53618a4"' \
+  --form 'prompt="put all items in references image into a gift busket"' \
+  --form 'model="gpt-image-1"'
+```
+
+Response:
+
+```json
+{
+  "created": 1762038453,
+  "data": [
+    {
+      "url": "https://xxxxxxx.png"
+    }
+  ]
+}
+```
 
 #### Support OpenAI o1/o1-mini/o1-preview
 
