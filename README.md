@@ -1092,55 +1092,60 @@ By default, the thinking mode is automatically enabled for the deepseek-r1 model
 
 #### Support Cohere Command R & Rerank
 
+```sh
+curl --location 'https://oneapi.laisky.com/v1/rerank' \
+  --header 'Content-Type: application/json' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --data '{
+      "model": "rerank-v3.5",
+      "query": "What is the capital of the United States?",
+      "top_n": 3,
+      "documents": [
+          "Carson City is the capital city of the American state of Nevada.",
+          "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
+          "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
+          "Capitalization or capitalisation in English grammar is the use of a capital letter at the start of a word. English usage varies from capitalization in other languages.",
+          "Capital punishment has existed in the United States since beforethe United States was a country. As of 2017, capital punishment is legal in 30 of the 50 states."
+      ]
+  }'
+
+```
+
+Response:
+
 ```json
-// Request HTTP POST /v1/rerank or /v2/rerank
 {
-    "model": "rerank-v3.5",
-    "query": "What is the capital of the United States?",
-    "top_n": 3,
-    "documents": [
-        "Carson City is the capital city of the American state of Nevada.",
-        "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean. Its capital is Saipan.",
-        "Washington, D.C. (also known as simply Washington or D.C., and officially as the District of Columbia) is the capital of the United States. It is a federal district.",
-        "Capitalization or capitalisation in English grammar is the use of a capital letter at the start of a word. English usage varies from capitalization in other languages.",
-        "Capital punishment has existed in the United States since beforethe United States was a country. As of 2017, capital punishment is legal in 30 of the 50 states."
-    ]
-}
-
-// Response
-{
-    "object": "cohere.rerank",
-    "model": "rerank-v3.5",
-    "id": "ff9458ce-318b-4317-ad49-f8654c976dff",
-    "results": [
-        {
-            "index": 2,
-            "relevance_score": 0.8742601
-        },
-        {
-            "index": 0,
-            "relevance_score": 0.17292508
-        },
-        {
-            "index": 4,
-            "relevance_score": 0.10793502
-        }
-    ],
-    "meta": {
-        "api_version": {
-            "version": "2",
-            "is_experimental": false
-        },
-        "billed_units": {
-            "search_units": 1
-        }
+  "object": "cohere.rerank",
+  "model": "rerank-v3.5",
+  "id": "ff9458ce-318b-4317-ad49-f8654c976dff",
+  "results": [
+    {
+      "index": 2,
+      "relevance_score": 0.8742601
     },
-    "usage": {
-        "prompt_tokens": 153,
-        "total_tokens": 153
+    {
+      "index": 0,
+      "relevance_score": 0.17292508
+    },
+    {
+      "index": 4,
+      "relevance_score": 0.10793502
     }
+  ],
+  "meta": {
+    "api_version": {
+      "version": "2",
+      "is_experimental": false
+    },
+    "billed_units": {
+      "search_units": 1
+    }
+  },
+  "usage": {
+    "prompt_tokens": 153,
+    "total_tokens": 153
+  }
 }
-
 ```
 
 ### Coze Features
