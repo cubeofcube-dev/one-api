@@ -12,40 +12,13 @@ import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { formatTimestamp, fromDateTimeLocal, toDateTimeLocal, renderQuota, cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/stores/auth'
-import { RefreshCw, Eye, EyeOff, Copy, FileDown, Calendar, Filter } from 'lucide-react'
+import { RefreshCw, Eye, EyeOff, Copy, FileDown, Filter } from 'lucide-react'
 import { TracingModal } from '@/components/TracingModal'
+import { LogDetailsModal } from '@/components/LogDetailsModal'
+import { LOG_TYPES, LOG_TYPE_OPTIONS, getLogTypeLabel } from '@/lib/constants/logs'
+import type { LogEntry, LogMetadata } from '@/types/log'
 
-type CacheWriteTokensMetadata = {
-  ephemeral_5m?: number
-  ephemeral_1h?: number
-}
-
-type LogMetadata = {
-  cache_write_tokens?: CacheWriteTokensMetadata
-  [key: string]: unknown
-}
-
-interface LogRow {
-  id: number
-  type: number
-  created_at: number
-  model_name: string
-  token_name?: string
-  username?: string
-  channel?: number
-  quota: number
-  prompt_tokens?: number
-  completion_tokens?: number
-  cached_prompt_tokens?: number
-  cached_completion_tokens?: number
-  elapsed_time?: number
-  request_id?: string
-  trace_id?: string
-  content?: string
-  is_stream?: boolean
-  system_prompt_reset?: boolean
-  metadata?: LogMetadata
-}
+type LogRow = LogEntry
 
 interface LogStatistics {
   quota: number
@@ -53,39 +26,21 @@ interface LogStatistics {
   request_count?: number
 }
 
-// Log type constants
-const LOG_TYPES = {
-  ALL: 0,
-  TOPUP: 1,
-  CONSUME: 2,
-  MANAGE: 3,
-  SYSTEM: 4,
-  TEST: 5,
-} as const
-
-const LOG_TYPE_OPTIONS = [
-  { value: '0', label: 'All Types' },
-  { value: '1', label: 'Topup' },
-  { value: '2', label: 'Consume' },
-  { value: '3', label: 'Management' },
-  { value: '4', label: 'System' },
-  { value: '5', label: 'Test' },
-]
-
 const getLogTypeBadge = (type: number) => {
+  const label = getLogTypeLabel(type)
   switch (type) {
     case LOG_TYPES.TOPUP:
-      return <Badge className="bg-green-100 text-green-800">Topup</Badge>
+      return <Badge className="bg-green-100 text-green-800">{label}</Badge>
     case LOG_TYPES.CONSUME:
-      return <Badge className="bg-blue-100 text-blue-800">Consume</Badge>
+      return <Badge className="bg-blue-100 text-blue-800">{label}</Badge>
     case LOG_TYPES.MANAGE:
-      return <Badge className="bg-purple-100 text-purple-800">Management</Badge>
+      return <Badge className="bg-purple-100 text-purple-800">{label}</Badge>
     case LOG_TYPES.SYSTEM:
-      return <Badge className="bg-gray-100 text-gray-800">System</Badge>
+      return <Badge className="bg-gray-100 text-gray-800">{label}</Badge>
     case LOG_TYPES.TEST:
-      return <Badge className="bg-yellow-100 text-yellow-800">Test</Badge>
+      return <Badge className="bg-yellow-100 text-yellow-800">{label}</Badge>
     default:
-      return <Badge variant="outline">Unknown</Badge>
+      return <Badge variant="outline">{label}</Badge>
   }
 }
 
@@ -162,6 +117,8 @@ export function LogsPage() {
   const [tracingModalOpen, setTracingModalOpen] = useState(false)
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null)
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [selectedLog, setSelectedLog] = useState<LogRow | null>(null)
 
   // (removed duplicate isAdmin declaration)
 
@@ -368,48 +325,6 @@ export function LogsPage() {
     </Button>
   )
 
-  const ExpandableCell = ({ content, isStream, systemPromptReset }: {
-    content?: string,
-    isStream?: boolean,
-    systemPromptReset?: boolean
-  }) => {
-    const [expanded, setExpanded] = useState(false)
-    const maxLength = 100
-    const truncated = (content || '').length > maxLength
-
-    return (
-      <div className="max-w-[300px]">
-        <div className={expanded ? 'whitespace-pre-wrap' : 'truncate'} title={content}>
-          {expanded ? content : ((content || '').slice(0, truncated ? maxLength : undefined))}
-          {truncated && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="ml-1 px-2 h-6 text-xs"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? 'Less' : 'More'}
-            </Button>
-          )}
-        </div>
-        {(isStream || systemPromptReset) && (
-          <div className="mt-1 flex gap-1 flex-wrap">
-            {isStream && (
-              <Badge variant="secondary" className="text-xs">
-                Stream
-              </Badge>
-            )}
-            {systemPromptReset && (
-              <Badge variant="destructive" className="text-xs">
-                System Reset
-              </Badge>
-            )}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   const columns: ColumnDef<LogRow>[] = [
     {
       accessorKey: 'created_at',
@@ -548,16 +463,34 @@ export function LogsPage() {
   }
 
   const handleRowClick = (log: LogRow) => {
-    if (log.trace_id && log.trace_id.trim() !== '') {
+    const hasTrace = Boolean(log.trace_id && log.trace_id.trim() !== '')
+
+    if (log.type === LOG_TYPES.CONSUME && hasTrace) {
       setSelectedLogId(log.id)
-      setSelectedTraceId(log.trace_id)
+      setSelectedTraceId(log.trace_id || null)
       setTracingModalOpen(true)
+      return
+    }
+
+    setSelectedLogId(null)
+    setSelectedTraceId(null)
+    setSelectedLog(log)
+    setDetailsModalOpen(true)
+  }
+
+  const handleTracingModalChange = (open: boolean) => {
+    setTracingModalOpen(open)
+    if (!open) {
+      setSelectedLogId(null)
+      setSelectedTraceId(null)
     }
   }
 
-  const handleTracingModalClose = () => {
-    setTracingModalOpen(false)
-    setSelectedLogId(null)
+  const handleDetailsModalChange = (open: boolean) => {
+    setDetailsModalOpen(open)
+    if (!open) {
+      setSelectedLog(null)
+    }
   }
 
   const refresh = () => {
@@ -753,9 +686,14 @@ export function LogsPage() {
 
       <TracingModal
         open={tracingModalOpen}
-        onOpenChange={handleTracingModalClose}
+        onOpenChange={handleTracingModalChange}
         logId={selectedLogId}
         traceId={selectedTraceId}
+      />
+      <LogDetailsModal
+        open={detailsModalOpen}
+        onOpenChange={handleDetailsModalChange}
+        log={selectedLog}
       />
     </div>
   )

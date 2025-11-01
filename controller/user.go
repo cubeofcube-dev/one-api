@@ -681,6 +681,7 @@ func GetSelf(c *gin.Context) {
 
 func UpdateUser(c *gin.Context) {
 	ctx := gmw.Ctx(c)
+	adminUserID := c.GetInt(ctxkey.Id)
 	body, err := common.GetRequestBody(c)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -976,7 +977,8 @@ func UpdateUser(c *gin.Context) {
 	}
 
 	if quotaUpdated && originUser.Quota != newQuota {
-		model.RecordLog(ctx, originUser.Id, model.LogTypeManage, fmt.Sprintf("Admin changed user quota from %s to %s", common.LogQuota(originUser.Quota), common.LogQuota(newQuota)))
+		note := fmt.Sprintf("admin_id=%d", adminUserID)
+		model.RecordManageLog(ctx, originUser.Id, "quota", common.LogQuota(originUser.Quota), common.LogQuota(newQuota), note)
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -1736,7 +1738,8 @@ func AdminDisableUserTotp(c *gin.Context) {
 
 	// Log the admin action
 	adminUserId := c.GetInt(ctxkey.Id)
-	model.RecordLog(ctx, user.Id, model.LogTypeManage, fmt.Sprintf("Admin (ID: %d) disabled TOTP for user %s", adminUserId, user.Username))
+	note := fmt.Sprintf("admin_id=%d target_username=%s", adminUserId, user.Username)
+	model.RecordManageLog(ctx, user.Id, "totp_enabled", true, false, note)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
