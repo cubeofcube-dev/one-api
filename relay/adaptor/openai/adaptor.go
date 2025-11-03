@@ -130,6 +130,7 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 
 		// https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/reasoning?tabs=python#api--feature-support
 		if strings.HasPrefix(meta.ActualModelName, "o1") ||
+			strings.HasPrefix(meta.ActualModelName, "o4") ||
 			strings.HasPrefix(meta.ActualModelName, "o3") {
 			defaultVersion = "2025-04-01-preview"
 		} else if azureRequiresResponseAPI(meta.ActualModelName) {
