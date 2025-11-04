@@ -400,7 +400,7 @@ func (a *Adaptor) buildClaudeURL(meta *meta.Meta) (string, error) {
 	// Claude models use rawPredict
 	baseHost, location := a.getDefaultHostAndLocation(meta)
 
-	return fmt.Sprintf("https://%s/v1/projects/%s/locations/%s/publishers/google/models/%s:rawPredict",
+	return fmt.Sprintf("https://%s/v1/projects/%s/locations/%s/publishers/anthropic/models/%s:rawPredict",
 		baseHost, meta.Config.VertexAIProjectID, location, meta.ActualModelName), nil
 }
 
