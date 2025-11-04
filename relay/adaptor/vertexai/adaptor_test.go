@@ -165,7 +165,7 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			url, err := adaptor.GetRequestURL(meta)
 			So(err, ShouldBeNil)
 
-			expectedURL := "https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/publishers/google/models/claude-3-sonnet:rawPredict"
+			expectedURL := "https://us-central1-aiplatform.googleapis.com/v1/projects/test-project/locations/us-central1/publishers/anthropic/models/claude-3-sonnet:rawPredict"
 			So(url, ShouldEqual, expectedURL)
 		})
 
