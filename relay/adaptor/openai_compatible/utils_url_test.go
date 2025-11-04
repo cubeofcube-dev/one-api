@@ -33,6 +33,13 @@ func TestGetFullRequestURL(t *testing.T) {
 			channelType: channeltype.OpenAICompatible,
 		},
 		{
+			name:        "github-base",
+			base:        "https://models.github.ai",
+			path:        "/inference/chat/completions",
+			expect:      "https://models.github.ai/inference/chat/completions",
+			channelType: channeltype.OpenAICompatible,
+		},
+		{
 			name:        "compatible-non-v1",
 			base:        "https://proxy.example.com/v1",
 			path:        "/dashboard/billing/usage",
@@ -44,6 +51,20 @@ func TestGetFullRequestURL(t *testing.T) {
 			base:        "https://api.example.com",
 			path:        "/v1/chat/completions",
 			expect:      "https://api.example.com/v1/chat/completions",
+			channelType: channeltype.OpenAI,
+		},
+		{
+			name:        "other-type-base-with-v1",
+			base:        "https://api.example.com/v1",
+			path:        "/v1/embeddings",
+			expect:      "https://api.example.com/v1/embeddings",
+			channelType: channeltype.OpenAI,
+		},
+		{
+			name:        "other-type-base-with-v1-trailing-slash",
+			base:        "https://api.example.com/v1/",
+			path:        "/v1/embeddings",
+			expect:      "https://api.example.com/v1/embeddings",
 			channelType: channeltype.OpenAI,
 		},
 	}

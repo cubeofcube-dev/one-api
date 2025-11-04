@@ -1326,11 +1326,11 @@ export function EditChannelPage() {
                 <FormItem>
                   <LabelWithHelp
                     label="Base URL *"
-                    help={'Base URL of the OpenAI‑compatible endpoint, e.g., https://api.your-provider.com/v1'}
+                    help={'Base URL of the OpenAI-compatible endpoint, e.g., https://api.your-provider.com. /v1 is appended automatically when required.'}
                   />
                   <FormControl>
                     <Input
-                      placeholder={defaultBaseURL || 'https://api.your-provider.com/v1'}
+                      placeholder={defaultBaseURL || 'https://api.your-provider.com'}
                       className={errorClass('base_url')}
                       required
                       {...field}

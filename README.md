@@ -247,6 +247,7 @@ oneapi:
     # (optional) OPENROUTER_PROVIDER_SORT set sorting method for OpenRouter Providers, default is throughput
     OPENROUTER_PROVIDER_SORT: throughput
     # (optional) LOG_PUSH_API set the API address for pushing error logs to external services
+    # https://github.com/Laisky/laisky-blog-graphql/blob/master/internal/web/telegram/README.md
     LOG_PUSH_API: "https://gq.laisky.com/query/"
     LOG_PUSH_TYPE: "oneapi"
     LOG_PUSH_TOKEN: "xxxxxxx"

@@ -67,6 +67,9 @@ func shouldForceResponseAPI(metaInfo *meta.Meta) bool {
 		if metaInfo.ResponseAPIFallback {
 			return false
 		}
+		if openai_compatible.IsGitHubModelsBaseURL(metaInfo.BaseURL) {
+			return false
+		}
 		return channeltype.UseOpenAICompatibleResponseAPI(metaInfo.Config.APIFormat)
 	default:
 		return false
@@ -175,8 +178,10 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 		}
 
 		format := channeltype.NormalizeOpenAICompatibleAPIFormat(meta.Config.APIFormat)
+		isGitHub := openai_compatible.IsGitHubModelsBaseURL(meta.BaseURL)
+
 		if meta.Mode == relaymode.ChatCompletions || meta.Mode == relaymode.ClaudeMessages || meta.Mode == relaymode.ResponseAPI {
-			if format == channeltype.OpenAICompatibleAPIFormatResponse {
+			if format == channeltype.OpenAICompatibleAPIFormatResponse && !isGitHub {
 				requestPath = "/v1/responses"
 			} else {
 				if requestPath == "" || requestPath == "/" || requestPath == "/v1/responses" || requestPath == "/v1/messages" {
@@ -185,7 +190,9 @@ func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 			}
 		}
 
-		if requestPath == "" {
+		if isGitHub {
+			requestPath = openai_compatible.NormalizeGitHubRequestPath(requestPath, meta.Mode)
+		} else if requestPath == "" {
 			requestPath = "/v1/chat/completions"
 		}
 

@@ -2,7 +2,6 @@ package openai_compatible
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -105,12 +104,13 @@ func CountTokenText(text string, modelName string) int {
 
 // GetFullRequestURL constructs the full request URL for OpenAI-compatible APIs
 func GetFullRequestURL(baseURL string, requestURL string, channelType int) string {
+	trimmedBase := strings.TrimRight(baseURL, "/")
+	path := strings.TrimSpace(requestURL)
+	if path != "" && !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+
 	if channelType == channeltype.OpenAICompatible {
-		trimmedBase := strings.TrimRight(baseURL, "/")
-		path := requestURL
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
 		if strings.HasSuffix(trimmedBase, "/v1") {
 			path = strings.TrimPrefix(path, "/v1")
 			if path == "" {
@@ -120,9 +120,27 @@ func GetFullRequestURL(baseURL string, requestURL string, channelType int) strin
 				path = "/" + path
 			}
 		}
+		if path == "" {
+			return trimmedBase
+		}
 		return trimmedBase + path
 	}
-	return fmt.Sprintf("%s%s", baseURL, requestURL)
+
+	if strings.HasSuffix(trimmedBase, "/v1") {
+		if path == "/v1" {
+			path = ""
+		} else if strings.HasPrefix(path, "/v1/") {
+			path = path[len("/v1"):]
+			if path == "" {
+				path = ""
+			}
+		}
+	}
+
+	if path == "" {
+		return trimmedBase
+	}
+	return trimmedBase + path
 }
 
 // StreamHandler processes streaming responses from OpenAI-compatible APIs

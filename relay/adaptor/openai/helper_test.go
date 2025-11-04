@@ -75,6 +75,10 @@ func TestShouldForceResponseAPIForOpenAICompatible(t *testing.T) {
 	metaInfo.Config.APIFormat = channeltype.OpenAICompatibleAPIFormatResponse
 	metaInfo.ResponseAPIFallback = true
 	require.False(t, shouldForceResponseAPI(metaInfo))
+
+	metaInfo.ResponseAPIFallback = false
+	metaInfo.BaseURL = "https://models.github.ai"
+	require.False(t, shouldForceResponseAPI(metaInfo))
 }
 
 func TestGetRequestURLForOpenAICompatible(t *testing.T) {
@@ -104,4 +108,16 @@ func TestGetRequestURLForOpenAICompatible(t *testing.T) {
 	url, err = adaptor.GetRequestURL(metaInfo)
 	require.NoError(t, err)
 	require.Equal(t, "https://upstream.test/v1/responses?foo=bar", url)
+
+	metaInfo.BaseURL = "https://models.github.ai"
+	metaInfo.RequestURLPath = "/v1/chat/completions"
+	url, err = adaptor.GetRequestURL(metaInfo)
+	require.NoError(t, err)
+	require.Equal(t, "https://models.github.ai/inference/chat/completions", url)
+
+	metaInfo.Mode = relaymode.Embeddings
+	metaInfo.RequestURLPath = "/v1/embeddings"
+	url, err = adaptor.GetRequestURL(metaInfo)
+	require.NoError(t, err)
+	require.Equal(t, "https://models.github.ai/inference/embeddings", url)
 }
