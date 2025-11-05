@@ -59,7 +59,7 @@ COPY --from=web-builder /web/build ./web/build
 RUN --mount=type=cache,target=/root/.cache/go-build \
         echo "Building one-api for ${TARGETOS:-linux}/${TARGETARCH:-$(go env GOARCH)}" && \
         GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-$(go env GOARCH)} \
-        go build -trimpath -buildvcs=false -ldflags "-s -w" -o /out/one-api
+        go build -trimpath -ldflags "-s -w" -o /out/one-api
 
 #############################
 # Stage 3: Runtime image    #
