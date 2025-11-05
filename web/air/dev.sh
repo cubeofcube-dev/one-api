@@ -43,7 +43,7 @@ start_dev() {
     echo -e "${YELLOW}API calls will be proxied to: http://100.113.170.10:3000${NC}"
     echo ""
     cd "${FRONTEND_DIR}"
-    export REACT_APP_VERSION=$(cat "${PROJECT_ROOT}/VERSION" 2>/dev/null || echo "dev")
+    export REACT_APP_VERSION=$(date +%s)
     npm run dev:backend
 }
 

@@ -15,6 +15,16 @@ const StatusProvider = ({ children }) => {
     const { success, data } = res.data;
     let system_name = "";
     if (success) {
+      const previousSiteInfoRaw = localStorage.getItem("siteInfo");
+      let previousVersion = "";
+      if (previousSiteInfoRaw) {
+        try {
+          previousVersion = JSON.parse(previousSiteInfoRaw).version || "";
+        } catch (error) {
+          console.warn("Failed to parse cached site info:", error);
+        }
+      }
+
       if (!data.chat_link) {
         delete data.chat_link;
       }
@@ -22,14 +32,16 @@ const StatusProvider = ({ children }) => {
       localStorage.setItem("quota_per_unit", data.quota_per_unit);
       localStorage.setItem("display_in_currency", data.display_in_currency);
       dispatch({ type: SET_SITE_INFO, payload: data });
+      const backendVersion = data.version || "";
       if (
-        data.version !== process.env.REACT_APP_VERSION &&
-        data.version !== "v0.0.0" &&
-        data.version !== "" &&
-        process.env.REACT_APP_VERSION !== ""
+        backendVersion !== "" &&
+        backendVersion !== "v0.0.0" &&
+        backendVersion !== "0.0.0" &&
+        previousVersion !== "" &&
+        previousVersion !== backendVersion
       ) {
         showNotice(
-          `新版本可用：${data.version}，请使用快捷键 Shift + F5 刷新页面`
+          `新版本可用：${backendVersion}，请使用快捷键 Shift + F5 刷新页面`
         );
       }
       if (data.system_name) {

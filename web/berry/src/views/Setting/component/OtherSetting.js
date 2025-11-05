@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import SubCard from 'ui-component/cards/SubCard';
 import {
     Stack,
@@ -11,8 +11,8 @@ import {
     Dialog,
     DialogTitle,
     DialogActions,
-    DialogContent,
-    Divider, Link
+  DialogContent,
+  Divider
 } from '@mui/material';
 import Grid from '@mui/material/Unstable_Grid2';
 import { showError, showSuccess } from 'utils/common'; //,
@@ -36,25 +36,27 @@ const OtherSetting = () => {
     content: ''
   });
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
-      data.forEach((item) => {
-        if (item.key in inputs) {
-          newInputs[item.key] = item.value;
-        }
+      setInputs((prev) => {
+        const nextInputs = { ...prev };
+        data.forEach((item) => {
+          if (item.key in nextInputs) {
+            nextInputs[item.key] = item.value;
+          }
+        });
+        return nextInputs;
       });
-      setInputs(newInputs);
     } else {
       showError(message);
     }
-  };
+  }, []);
 
   useEffect(() => {
     getOptions().then();
-  }, []);
+  }, [getOptions]);
 
   const updateOption = async (key, value) => {
     setLoading(true);
@@ -112,7 +114,16 @@ const OtherSetting = () => {
   const checkUpdate = async () => {
     const res = await API.get('https://api.github.com/repos/songquanpeng/one-api/releases/latest');
     const { tag_name, body } = res.data;
-    if (tag_name === process.env.REACT_APP_VERSION) {
+    let backendVersion = '';
+    const cachedSiteInfo = localStorage.getItem('siteInfo');
+    if (cachedSiteInfo) {
+      try {
+        backendVersion = JSON.parse(cachedSiteInfo).version || '';
+      } catch (error) {
+        console.warn('无法解析缓存的站点信息版本：', error);
+      }
+    }
+    if (tag_name === backendVersion) {
       showSuccess(`已是最新版本：${tag_name}`);
     } else {
       setUpdateData({

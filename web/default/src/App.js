@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useContext, useEffect } from 'react';
+import React, { lazy, Suspense, useCallback, useContext, useEffect } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import Loading from './components/Loading';
 import User from './pages/User';
@@ -35,18 +35,28 @@ function App() {
   const [userState, userDispatch] = useContext(UserContext);
   const [statusState, statusDispatch] = useContext(StatusContext);
 
-  const loadUser = () => {
+  const loadUser = useCallback(() => {
     let user = localStorage.getItem('user');
     if (user) {
       let data = JSON.parse(user);
       userDispatch({ type: 'login', payload: data });
     }
-  };
-  const loadStatus = async () => {
+  }, [userDispatch]);
+  const loadStatus = useCallback(async () => {
     try {
       const res = await API.get('/api/status');
       const { success, message, data } = res.data || {}; // Add default empty object
       if (success && data) {
+        const previousStatusRaw = localStorage.getItem('status');
+        let previousVersion = '';
+        if (previousStatusRaw) {
+          try {
+            previousVersion = JSON.parse(previousStatusRaw).version || '';
+          } catch (error) {
+            console.warn('Failed to parse cached status:', error);
+          }
+        }
+
         // Check data exists
         localStorage.setItem('status', JSON.stringify(data));
         statusDispatch({ type: 'set', payload: data });
@@ -55,18 +65,22 @@ function App() {
         localStorage.setItem('footer_html', data.footer_html);
         localStorage.setItem('quota_per_unit', data.quota_per_unit);
         localStorage.setItem('display_in_currency', data.display_in_currency);
+        const backendVersion = data.version || '';
         if (data.chat_link) {
           localStorage.setItem('chat_link', data.chat_link);
         } else {
           localStorage.removeItem('chat_link');
         }
-        if (
-          data.version !== process.env.REACT_APP_VERSION &&
-          data.version !== 'v0.0.0' &&
-          process.env.REACT_APP_VERSION !== ''
-        ) {
+        const shouldNotifyVersionChange =
+          backendVersion !== '' &&
+          backendVersion !== 'v0.0.0' &&
+          backendVersion !== '0.0.0' &&
+          previousVersion !== '' &&
+          previousVersion !== backendVersion;
+
+        if (shouldNotifyVersionChange) {
           showNotice(
-            `New version available: ${data.version}, please refresh the page using Shift + F5`
+            `New version available: ${backendVersion}, please refresh the page using Shift + F5`
           );
         }
       } else {
@@ -75,7 +89,7 @@ function App() {
     } catch (error) {
       showError(error.message || 'Unable to connect to the server properly!');
     }
-  };
+  }, [statusDispatch]);
 
   useEffect(() => {
     loadUser();
@@ -91,7 +105,7 @@ function App() {
         linkElement.href = logo;
       }
     }
-  }, []);
+  }, [loadStatus, loadUser]);
 
   return (
     <Routes>

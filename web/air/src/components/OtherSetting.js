@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Button, Divider, Form, Grid, Header, Message, Modal } from 'semantic-ui-react';
 import { API, showError, showSuccess } from '../helpers';
 import { marked } from 'marked';
@@ -21,25 +21,27 @@ const OtherSetting = () => {
     content: ''
   });
 
-  const getOptions = async () => {
+  const getOptions = useCallback(async () => {
     const res = await API.get('/api/option/');
     const { success, message, data } = res.data;
     if (success) {
-      let newInputs = {};
-      data.forEach((item) => {
-        if (item.key in inputs) {
-          newInputs[item.key] = item.value;
-        }
+      setInputs((prev) => {
+        const nextInputs = { ...prev };
+        data.forEach((item) => {
+          if (item.key in nextInputs) {
+            nextInputs[item.key] = item.value;
+          }
+        });
+        return nextInputs;
       });
-      setInputs(newInputs);
     } else {
       showError(message);
     }
-  };
+  }, []);
 
   useEffect(() => {
     getOptions().then();
-  }, []);
+  }, [getOptions]);
 
   const updateOption = async (key, value) => {
     setLoading(true);
@@ -98,7 +100,16 @@ const OtherSetting = () => {
       'https://api.github.com/repos/songquanpeng/one-api/releases/latest'
     );
     const { tag_name, body } = res.data;
-    if (tag_name === process.env.REACT_APP_VERSION) {
+    let backendVersion = '';
+    const cachedSiteInfo = localStorage.getItem('siteInfo');
+    if (cachedSiteInfo) {
+      try {
+        backendVersion = JSON.parse(cachedSiteInfo).version || '';
+      } catch (error) {
+        console.warn('无法解析缓存的站点信息版本：', error);
+      }
+    }
+    if (tag_name === backendVersion) {
       showSuccess(`已是最新版本：${tag_name}`);
     } else {
       setUpdateData({

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-version=$(cat VERSION)
+version=$(date +%s)
 pwd
 
 while IFS= read -r theme; do

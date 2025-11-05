@@ -5,19 +5,21 @@ This document provides essential development information for the One-API project
 ## Build System & Configuration
 
 ### Go Requirements
+
 - **Go Version**: 1.25.0 (cutting-edge version required)
 - **CGO**: Enabled (required for SQLite3 support)
 - **Architecture**: Primarily targets AMD64, multi-arch builds supported
 
 ### Build Commands
+
 ```bash
 # Backend build
-go build -trimpath -ldflags "-s -w -X github.com/songquanpeng/one-api/common.Version=$(cat VERSION)" -o one-api
+go build -trimpath -ldflags "-s -w" -o one-api
 
 # Frontend builds (multiple templates available)
 make build-frontend-modern      # Primary template (React + TypeScript + Vite)
 make build-frontend-default     # Legacy template
-make build-frontend-air         # Alternative template  
+make build-frontend-air         # Alternative template
 make build-frontend-berry       # Alternative template
 make build-all-templates        # All templates
 
@@ -29,11 +31,13 @@ make dev-berry                 # Port 3003
 ```
 
 ### Development Tools Installation
+
 ```bash
 make install    # Installs: golangci-lint, goimports, govulncheck
 ```
 
 ### Code Quality & Linting
+
 ```bash
 make lint       # Runs complete linting pipeline:
                 # - goimports with local module preference
@@ -47,9 +51,11 @@ make lint       # Runs complete linting pipeline:
 ## Architecture Patterns
 
 ### Relay Adapter System
+
 The project uses a sophisticated adapter pattern for AI provider integration with 35+ supported providers:
 
 **Core Interface** (`relay/adaptor/interface.go`):
+
 ```go
 type Adaptor interface {
     Init(meta *meta.Meta)
@@ -69,7 +75,9 @@ type Adaptor interface {
 ```
 
 ### Pricing Model Architecture
+
 Advanced pricing system supports:
+
 - **Tiered pricing** with input token thresholds
 - **Cache pricing** (5-minute and 1-hour windows)
 - **Input/output ratios** for different token types
@@ -77,11 +85,12 @@ Advanced pricing system supports:
 - **Model-specific configurations** with token limits
 
 **Example Implementation** (XAI adapter):
+
 ```go
 var ModelRatios = map[string]adaptor.ModelConfig{
     "grok-4-0709": {
-        Ratio: 3.0 * ratio.MilliTokensUsd, 
-        CompletionRatio: 5.0, 
+        Ratio: 3.0 * ratio.MilliTokensUsd,
+        CompletionRatio: 5.0,
         CachedInputRatio: 0.75 * ratio.MilliTokensUsd
     },
     // Model list automatically derived from pricing map
@@ -90,9 +99,10 @@ var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 ```
 
 ### Key Architectural Components
+
 - **relay/**: Core relay system with adapters, billing, channels
 - **controller/**: HTTP request handlers
-- **model/**: Data models and database schemas  
+- **model/**: Data models and database schemas
 - **middleware/**: Gin middleware (auth, logging, metrics)
 - **monitor/**: System monitoring and metrics
 - **common/**: Shared utilities and configuration
@@ -100,17 +110,21 @@ var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 ## Database & Deployment
 
 ### Supported Databases
+
 - **SQLite**: Default/fallback (embedded)
 - **MySQL**: Production recommended (8.2.0+)
 - **PostgreSQL**: Enterprise option
 
 ### Docker Deployment
+
 Multi-stage build process:
+
 1. **Node.js stage**: Frontend build (React/TypeScript)
 2. **Go stage**: Backend compilation with SQLite3
 3. **Ubuntu runtime**: With FFmpeg support for multimedia
 
 **Key Environment Variables**:
+
 ```bash
 SQL_DSN=oneapi:123456@tcp(db:3306)/one-api
 REDIS_CONN_STRING=redis://redis
@@ -121,6 +135,7 @@ FRONTEND_BASE_URL=https://...      # For slave nodes
 ```
 
 ### Multi-Template Frontend System
+
 - **Modern**: Primary template (React + TypeScript + Vite + Tailwind)
 - **Default/Air/Berry**: Alternative UI themes
 - Each template has independent build system and development server
@@ -129,12 +144,14 @@ FRONTEND_BASE_URL=https://...      # For slave nodes
 ## Development Practices
 
 ### Code Organization
+
 - **Local imports first**: `goimports -local module,github.com/songquanpeng/one-api`
 - **Extensive linting**: 565-line golangci-lint configuration
 - **Security scanning**: govulncheck integration
 - **Dependency management**: Go modules with version constraints
 
 ### Adding New AI Providers
+
 1. Create directory in `relay/adaptor/[provider]/`
 2. Implement `Adaptor` interface
 3. Define model pricing in `ModelRatios` map
@@ -143,6 +160,7 @@ FRONTEND_BASE_URL=https://...      # For slave nodes
 6. Register adapter in relay system
 
 ### Testing Strategy
+
 - Unit tests present (`*_test.go` files)
 - API verification scripts in frontend
 - Build system validates all components
@@ -151,14 +169,16 @@ FRONTEND_BASE_URL=https://...      # For slave nodes
 ## Key Dependencies
 
 ### Backend Core
+
 - **Gin**: Web framework with comprehensive middleware
-- **GORM**: ORM with multi-database support  
+- **GORM**: ORM with multi-database support
 - **Laisky libraries**: Advanced logging, middleware, utilities
 - **AWS SDK v2**: Cloud provider integration
 - **Prometheus**: Metrics and monitoring
 - **JWT**: Authentication system
 
 ### Frontend Stack (Modern Template)
+
 - **React 18**: Component framework
 - **TypeScript**: Type safety
 - **Vite**: Build system (fast HMR)
@@ -168,17 +188,20 @@ FRONTEND_BASE_URL=https://...      # For slave nodes
 ## Performance & Scaling
 
 ### Caching Strategy
+
 - Redis for session and temporary data
 - Multiple cache window pricing (5min/1hour)
 - Token-level caching with custom ratios
 
 ### Monitoring
+
 - Prometheus metrics endpoint
 - Health check system
 - Structured logging with Zap
 - Request/response tracing
 
 ### Multi-Machine Support
+
 - Master/slave deployment architecture
 - Configurable sync frequency
 - Frontend URL routing for distributed setups

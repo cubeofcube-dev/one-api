@@ -13,8 +13,7 @@ ARG FFMPEG_IMAGE=linuxserver/ffmpeg:latest
 FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS web-builder
 WORKDIR /web
 
-# Copy version & sources (place themes directly under /web)
-COPY VERSION ./
+# Copy sources (place themes directly under /web)
 COPY web/ ./
 
 # Install & build each theme sequentially to avoid OOM in CI
@@ -26,10 +25,10 @@ RUN set -e; for theme in default berry air modern; do \
 
 RUN mkdir -p /web/build
 ENV DISABLE_ESLINT_PLUGIN=true
-RUN set -e; export REACT_APP_VERSION=$(cat VERSION); \
+RUN set -e; BUILD_ID=$(date +%s); \
         for theme in default berry air modern; do \
-                echo "==> building $theme (version=$REACT_APP_VERSION)"; \
-                npm run build --prefix /web/$theme; \
+                echo "==> building $theme (build_id=$BUILD_ID)"; \
+                REACT_APP_VERSION=$BUILD_ID npm run build --prefix /web/$theme; \
         done
 
 ############################
@@ -57,12 +56,10 @@ RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
 COPY --from=web-builder /web/build ./web/build
 
-# Build (Version embedded). Reading from VERSION file copied above.
 RUN --mount=type=cache,target=/root/.cache/go-build \
-        VERSION=$(cat VERSION) && \
-        echo "Building one-api for ${TARGETOS:-linux}/${TARGETARCH:-$(go env GOARCH)} version=$VERSION" && \
+        echo "Building one-api for ${TARGETOS:-linux}/${TARGETARCH:-$(go env GOARCH)}" && \
         GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-$(go env GOARCH)} \
-        go build -trimpath -buildvcs=false -ldflags "-s -w -X github.com/Laisky/one-api/common.Version=$VERSION" -o /out/one-api
+        go build -trimpath -buildvcs=false -ldflags "-s -w" -o /out/one-api
 
 #############################
 # Stage 3: Runtime image    #
