@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useResponsive } from '@/hooks/useResponsive'
 import { useNotifications } from '@/components/ui/notifications'
 import { RefreshCw, Activity, Clock, Calendar, Zap, AlertCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -27,7 +28,7 @@ interface StatusResponse {
 }
 
 function StatusPageImpl() {
-  const { isMobile, isTablet } = useResponsive()
+  const { isMobile } = useResponsive()
   const { notify } = useNotifications()
   const [channelsData, setChannelsData] = useState<ChannelStatus[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,11 +37,13 @@ function StatusPageImpl() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0)
-  const [pageSize, setPageSize] = useState(6)
+  const [pageSize, setPageSize] = useState(9)
   const [totalCount, setTotalCount] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
 
-  const fetchStatusData = async (page: number = currentPage, size: number = pageSize) => {
+  const pageSizeOptions = [9, 12, 18, 24, 30]
+
+  const fetchStatusData = useCallback(async (page: number, size: number) => {
     try {
       setLoading(true)
       const params = new URLSearchParams({
@@ -61,7 +64,7 @@ function StatusPageImpl() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [notify])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -69,10 +72,9 @@ function StatusPageImpl() {
     setRefreshing(false)
   }
 
-  const handlePageChange = async (newPage: number) => {
+  const handlePageChange = (newPage: number) => {
     if (newPage >= 0 && newPage < totalPages) {
       setCurrentPage(newPage)
-      await fetchStatusData(newPage, pageSize)
     }
   }
 
@@ -88,9 +90,18 @@ function StatusPageImpl() {
     }
   }
 
+  const handlePageSizeChange = (value: string) => {
+    const newSize = Number(value)
+    if (Number.isNaN(newSize) || newSize === pageSize) {
+      return
+    }
+    setCurrentPage(0)
+    setPageSize(newSize)
+  }
+
   useEffect(() => {
-    fetchStatusData(0, pageSize)
-  }, [])
+    fetchStatusData(currentPage, pageSize)
+  }, [currentPage, pageSize, fetchStatusData])
 
   const formatTimestamp = (timestamp: number): string => {
     if (!timestamp) return 'Never'
@@ -248,15 +259,32 @@ function StatusPageImpl() {
               className="w-full"
             />
           </div>
-          {searchTerm && (
-            <Button
-              variant="outline"
-              onClick={() => setSearchTerm('')}
-              className="whitespace-nowrap"
-            >
-              Clear Search
-            </Button>
-          )}
+          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+            <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Items per page</span>
+              <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className={isMobile ? 'w-full' : 'w-28'}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {pageSizeOptions.map((option) => (
+                    <SelectItem key={option} value={option.toString()}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {searchTerm && (
+              <Button
+                variant="outline"
+                onClick={() => setSearchTerm('')}
+                className="whitespace-nowrap"
+              >
+                Clear Search
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Channel Status Cards */}
