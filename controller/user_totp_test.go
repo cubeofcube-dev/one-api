@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	gcrypto "github.com/Laisky/go-utils/v5/crypto"
+	gcrypto "github.com/Laisky/go-utils/v6/crypto"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"

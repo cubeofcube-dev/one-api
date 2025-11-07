@@ -25,7 +25,7 @@ import (
 	"strings"
 
 	"github.com/Laisky/errors/v2"
-	gmw "github.com/Laisky/gin-middlewares/v6"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 

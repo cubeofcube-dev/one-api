@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	gmw "github.com/Laisky/gin-middlewares/v6"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"

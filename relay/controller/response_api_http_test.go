@@ -13,7 +13,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	gmw "github.com/Laisky/gin-middlewares/v6"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 
 	"github.com/songquanpeng/one-api/common/client"
 	"github.com/songquanpeng/one-api/common/ctxkey"

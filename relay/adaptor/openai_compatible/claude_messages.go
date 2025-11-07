@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/songquanpeng/one-api/common/ctxkey"
+	"github.com/songquanpeng/one-api/relay/channeltype"
 	"github.com/songquanpeng/one-api/relay/meta"
 	"github.com/songquanpeng/one-api/relay/model"
 )
@@ -31,6 +32,19 @@ func ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, er
 	}
 
 	schemaName, schemaPayload, schemaDescription, promoteStructured := detectStructuredToolSchema(request)
+	var metaInfo *meta.Meta
+	if c != nil {
+		if cached, exists := c.Get(ctxkey.Meta); exists {
+			if stored, ok := cached.(*meta.Meta); ok {
+				metaInfo = stored
+			}
+		} else if c.Request != nil && c.Request.URL != nil {
+			metaInfo = meta.GetByContext(c)
+		}
+	}
+	if promoteStructured && structuredPromotionDisabled(metaInfo) {
+		promoteStructured = false
+	}
 	if promoteStructured {
 		strict := true
 		openaiRequest.ResponseFormat = &model.ResponseFormat{
@@ -80,105 +94,8 @@ func ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, er
 
 	// Convert messages
 	for _, msg := range request.Messages {
-		openaiMessage := model.Message{Role: msg.Role}
-
-		switch content := msg.Content.(type) {
-		case string:
-			openaiMessage.Content = content
-		case []any:
-			var contentParts []model.MessageContent
-			for _, block := range content {
-				blockMap, ok := block.(map[string]any)
-				if !ok {
-					continue
-				}
-				bt, _ := blockMap["type"].(string)
-				switch bt {
-				case "text":
-					if text, exists := blockMap["text"]; exists {
-						if textStr, ok := text.(string); ok {
-							contentParts = append(contentParts, model.MessageContent{Type: "text", Text: &textStr})
-						}
-					}
-				case "image":
-					if source, exists := blockMap["source"]; exists {
-						if sourceMap, ok := source.(map[string]any); ok {
-							if st, _ := sourceMap["type"].(string); st == "base64" {
-								if mt, ok := sourceMap["media_type"].(string); ok {
-									if data, ok := sourceMap["data"].(string); ok {
-										contentParts = append(contentParts, model.MessageContent{
-											Type:     "image_url",
-											ImageURL: &model.ImageURL{Url: fmt.Sprintf("data:%s;base64,%s", mt, data)},
-										})
-									}
-								}
-							} else if st == "url" {
-								if urlStr, ok := sourceMap["url"].(string); ok {
-									contentParts = append(contentParts, model.MessageContent{
-										Type:     "image_url",
-										ImageURL: &model.ImageURL{Url: urlStr},
-									})
-								}
-							}
-						}
-					}
-				case "tool_use":
-					if id, ok := blockMap["id"].(string); ok {
-						if name, ok := blockMap["name"].(string); ok {
-							input := blockMap["input"]
-							var argsStr string
-							if inputBytes, err := json.Marshal(input); err == nil {
-								argsStr = string(inputBytes)
-							}
-							openaiMessage.ToolCalls = append(openaiMessage.ToolCalls, model.Tool{
-								Id:   id,
-								Type: "function",
-								Function: &model.Function{
-									Name:      name,
-									Arguments: argsStr,
-								},
-							})
-						}
-					}
-				case "tool_result":
-					if toolCallId, ok := blockMap["tool_call_id"].(string); ok {
-						var contentStr string
-						switch cc := blockMap["content"].(type) {
-						case string:
-							contentStr = cc
-						case []any:
-							for _, item := range cc {
-								if itemMap, ok := item.(map[string]any); ok {
-									if t, _ := itemMap["type"].(string); t == "text" {
-										if txt, ok := itemMap["text"].(string); ok {
-											contentStr += txt
-										}
-									}
-								}
-							}
-						}
-						openaiMessage.ToolCallId = toolCallId
-						openaiMessage.Content = contentStr
-					}
-				default:
-					// ignore unknown block types gracefully
-				}
-			}
-			if len(contentParts) > 0 {
-				openaiMessage.Content = contentParts
-			} else if openaiMessage.Content == nil {
-				// Ensure content is present for providers requiring it
-				openaiMessage.Content = ""
-			}
-		default:
-			if b, err := json.Marshal(content); err == nil {
-				openaiMessage.Content = string(b)
-			} else {
-				openaiMessage.Content = ""
-			}
-		}
-
-		openaiRequest.Messages = append(openaiRequest.Messages, openaiMessage)
+		converted := convertClaudeMessageToOpenAI(msg)
+		openaiRequest.Messages = append(openaiRequest.Messages, converted...)
 	}
 
 	// Convert tools if present
@@ -211,6 +128,223 @@ func ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, er
 	c.Set(ctxkey.OriginalClaudeRequest, request)
 
 	return openaiRequest, nil
+}
+
+func structuredPromotionDisabled(metaInfo *meta.Meta) bool {
+	if metaInfo == nil {
+		return false
+	}
+
+	lowerModel := strings.ToLower(strings.TrimSpace(metaInfo.ActualModelName))
+	switch metaInfo.ChannelType {
+	case channeltype.DeepSeek:
+		return true
+	case channeltype.Azure:
+		return strings.HasPrefix(lowerModel, "gpt-5")
+	case channeltype.OpenAICompatible:
+		if strings.Contains(lowerModel, "deepseek") {
+			return true
+		}
+	}
+
+	return false
+}
+
+type pendingOpenAIMessage struct {
+	message      model.Message
+	contentParts []model.MessageContent
+}
+
+func convertClaudeMessageToOpenAI(msg model.ClaudeMessage) []model.Message {
+	switch content := msg.Content.(type) {
+	case string:
+		return []model.Message{{Role: msg.Role, Content: content}}
+	case []any:
+		return convertClaudeBlocks(msg.Role, content)
+	default:
+		if b, err := json.Marshal(content); err == nil {
+			return []model.Message{{Role: msg.Role, Content: string(b)}}
+		}
+		return []model.Message{{Role: msg.Role, Content: ""}}
+	}
+}
+
+func convertClaudeBlocks(role string, blocks []any) []model.Message {
+	var (
+		result  []model.Message
+		pending *pendingOpenAIMessage
+	)
+
+	flush := func() {
+		if pending == nil {
+			return
+		}
+		msg := pending.message
+		if len(pending.contentParts) > 0 {
+			snapshot := make([]model.MessageContent, len(pending.contentParts))
+			copy(snapshot, pending.contentParts)
+			msg.Content = snapshot
+		}
+		if msg.Content == nil && len(msg.ToolCalls) > 0 {
+			msg.Content = ""
+		}
+		if msg.Content != nil || len(msg.ToolCalls) > 0 || msg.ToolCallId != "" {
+			result = append(result, msg)
+		}
+		pending = nil
+	}
+
+	ensurePending := func() *pendingOpenAIMessage {
+		if pending == nil {
+			pending = &pendingOpenAIMessage{message: model.Message{Role: role}}
+		}
+		return pending
+	}
+
+	for _, raw := range blocks {
+		blockMap, ok := raw.(map[string]any)
+		if !ok {
+			continue
+		}
+		bt, _ := blockMap["type"].(string)
+		switch bt {
+		case "text":
+			if text, ok := blockMap["text"].(string); ok {
+				msg := ensurePending()
+				textCopy := text
+				msg.contentParts = append(msg.contentParts, model.MessageContent{Type: model.ContentTypeText, Text: &textCopy})
+			}
+		case "image":
+			if source, exists := blockMap["source"].(map[string]any); exists {
+				msg := ensurePending()
+				sourceType, _ := source["type"].(string)
+				switch sourceType {
+				case "base64":
+					if mt, ok := source["media_type"].(string); ok {
+						if data, ok := source["data"].(string); ok {
+							url := fmt.Sprintf("data:%s;base64,%s", mt, data)
+							imageURL := model.ImageURL{Url: url}
+							msg.contentParts = append(msg.contentParts, model.MessageContent{Type: model.ContentTypeImageURL, ImageURL: &imageURL})
+						}
+					}
+				case "url":
+					if urlStr, ok := source["url"].(string); ok {
+						imageURL := model.ImageURL{Url: urlStr}
+						if detail, ok := source["detail"].(string); ok {
+							imageURL.Detail = detail
+						}
+						msg.contentParts = append(msg.contentParts, model.MessageContent{Type: model.ContentTypeImageURL, ImageURL: &imageURL})
+					}
+				}
+			}
+		case "tool_use":
+			id, _ := blockMap["id"].(string)
+			name, _ := blockMap["name"].(string)
+			msg := ensurePending()
+			var argsStr string
+			if input := blockMap["input"]; input != nil {
+				if inputBytes, err := json.Marshal(input); err == nil {
+					argsStr = string(inputBytes)
+				}
+			}
+			msg.message.ToolCalls = append(msg.message.ToolCalls, model.Tool{
+				Id:   id,
+				Type: "function",
+				Function: &model.Function{
+					Name:      name,
+					Arguments: argsStr,
+				},
+			})
+		case "tool_result":
+			flush()
+			if toolMsg := convertClaudeToolResultBlock(blockMap); toolMsg != nil {
+				result = append(result, *toolMsg)
+			}
+		default:
+			// Preserve unexpected blocks as JSON text to avoid silent data loss
+			if len(blockMap) > 0 {
+				msg := ensurePending()
+				if encoded, err := json.Marshal(blockMap); err == nil {
+					text := string(encoded)
+					msg.contentParts = append(msg.contentParts, model.MessageContent{Type: model.ContentTypeText, Text: &text})
+				}
+			}
+		}
+	}
+
+	flush()
+	return result
+}
+
+func convertClaudeToolResultBlock(block map[string]any) *model.Message {
+	if block == nil {
+		return nil
+	}
+	toolCallID, _ := block["tool_call_id"].(string)
+	if toolCallID == "" {
+		toolCallID, _ = block["tool_use_id"].(string)
+	}
+	if toolCallID == "" {
+		toolCallID, _ = block["id"].(string)
+	}
+
+	contentStr := extractClaudeToolResultContent(block["content"])
+	if contentStr == "" {
+		if text, ok := block["text"].(string); ok {
+			contentStr = text
+		}
+	}
+
+	toolMsg := model.Message{
+		Role:       "tool",
+		ToolCallId: toolCallID,
+	}
+	if contentStr != "" {
+		toolMsg.Content = contentStr
+	} else {
+		toolMsg.Content = ""
+	}
+	if name, ok := block["name"].(string); ok && name != "" {
+		toolMsg.Name = &name
+	}
+	return &toolMsg
+}
+
+func extractClaudeToolResultContent(content any) string {
+	switch v := content.(type) {
+	case string:
+		return v
+	case []any:
+		var builder strings.Builder
+		for _, raw := range v {
+			itemMap, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			typeStr, _ := itemMap["type"].(string)
+			if strings.EqualFold(typeStr, "text") {
+				if txt, ok := itemMap["text"].(string); ok {
+					builder.WriteString(txt)
+				}
+				continue
+			}
+			if encoded, err := json.Marshal(itemMap); err == nil {
+				builder.WriteString(string(encoded))
+			}
+		}
+		return builder.String()
+	case map[string]any:
+		if encoded, err := json.Marshal(v); err == nil {
+			return string(encoded)
+		}
+	}
+	if content == nil {
+		return ""
+	}
+	if encoded, err := json.Marshal(content); err == nil {
+		return string(encoded)
+	}
+	return fmt.Sprintf("%v", content)
 }
 
 // normalizeClaudeToolChoice adapts Claude tool_choice payloads to the OpenAI ChatCompletion schema.

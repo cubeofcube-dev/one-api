@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/relay/channeltype"
@@ -85,6 +87,78 @@ func TestConvertChatCompletionToResponseAPI(t *testing.T) {
 	if content[0]["text"] != "Hello, world!" {
 		t.Errorf("Expected message content 'Hello, world!', got '%v'", content[0]["text"])
 	}
+}
+
+func TestConvertChatCompletionToResponseAPI_PreservesToolHistory(t *testing.T) {
+	callID := "call_weather_history_1"
+	request := &model.GeneralOpenAIRequest{
+		Model: "gpt-4o-mini",
+		Messages: []model.Message{
+			{Role: "system", Content: "You are a weather assistant."},
+			{Role: "user", Content: "Fetch the current weather."},
+			{
+				Role: "assistant",
+				ToolCalls: []model.Tool{
+					{
+						Id:   callID,
+						Type: "function",
+						Function: &model.Function{
+							Name:      "get_weather",
+							Arguments: `{"location":"San Francisco, CA","unit":"celsius"}`,
+						},
+					},
+				},
+			},
+			{Role: "tool", ToolCallId: callID, Content: `{"temperature_c":15,"condition":"Foggy"}`},
+			{Role: "user", Content: "Thanks, please call the tool again for tomorrow morning in Fahrenheit."},
+		},
+		Tools: []model.Tool{
+			{
+				Type: "function",
+				Function: &model.Function{
+					Name:       "get_weather",
+					Parameters: map[string]any{"type": "object"},
+				},
+			},
+		},
+		ToolChoice: map[string]any{
+			"type":     "function",
+			"function": map[string]any{"name": "get_weather"},
+		},
+	}
+
+	responseReq := ConvertChatCompletionToResponseAPI(request)
+	require.NotNil(t, responseReq)
+	require.NotNil(t, responseReq.Instructions)
+	require.Equal(t, "You are a weather assistant.", *responseReq.Instructions)
+	require.Len(t, responseReq.Input, 4)
+
+	first, ok := responseReq.Input[0].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "user", first["role"])
+
+	functionCall, ok := responseReq.Input[1].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "function_call", functionCall["type"])
+	require.Equal(t, "get_weather", functionCall["name"])
+	args, ok := functionCall["arguments"].(string)
+	require.True(t, ok)
+	require.Contains(t, args, "San Francisco")
+	callReference, ok := functionCall["call_id"].(string)
+	require.True(t, ok)
+
+	callOutput, ok := responseReq.Input[2].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "function_call_output", callOutput["type"])
+	require.Equal(t, callReference, callOutput["call_id"])
+	require.Equal(t, `{"temperature_c":15,"condition":"Foggy"}`, callOutput["output"])
+
+	followup, ok := responseReq.Input[3].(map[string]any)
+	require.True(t, ok)
+	require.Equal(t, "user", followup["role"])
+
+	require.NotEmpty(t, responseReq.Tools)
+	require.NotNil(t, responseReq.ToolChoice)
 }
 
 func TestNormalizeToolChoiceForResponse_Map(t *testing.T) {
@@ -288,6 +362,146 @@ func TestConvertResponseAPIToChatCompletionRequest(t *testing.T) {
 	if chatReq.Reasoning == nil || chatReq.Reasoning.Effort == nil || *chatReq.Reasoning.Effort != reasoningEffort {
 		t.Fatalf("reasoning effort not preserved: %#v", chatReq.Reasoning)
 	}
+}
+
+func TestConvertResponseAPIToChatCompletionRequest_ToolHistoryRoundTrip(t *testing.T) {
+	stream := false
+	instructions := "You are a weather assistant."
+	responseReq := &ResponseAPIRequest{
+		Model:        "gpt-4o-mini",
+		Stream:       &stream,
+		Instructions: &instructions,
+		Input: ResponseAPIInput{
+			map[string]any{
+				"role": "user",
+				"content": []any{
+					map[string]any{
+						"type": "input_text",
+						"text": "Fetch the current weather for San Francisco, CA.",
+					},
+				},
+			},
+			map[string]any{
+				"type":      "function_call",
+				"id":        "fc_weather_history",
+				"call_id":   "call_weather_history",
+				"name":      "get_weather",
+				"arguments": `{"location":"San Francisco, CA","unit":"celsius"}`,
+			},
+			map[string]any{
+				"type":    "function_call_output",
+				"call_id": "call_weather_history",
+				"output":  `{"temperature_c":15,"condition":"Foggy"}`,
+			},
+			map[string]any{
+				"role": "user",
+				"content": []any{
+					map[string]any{
+						"type": "input_text",
+						"text": "Please call the tool again for tomorrow morning's forecast in Fahrenheit.",
+					},
+				},
+			},
+		},
+	}
+
+	chatReq, err := ConvertResponseAPIToChatCompletionRequest(responseReq)
+	require.NoError(t, err)
+	require.NotNil(t, chatReq)
+	require.Len(t, chatReq.Messages, 5)
+
+	require.Equal(t, "system", chatReq.Messages[0].Role)
+	require.Equal(t, instructions, chatReq.Messages[0].StringContent())
+
+	require.Equal(t, "user", chatReq.Messages[1].Role)
+	require.Equal(t, "Fetch the current weather for San Francisco, CA.", chatReq.Messages[1].StringContent())
+
+	assistant := chatReq.Messages[2]
+	require.Equal(t, "assistant", assistant.Role)
+	require.Len(t, assistant.ToolCalls, 1)
+	require.Equal(t, "get_weather", assistant.ToolCalls[0].Function.Name)
+	require.Contains(t, assistant.ToolCalls[0].Function.Arguments, "San Francisco")
+
+	toolMsg := chatReq.Messages[3]
+	require.Equal(t, "tool", toolMsg.Role)
+	require.Equal(t, assistant.ToolCalls[0].Id, toolMsg.ToolCallId)
+	require.Equal(t, `{"temperature_c":15,"condition":"Foggy"}`, toolMsg.StringContent())
+
+	followup := chatReq.Messages[4]
+	require.Equal(t, "user", followup.Role)
+	require.Contains(t, followup.StringContent(), "tomorrow morning")
+}
+
+func TestConvertResponseAPIToChatCompletion_RequiredActionToolCalls(t *testing.T) {
+	response := &ResponseAPIResponse{
+		Id:     "resp_required",
+		Model:  "gpt-5-nano",
+		Status: "incomplete",
+		RequiredAction: &ResponseAPIRequiredAction{
+			Type: "submit_tool_outputs",
+			SubmitToolOutputs: &ResponseAPISubmitToolOutputs{
+				ToolCalls: []ResponseAPIToolCall{
+					{
+						Id:   "call_weather",
+						Type: "function",
+						Function: &ResponseAPIFunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"location":"San Francisco, CA"}`,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	converted := ConvertResponseAPIToChatCompletion(response)
+	require.NotNil(t, converted)
+	require.Len(t, converted.Choices, 1)
+	choice := converted.Choices[0]
+	require.Len(t, choice.Message.ToolCalls, 1)
+	call := choice.Message.ToolCalls[0]
+	require.Equal(t, "call_weather", call.Id)
+	require.Equal(t, "function", call.Type)
+	require.NotNil(t, call.Function)
+	require.Equal(t, "get_weather", call.Function.Name)
+	require.Equal(t, `{"location":"San Francisco, CA"}`, call.Function.Arguments)
+	require.Equal(t, "tool_calls", choice.FinishReason)
+}
+
+func TestConvertResponseAPIStreamToChatCompletion_RequiredActionToolCalls(t *testing.T) {
+	response := &ResponseAPIResponse{
+		Id:     "resp_required_stream",
+		Model:  "gpt-5-nano",
+		Status: "incomplete",
+		RequiredAction: &ResponseAPIRequiredAction{
+			Type: "submit_tool_outputs",
+			SubmitToolOutputs: &ResponseAPISubmitToolOutputs{
+				ToolCalls: []ResponseAPIToolCall{
+					{
+						Id:   "call_weather",
+						Type: "function",
+						Function: &ResponseAPIFunctionCall{
+							Name:      "get_weather",
+							Arguments: `{"location":"San Francisco, CA"}`,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	chunk := ConvertResponseAPIStreamToChatCompletion(response)
+	require.NotNil(t, chunk)
+	require.Len(t, chunk.Choices, 1)
+	choice := chunk.Choices[0]
+	require.Equal(t, "assistant", choice.Delta.Role)
+	require.Len(t, choice.Delta.ToolCalls, 1)
+	call := choice.Delta.ToolCalls[0]
+	require.Equal(t, "call_weather", call.Id)
+	require.Equal(t, "function", call.Type)
+	require.NotNil(t, call.Function)
+	require.Equal(t, "get_weather", call.Function.Name)
+	require.Equal(t, `{"location":"San Francisco, CA"}`, call.Function.Arguments)
 }
 
 func TestConvertResponseAPIToChatCompletionRequestDropsUnsupportedTools(t *testing.T) {
@@ -1797,42 +2011,41 @@ func TestConvertChatCompletionToResponseAPIWithToolResults(t *testing.T) {
 		t.Errorf("Expected system message to be moved to instructions, got %v", responseAPI.Instructions)
 	}
 
-	// Verify input array structure
-	expectedInputs := 2 // user message, assistant summary
-	if len(responseAPI.Input) != expectedInputs {
-		t.Fatalf("Expected %d inputs, got %d", expectedInputs, len(responseAPI.Input))
-	}
+	// Verify input array structure preserves tool call history
+	require.Len(t, responseAPI.Input, 3)
 
 	// Verify first message (user)
-	if msg, ok := responseAPI.Input[0].(map[string]any); !ok || msg["role"] != "user" {
-		t.Errorf("Expected first input to be user message, got %v", responseAPI.Input[0])
-	} else {
-		// Check content structure
-		if content, ok := msg["content"].([]map[string]any); ok && len(content) > 0 {
-			if content[0]["text"] != "What's the current time?" {
-				t.Errorf("Expected user message content 'What's the current time?', got '%v'", content[0]["text"])
-			}
-		}
+	msg0, ok := responseAPI.Input[0].(map[string]any)
+	require.True(t, ok, "expected first input to be a map")
+	assert.Equal(t, "user", msg0["role"])
+	if content, ok := msg0["content"].([]map[string]any); ok && len(content) > 0 {
+		assert.Equal(t, "input_text", content[0]["type"])
+		assert.Equal(t, "What's the current time?", content[0]["text"])
 	}
 
-	// Verify second message (assistant summary of function calls)
-	if msg, ok := responseAPI.Input[1].(map[string]any); !ok || msg["role"] != "assistant" {
-		t.Fatalf("Expected second input to be assistant summary message, got %T", responseAPI.Input[1])
-	} else {
-		// Check content structure for function call summary
-		if content, ok := msg["content"].([]map[string]any); ok && len(content) > 0 {
-			if textContent, ok := content[0]["text"].(string); ok {
-				if !strings.Contains(textContent, "Previous function calls") {
-					t.Errorf("Expected assistant message to contain function call summary, got '%s'", textContent)
-				}
-				if !strings.Contains(textContent, "get_current_datetime") {
-					t.Errorf("Expected assistant message to mention get_current_datetime, got '%s'", textContent)
-				}
-				if !strings.Contains(textContent, "year\":2025") {
-					t.Errorf("Expected assistant message to contain function result, got '%s'", textContent)
-				}
-			}
-		}
+	// Verify function call item
+	msg1, ok := responseAPI.Input[1].(map[string]any)
+	require.True(t, ok, "expected function call item to be a map")
+	assert.Equal(t, "function_call", msg1["type"])
+	if role, exists := msg1["role"]; exists {
+		assert.Equal(t, "assistant", role)
+	}
+	assert.Equal(t, "get_current_datetime", msg1["name"])
+	assert.Equal(t, `{}`, msg1["arguments"])
+	assert.Equal(t, "fc_initial_datetime_call", msg1["id"])
+	assert.Equal(t, "call_initial_datetime_call", msg1["call_id"])
+
+	// Verify tool output item
+	msg2, ok := responseAPI.Input[2].(map[string]any)
+	require.True(t, ok, "expected function call output item to be a map")
+	assert.Equal(t, "function_call_output", msg2["type"])
+	if role, exists := msg2["role"]; exists {
+		assert.Equal(t, "tool", role)
+	}
+	assert.Equal(t, "call_initial_datetime_call", msg2["call_id"])
+	assert.NotContains(t, msg2, "name")
+	if output, ok := msg2["output"].(string); ok {
+		assert.Contains(t, output, "\"year\":2025")
 	}
 
 	// Verify tools were converted properly
@@ -1847,6 +2060,81 @@ func TestConvertChatCompletionToResponseAPIWithToolResults(t *testing.T) {
 
 	if tool.Type != "function" {
 		t.Errorf("Expected tool type 'function', got '%s'", tool.Type)
+	}
+}
+
+func TestConvertResponseAPIToChatCompletionRequestWithFunctionHistory(t *testing.T) {
+	callSuffix := "weather_history_1"
+	req := &ResponseAPIRequest{
+		Model: "gpt-4o-mini",
+		Input: ResponseAPIInput{
+			map[string]any{
+				"role": "user",
+				"content": []any{
+					map[string]any{
+						"type": "input_text",
+						"text": "What's the weather?",
+					},
+				},
+			},
+			map[string]any{
+				"type":      "function_call",
+				"id":        "fc_" + callSuffix,
+				"call_id":   "call_" + callSuffix,
+				"name":      "get_weather",
+				"arguments": map[string]any{"location": "San Francisco"},
+			},
+			map[string]any{
+				"type":    "function_call_output",
+				"call_id": "call_" + callSuffix,
+				"output":  map[string]any{"temperature_c": 15},
+			},
+		},
+	}
+
+	chatReq, err := ConvertResponseAPIToChatCompletionRequest(req)
+	if err != nil {
+		t.Fatalf("expected conversion without error, got %v", err)
+	}
+
+	if len(chatReq.Messages) != 3 {
+		t.Fatalf("expected 3 messages, got %d", len(chatReq.Messages))
+	}
+
+	if chatReq.Messages[0].Role != "user" {
+		t.Fatalf("expected first message role user, got %s", chatReq.Messages[0].Role)
+	}
+
+	assistantMsg := chatReq.Messages[1]
+	if assistantMsg.Role != "assistant" {
+		t.Fatalf("expected second message role assistant, got %s", assistantMsg.Role)
+	}
+	if len(assistantMsg.ToolCalls) != 1 {
+		t.Fatalf("expected second message to include 1 tool call, got %d", len(assistantMsg.ToolCalls))
+	}
+	toolCall := assistantMsg.ToolCalls[0]
+	if toolCall.Id != callSuffix {
+		t.Fatalf("expected tool call id %s, got %s", callSuffix, toolCall.Id)
+	}
+	if toolCall.Function == nil {
+		t.Fatalf("expected tool call to include function details")
+	}
+	if toolCall.Function.Name != "get_weather" {
+		t.Fatalf("expected function name get_weather, got %s", toolCall.Function.Name)
+	}
+	if toolCall.Function.Arguments == "" {
+		t.Fatalf("expected function arguments to be populated")
+	}
+
+	toolMsg := chatReq.Messages[2]
+	if toolMsg.Role != "tool" {
+		t.Fatalf("expected third message role tool, got %s", toolMsg.Role)
+	}
+	if toolMsg.ToolCallId != callSuffix {
+		t.Fatalf("expected tool message tool_call_id %s, got %s", callSuffix, toolMsg.ToolCallId)
+	}
+	if toolMsg.Content == "" {
+		t.Fatalf("expected tool message content to be populated")
 	}
 }
 

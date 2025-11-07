@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/Laisky/errors/v2"
-	gutils "github.com/Laisky/go-utils/v5"
+	gutils "github.com/Laisky/go-utils/v6"
 )
 
 // GetUUID generates a UUID and returns it as a string without hyphens.

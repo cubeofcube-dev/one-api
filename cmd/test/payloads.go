@@ -115,6 +115,49 @@ func chatCompletionPayload(model string, stream bool, exp expectation) any {
 		return base
 	}
 
+	if exp == expectationToolHistory {
+		callID := "call_weather_history_1"
+		base["messages"] = []map[string]any{
+			{
+				"role":    "system",
+				"content": "You are a weather assistant that must call the get_weather function whenever updated forecasts are needed.",
+			},
+			{
+				"role":    "user",
+				"content": "Fetch the current weather conditions for San Francisco, CA using the tool.",
+			},
+			{
+				"role":    "assistant",
+				"content": "",
+				"tool_calls": []map[string]any{{
+					"id":   callID,
+					"type": "function",
+					"function": map[string]any{
+						"name":      "get_weather",
+						"arguments": "{\"location\":\"San Francisco, CA\",\"unit\":\"celsius\"}",
+					},
+				}},
+			},
+			{
+				"role":         "tool",
+				"tool_call_id": callID,
+				"content":      "{\"temperature_c\":15,\"condition\":\"Foggy\"}",
+			},
+			{
+				"role":    "user",
+				"content": "Thanks for the update. Please call the tool again to grab tomorrow morning's forecast for San Francisco in Fahrenheit and summarize the findings.",
+			},
+		}
+		base["tools"] = []map[string]any{chatWeatherToolDefinition()}
+		base["tool_choice"] = map[string]any{
+			"type": "function",
+			"function": map[string]string{
+				"name": "get_weather",
+			},
+		}
+		return base
+	}
+
 	if exp == expectationStructuredOutput {
 		base["max_tokens"] = 512
 		base["messages"] = []map[string]any{
@@ -165,6 +208,52 @@ func responseAPIPayload(model string, stream bool, exp expectation) any {
 					{
 						"type": "input_text",
 						"text": "Please call get_weather for San Francisco, CA in celsius and report the findings.",
+					},
+				},
+			},
+		}
+		base["tools"] = []map[string]any{responseWeatherToolDefinition()}
+		base["tool_choice"] = map[string]any{
+			"type": "tool",
+			"name": "get_weather",
+		}
+		return base
+	}
+
+	if exp == expectationToolHistory {
+		callSuffix := "weather_history_1"
+		callID := "call_" + callSuffix
+		fcID := "fc_" + callSuffix
+		base["max_output_tokens"] = defaultMaxTokens
+		base["input"] = []any{
+			map[string]any{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "input_text",
+						"text": "Retrieve the current weather for San Francisco, CA using the tool.",
+					},
+				},
+			},
+			map[string]any{
+				"type":      "function_call",
+				"id":        fcID,
+				"call_id":   callID,
+				"status":    "completed",
+				"name":      "get_weather",
+				"arguments": "{\"location\":\"San Francisco, CA\",\"unit\":\"celsius\"}",
+			},
+			map[string]any{
+				"type":    "function_call_output",
+				"call_id": callID,
+				"output":  "{\"temperature_c\":15,\"condition\":\"Foggy\"}",
+			},
+			map[string]any{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "input_text",
+						"text": "Great, now call the tool again to retrieve tomorrow morning's forecast for San Francisco in Fahrenheit and summarize both readings.",
 					},
 				},
 			},
@@ -283,6 +372,60 @@ func claudeMessagesPayload(model string, stream bool, exp expectation) any {
 					{
 						"type": "text",
 						"text": "Use the get_weather tool to retrieve today's weather in San Francisco, CA.",
+					},
+				},
+			},
+		}
+		base["tools"] = []map[string]any{claudeWeatherToolDefinition()}
+		base["tool_choice"] = map[string]any{
+			"type": "tool",
+			"name": "get_weather",
+		}
+		return base
+	}
+
+	if exp == expectationToolHistory {
+		callID := "toolu_weather_history_1"
+		base["messages"] = []map[string]any{
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type": "text",
+						"text": "Please use the weather tool to pull the current conditions in San Francisco, CA.",
+					},
+				},
+			},
+			{
+				"role": "assistant",
+				"content": []map[string]any{
+					{
+						"type": "tool_use",
+						"id":   callID,
+						"name": "get_weather",
+						"input": map[string]any{
+							"location": "San Francisco, CA",
+							"unit":     "celsius",
+						},
+					},
+				},
+			},
+			{
+				"role": "user",
+				"content": []map[string]any{
+					{
+						"type":        "tool_result",
+						"tool_use_id": callID,
+						"content": []map[string]any{
+							{
+								"type": "text",
+								"text": "{\"temperature_c\":15,\"condition\":\"Foggy\"}",
+							},
+						},
+					},
+					{
+						"type": "text",
+						"text": "Thanks! Please call the tool again to gather tomorrow morning's forecast for San Francisco in Fahrenheit before replying.",
 					},
 				},
 			},

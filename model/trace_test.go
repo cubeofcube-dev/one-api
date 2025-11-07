@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	gmw "github.com/Laisky/gin-middlewares/v6"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/common"

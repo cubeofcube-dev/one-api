@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	gutils "github.com/Laisky/go-utils/v5"
+	gutils "github.com/Laisky/go-utils/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

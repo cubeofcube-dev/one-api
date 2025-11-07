@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -13,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/common/ctxkey"
+	"github.com/songquanpeng/one-api/relay/channeltype"
 	"github.com/songquanpeng/one-api/relay/meta"
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
@@ -54,7 +56,7 @@ func TestConvertClaudeRequest_ToOpenAI(t *testing.T) {
 	assert.Equal(t, "claude-3", goReq.Model)
 	require.NotNil(t, goReq.MaxCompletionTokens)
 	assert.Equal(t, 128, *goReq.MaxCompletionTokens)
-	assert.GreaterOrEqual(t, len(goReq.Messages), 2)
+	assert.GreaterOrEqual(t, len(goReq.Messages), 4)
 	assert.NotNil(t, goReq.Tools)
 	assert.NotNil(t, goReq.ToolChoice)
 	if choiceMap, ok := goReq.ToolChoice.(map[string]any); ok {
@@ -66,6 +68,74 @@ func TestConvertClaudeRequest_ToOpenAI(t *testing.T) {
 	} else {
 		t.Fatalf("expected map tool_choice, got %T", goReq.ToolChoice)
 	}
+
+	var (
+		assistantSeen bool
+		toolSeen      bool
+	)
+	for _, msg := range goReq.Messages {
+		switch msg.Role {
+		case "assistant":
+			if len(msg.ToolCalls) > 0 {
+				assistantSeen = true
+				assert.Equal(t, "get_weather", msg.ToolCalls[0].Function.Name)
+			}
+		case "tool":
+			toolSeen = true
+			assert.Equal(t, "c1", msg.ToolCallId)
+			assert.Equal(t, "ok", msg.StringContent())
+		}
+	}
+	assert.True(t, assistantSeen, "expected assistant message with tool call")
+	assert.True(t, toolSeen, "expected tool result message")
+}
+
+func TestConvertClaudeRequest_ToolResultWithFollowupText(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	req := &relaymodel.ClaudeRequest{
+		Model: "claude-3",
+		Messages: []relaymodel.ClaudeMessage{
+			{Role: "assistant", Content: []any{map[string]any{"type": "tool_use", "id": "use_123", "name": "get_weather", "input": map[string]any{"location": "Paris"}}}},
+			{Role: "user", Content: []any{
+				map[string]any{"type": "tool_result", "tool_use_id": "use_123", "content": []any{map[string]any{"type": "text", "text": "{\"temperature\":20}"}}},
+				map[string]any{"type": "text", "text": "Great, please summarise the forecast."},
+			}},
+		},
+	}
+
+	converted, err := ConvertClaudeRequest(c, req)
+	require.NoError(t, err)
+
+	body, err := json.Marshal(converted)
+	require.NoError(t, err)
+
+	var goReq relaymodel.GeneralOpenAIRequest
+	require.NoError(t, json.Unmarshal(body, &goReq))
+
+	var toolMsgs int
+	var followupSeen bool
+	for _, msg := range goReq.Messages {
+		switch msg.Role {
+		case "assistant":
+			if len(msg.ToolCalls) == 1 && msg.ToolCalls[0].Id == "use_123" {
+				toolMsgs++
+			}
+		case "tool":
+			toolMsgs++
+			assert.Equal(t, "use_123", msg.ToolCallId)
+			assert.Equal(t, "{\"temperature\":20}", msg.StringContent())
+		case "user":
+			if strings.Contains(msg.StringContent(), "summarise the forecast") {
+				followupSeen = true
+			}
+		}
+	}
+
+	assert.Equal(t, 2, toolMsgs, "expected tool call and tool result messages to be preserved")
+	assert.True(t, followupSeen, "expected follow-up user text after tool result")
 }
 
 func TestHandleClaudeMessagesResponse_NonStream_ConvertedResponse(t *testing.T) {
@@ -186,6 +256,54 @@ func TestConvertClaudeRequest_StructuredToolPromoted(t *testing.T) {
 	// Ensure original request remains unchanged
 	require.Len(t, req.Tools, 1)
 	assert.NotNil(t, req.ToolChoice)
+}
+
+func TestConvertClaudeRequest_StructuredPromotionDisabledForDeepSeek(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	meta.Set2Context(c, &meta.Meta{ChannelType: channeltype.DeepSeek, ActualModelName: "deepseek-chat"})
+
+	schema := map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"topic":      map[string]any{"type": "string"},
+			"confidence": map[string]any{"type": "number"},
+		},
+		"required": []any{"topic", "confidence"},
+	}
+	schema["additionalProperties"] = false
+
+	req := &relaymodel.ClaudeRequest{
+		Model:     "deepseek-chat",
+		MaxTokens: 256,
+		Messages: []relaymodel.ClaudeMessage{
+			{
+				Role: "user",
+				Content: []any{
+					map[string]any{"type": "text", "text": "Provide structured topic and confidence."},
+				},
+			},
+		},
+		Tools: []relaymodel.ClaudeTool{
+			{
+				Name:        "topic_classifier",
+				Description: "Return structured topic and confidence data",
+				InputSchema: schema,
+			},
+		},
+		ToolChoice: map[string]any{"type": "tool", "name": "topic_classifier"},
+	}
+
+	convertedAny, err := ConvertClaudeRequest(c, req)
+	require.NoError(t, err)
+	converted, ok := convertedAny.(*relaymodel.GeneralOpenAIRequest)
+	require.True(t, ok)
+
+	assert.Nil(t, converted.ResponseFormat)
+	require.NotNil(t, converted.ToolChoice)
+	require.NotEmpty(t, converted.Tools)
 }
 
 func TestConvertClaudeRequest_ToolNotPromoted(t *testing.T) {

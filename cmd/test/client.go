@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -145,7 +146,7 @@ func collectStreamBody(body io.Reader, limit int) ([]byte, error) {
 			}
 			buffer.Write(chunk)
 			trimmed := bytes.TrimSpace(chunk)
-			if bytes.Equal(trimmed, []byte("data: [DONE]")) || bytes.Equal(trimmed, []byte("[DONE]")) {
+			if isStreamTerminator(trimmed) {
 				break
 			}
 		}
@@ -162,4 +163,73 @@ func collectStreamBody(body io.Reader, limit int) ([]byte, error) {
 	}
 
 	return buffer.Bytes(), nil
+}
+
+func isStreamTerminator(line []byte) bool {
+	if len(line) == 0 {
+		return false
+	}
+
+	if bytes.Equal(line, []byte("data: [DONE]")) || bytes.Equal(line, []byte("[DONE]")) {
+		return true
+	}
+
+	if !bytes.HasPrefix(line, []byte("data:")) {
+		return false
+	}
+
+	payload := bytes.TrimSpace(line[len("data:"):])
+	if len(payload) == 0 {
+		return false
+	}
+
+	var decoded map[string]any
+	if err := json.Unmarshal(payload, &decoded); err == nil {
+		if terminatingStreamType(decoded) {
+			return true
+		}
+		return false
+	}
+
+	lower := bytes.ToLower(payload)
+	if bytes.Contains(lower, []byte(`"type":"response.completed"`)) ||
+		bytes.Contains(lower, []byte(`"type":"response.cancelled"`)) ||
+		bytes.Contains(lower, []byte(`"type":"response.error"`)) {
+		return true
+	}
+
+	return false
+}
+
+func terminatingStreamType(decoded map[string]any) bool {
+	if t, ok := decoded["type"].(string); ok {
+		switch strings.ToLower(t) {
+		case "response.completed", "response.cancelled", "response.error", "done":
+			return true
+		}
+	}
+
+	if event, ok := decoded["event"].(string); ok && strings.ToLower(event) == "response.completed" {
+		return true
+	}
+
+	if response, ok := decoded["response"].(map[string]any); ok {
+		if t, ok := response["type"].(string); ok {
+			switch strings.ToLower(t) {
+			case "response.completed", "response.cancelled", "response.error":
+				return true
+			}
+		}
+		if status, ok := response["status"].(string); ok && strings.ToLower(status) == "completed" {
+			return true
+		}
+	}
+
+	if delta, ok := decoded["delta"].(map[string]any); ok {
+		if status, ok := delta["status"].(string); ok && strings.ToLower(status) == "completed" {
+			return true
+		}
+	}
+
+	return false
 }

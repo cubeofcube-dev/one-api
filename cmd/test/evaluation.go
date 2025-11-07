@@ -33,20 +33,15 @@ func evaluateResponse(spec requestSpec, body []byte) (bool, string) {
 			}
 			return false, "structured output fields missing"
 		case expectationToolInvocation:
-			if choices, ok := payload["choices"].([]any); ok {
-				for _, choice := range choices {
-					choiceMap, ok := choice.(map[string]any)
-					if !ok {
-						continue
-					}
-					if message, ok := choiceMap["message"].(map[string]any); ok {
-						if calls, ok := message["tool_calls"].([]any); ok && len(calls) > 0 {
-							return true, ""
-						}
-					}
-				}
+			if chatHasToolCalls(payload) {
+				return true, ""
 			}
 			return false, "response missing tool_calls"
+		case expectationToolHistory:
+			if chatHasToolCalls(payload) || chatHasAssistantText(payload) {
+				return true, ""
+			}
+			return false, "response missing tool_calls or assistant text"
 		default:
 			if choices, ok := payload["choices"].([]any); ok && len(choices) > 0 {
 				return true, ""
@@ -65,19 +60,15 @@ func evaluateResponse(spec requestSpec, body []byte) (bool, string) {
 			}
 			return false, "structured output fields missing"
 		case expectationToolInvocation:
-			if required, ok := payload["required_action"].(map[string]any); ok {
-				if stringValue(required, "type") == "submit_tool_outputs" {
-					if submit, ok := required["submit_tool_outputs"].(map[string]any); ok {
-						if calls, ok := submit["tool_calls"].([]any); ok && len(calls) > 0 {
-							return true, ""
-						}
-					}
-				}
-			}
-			if hasFunctionCallOutput(payload) {
+			if responseHasToolCalls(payload) {
 				return true, ""
 			}
 			return false, "response missing required_action.tool_calls"
+		case expectationToolHistory:
+			if responseHasToolCalls(payload) || responseOutputHasText(payload) || chatHasAssistantText(payload) {
+				return true, ""
+			}
+			return false, "response missing tool history output"
 		default:
 			status := stringValue(payload, "status")
 			if status == "failed" {
@@ -130,6 +121,35 @@ func evaluateResponse(spec requestSpec, body []byte) (bool, string) {
 				}
 			}
 			return false, "response missing tool_use block"
+		case expectationToolHistory:
+			if choices, ok := payload["choices"].([]any); ok {
+				for _, choice := range choices {
+					choiceMap, ok := choice.(map[string]any)
+					if !ok {
+						continue
+					}
+					if message, ok := choiceMap["message"].(map[string]any); ok {
+						if calls, ok := message["tool_calls"].([]any); ok && len(calls) > 0 {
+							return true, ""
+						}
+					}
+				}
+			}
+			if content, ok := payload["content"].([]any); ok {
+				for _, entry := range content {
+					entryMap, ok := entry.(map[string]any)
+					if !ok {
+						continue
+					}
+					if stringValue(entryMap, "type") == "tool_use" {
+						return true, ""
+					}
+				}
+			}
+			if claudePayloadHasText(payload) {
+				return true, ""
+			}
+			return false, "response missing tool_use block or assistant text"
 		default:
 			if content, ok := payload["content"].([]any); ok && len(content) > 0 {
 				return true, ""
@@ -148,6 +168,134 @@ func evaluateResponse(spec requestSpec, body []byte) (bool, string) {
 }
 
 // hasFunctionCallOutput reports whether the Response API payload contains a function_call entry.
+func chatHasToolCalls(payload map[string]any) bool {
+	choices, ok := payload["choices"].([]any)
+	if !ok {
+		return false
+	}
+	for _, choice := range choices {
+		choiceMap, ok := choice.(map[string]any)
+		if !ok {
+			continue
+		}
+		if message, ok := choiceMap["message"].(map[string]any); ok {
+			if calls, ok := message["tool_calls"].([]any); ok && len(calls) > 0 {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func chatHasAssistantText(payload map[string]any) bool {
+	choices, ok := payload["choices"].([]any)
+	if !ok {
+		return false
+	}
+	for _, choice := range choices {
+		choiceMap, ok := choice.(map[string]any)
+		if !ok {
+			continue
+		}
+		if message, ok := choiceMap["message"].(map[string]any); ok {
+			if messageHasText(message) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func messageHasText(msg map[string]any) bool {
+	if msg == nil {
+		return false
+	}
+	if content, ok := msg["content"].(string); ok {
+		if strings.TrimSpace(content) != "" {
+			return true
+		}
+	}
+	if arr, ok := msg["content"].([]any); ok {
+		for _, entry := range arr {
+			switch part := entry.(type) {
+			case map[string]any:
+				if text, ok := part["text"].(string); ok && strings.TrimSpace(text) != "" {
+					return true
+				}
+			case string:
+				if strings.TrimSpace(part) != "" {
+					return true
+				}
+			}
+		}
+	}
+	if text, ok := msg["text"].(string); ok && strings.TrimSpace(text) != "" {
+		return true
+	}
+	return false
+}
+
+func responseHasToolCalls(payload map[string]any) bool {
+	if chatHasToolCalls(payload) {
+		return true
+	}
+	if required, ok := payload["required_action"].(map[string]any); ok {
+		if stringValue(required, "type") == "submit_tool_outputs" {
+			if submit, ok := required["submit_tool_outputs"].(map[string]any); ok {
+				if calls, ok := submit["tool_calls"].([]any); ok && len(calls) > 0 {
+					return true
+				}
+			}
+		}
+	}
+	return hasFunctionCallOutput(payload)
+}
+
+func responseOutputHasText(payload map[string]any) bool {
+	output, ok := payload["output"].([]any)
+	if !ok {
+		return false
+	}
+	for _, entry := range output {
+		entryMap, ok := entry.(map[string]any)
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(stringValue(entryMap, "type"), "message") {
+			if messageHasText(map[string]any{"content": entryMap["content"]}) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func claudePayloadHasText(payload map[string]any) bool {
+	if content, ok := payload["content"].([]any); ok {
+		for _, entry := range content {
+			entryMap, ok := entry.(map[string]any)
+			if !ok {
+				continue
+			}
+			if text, ok := entryMap["text"].(string); ok && strings.TrimSpace(text) != "" {
+				return true
+			}
+		}
+	}
+	if choices, ok := payload["choices"].([]any); ok {
+		for _, choice := range choices {
+			choiceMap, ok := choice.(map[string]any)
+			if !ok {
+				continue
+			}
+			if message, ok := choiceMap["message"].(map[string]any); ok && messageHasText(message) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func hasFunctionCallOutput(payload map[string]any) bool {
 	output, ok := payload["output"].([]any)
 	if !ok {
@@ -176,6 +324,7 @@ func evaluateStreamResponse(spec requestSpec, data []byte) (bool, string) {
 	var (
 		hasPayload   bool
 		toolDetected bool
+		textDetected bool
 	)
 	var (
 		structuredMarkers   map[string]bool
@@ -209,8 +358,11 @@ func evaluateStreamResponse(spec requestSpec, data []byte) (bool, string) {
 			if errVal, ok := obj["error"]; ok && isMeaningfulErrorValue(errVal) {
 				return false, snippet(payload)
 			}
-			if spec.Expectation == expectationToolInvocation && detectToolInvocationInStream(spec, obj) {
+			if isToolExpectation(spec.Expectation) && detectToolInvocationInStream(spec, obj) {
 				toolDetected = true
+			}
+			if detectAssistantTextInStream(spec, obj) {
+				textDetected = true
 			}
 			if spec.Expectation == expectationStructuredOutput {
 				collectStructuredMarkers(obj, structuredMarkers)
@@ -224,6 +376,9 @@ func evaluateStreamResponse(spec requestSpec, data []byte) (bool, string) {
 	}
 
 	if spec.Expectation == expectationToolInvocation && !toolDetected {
+		return false, "stream missing tool invocation"
+	}
+	if spec.Expectation == expectationToolHistory && !toolDetected && !textDetected {
 		return false, "stream missing tool invocation"
 	}
 
@@ -398,6 +553,86 @@ func detectToolInvocationInStream(spec requestSpec, obj map[string]any) bool {
 	return false
 }
 
+func detectAssistantTextInStream(spec requestSpec, obj map[string]any) bool {
+	switch spec.Type {
+	case requestTypeChatCompletion:
+		if choices, ok := obj["choices"].([]any); ok {
+			for _, choice := range choices {
+				choiceMap, ok := choice.(map[string]any)
+				if !ok {
+					continue
+				}
+				if delta, ok := choiceMap["delta"].(map[string]any); ok {
+					if content, ok := delta["content"].(string); ok && strings.TrimSpace(content) != "" {
+						return true
+					}
+					if text, ok := delta["text"].(string); ok && strings.TrimSpace(text) != "" {
+						return true
+					}
+				}
+				if message, ok := choiceMap["message"].(map[string]any); ok && messageHasText(message) {
+					return true
+				}
+			}
+		}
+	case requestTypeResponseAPI:
+		if detectAssistantTextInStream(requestSpec{Type: requestTypeChatCompletion}, obj) {
+			return true
+		}
+		if responseObj, ok := obj["response"].(map[string]any); ok {
+			if responseOutputHasText(responseObj) || chatHasAssistantText(responseObj) {
+				return true
+			}
+			if delta, ok := responseObj["delta"].(map[string]any); ok {
+				if text, ok := delta["text"].(string); ok && strings.TrimSpace(text) != "" {
+					return true
+				}
+			}
+		}
+		if item, ok := obj["item"].(map[string]any); ok {
+			if messageHasText(map[string]any{"content": item["content"], "text": item["text"]}) {
+				return true
+			}
+		}
+		if delta, ok := obj["delta"].(map[string]any); ok {
+			if text, ok := delta["text"].(string); ok && strings.TrimSpace(text) != "" {
+				return true
+			}
+		}
+	case requestTypeClaudeMessages:
+		if contentBlock, ok := obj["content_block"].(map[string]any); ok {
+			if text, ok := contentBlock["text"].(string); ok && strings.TrimSpace(text) != "" {
+				return true
+			}
+		}
+		if delta, ok := obj["delta"].(map[string]any); ok {
+			if text, ok := delta["text"].(string); ok && strings.TrimSpace(text) != "" {
+				return true
+			}
+		}
+		if content, ok := obj["content"].([]any); ok {
+			for _, entry := range content {
+				entryMap, ok := entry.(map[string]any)
+				if !ok {
+					continue
+				}
+				if text, ok := entryMap["text"].(string); ok && strings.TrimSpace(text) != "" {
+					return true
+				}
+			}
+		}
+	}
+	if text, ok := obj["text"].(string); ok && strings.TrimSpace(text) != "" {
+		return true
+	}
+	return false
+}
+
+// isToolExpectation reports whether the provided expectation requires detecting tool invocations.
+func isToolExpectation(exp expectation) bool {
+	return exp == expectationToolInvocation || exp == expectationToolHistory
+}
+
 func stringValue(data map[string]any, key string) string {
 	if raw, ok := data[key]; ok {
 		if s, ok := raw.(string); ok {
@@ -560,9 +795,13 @@ func appendStructuredFragments(node any, builder *strings.Builder) {
 				strings.EqualFold(key, "arguments") ||
 				strings.EqualFold(key, "text") ||
 				strings.EqualFold(key, "output_text") ||
-				strings.EqualFold(key, "reasoning") {
+				strings.EqualFold(key, "reasoning") ||
+				strings.EqualFold(key, "output_json") ||
+				strings.EqualFold(key, "output_json_delta") {
 				if str, ok := child.(string); ok {
 					builder.WriteString(str)
+				} else if marshaled, err := json.Marshal(child); err == nil {
+					builder.Write(marshaled)
 				}
 			}
 			appendStructuredFragments(child, builder)

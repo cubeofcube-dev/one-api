@@ -3,7 +3,7 @@ package controller
 import (
 	"time"
 
-	gmw "github.com/Laisky/gin-middlewares/v6"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/gin-gonic/gin"
 
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"

@@ -4,7 +4,7 @@ This document describes the alert pusher integration in the One API logging syst
 
 ## Overview
 
-The alert pusher integration uses the `github.com/Laisky/go-utils/v5/log` alert functionality to automatically send error-level log messages to external notification systems. This is particularly useful for monitoring production deployments and getting immediate notifications when errors occur.
+The alert pusher integration uses the `github.com/Laisky/go-utils/v6/log` alert functionality to automatically send error-level log messages to external notification systems. This is particularly useful for monitoring production deployments and getting immediate notifications when errors occur.
 
 ## Configuration
 

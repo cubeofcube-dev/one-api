@@ -636,6 +636,38 @@ func convertToolCallIDToResponseAPI(originalID string) (fcID, callID string) {
 	return "fc_" + originalID, "call_" + originalID
 }
 
+func stringifyFunctionCallArguments(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	case nil:
+		return ""
+	default:
+		if marshaled, err := json.Marshal(v); err == nil {
+			return string(marshaled)
+		}
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+func stringifyFunctionCallOutput(value any) string {
+	switch v := value.(type) {
+	case string:
+		return v
+	case []byte:
+		return string(v)
+	case nil:
+		return ""
+	default:
+		if marshaled, err := json.Marshal(v); err == nil {
+			return string(marshaled)
+		}
+		return fmt.Sprintf("%v", v)
+	}
+}
+
 // findToolCallName finds the function name for a given tool call ID
 func findToolCallName(toolCalls []model.Tool, toolCallId string) string {
 	for _, toolCall := range toolCalls {
@@ -848,77 +880,60 @@ func ConvertChatCompletionToResponseAPI(request *model.GeneralOpenAIRequest) *Re
 	}
 
 	// Convert messages to input - Response API expects messages directly in the input array
-	// IMPORTANT: Response API doesn't support ChatCompletion function call history format
-	// We'll convert function call history to text summaries to preserve context
-	var pendingToolCalls []model.Tool
-	var pendingToolResults []string
+	toolNameByID := make(map[string]string)
 
 	for _, message := range request.Messages {
-		if message.Role == "tool" {
-			// Collect tool results to summarize
-			pendingToolResults = append(pendingToolResults, fmt.Sprintf("Function %s returned: %s",
-				findToolCallName(pendingToolCalls, message.ToolCallId), message.StringContent()))
-			continue
-		} else if message.Role == "assistant" && len(message.ToolCalls) > 0 {
-			// Collect tool calls for summarization
-			pendingToolCalls = append(pendingToolCalls, message.ToolCalls...)
-
-			// If assistant has text content, include it
-			if message.Content != "" {
-				if convertedMsg := convertMessageToResponseAPIFormat(message); convertedMsg != nil {
-					responseReq.Input = append(responseReq.Input, convertedMsg)
-				}
-			}
-		} else {
-			// For regular messages, add any pending function call summary first
-			if len(pendingToolCalls) > 0 && len(pendingToolResults) > 0 {
-				// Create a summary message for the function call interactions
-				summary := "Previous function calls:\n"
-				for i, toolCall := range pendingToolCalls {
-					summary += fmt.Sprintf("- Called %s(%s)", toolCall.Function.Name, toolCall.Function.Arguments)
-					if i < len(pendingToolResults) {
-						summary += fmt.Sprintf(" → %s", pendingToolResults[i])
-					}
-					summary += "\n"
-				}
-
-				summaryMsg := model.Message{
-					Role:    "assistant",
-					Content: summary,
-				}
-				if convertedSummaryMsg := convertMessageToResponseAPIFormat(summaryMsg); convertedSummaryMsg != nil {
-					responseReq.Input = append(responseReq.Input, convertedSummaryMsg)
-				}
-
-				// Clear pending calls and results
-				pendingToolCalls = nil
-				pendingToolResults = nil
-			}
-
-			// Add the regular message - convert to Response API format
+		switch message.Role {
+		case "assistant":
 			if convertedMsg := convertMessageToResponseAPIFormat(message); convertedMsg != nil {
 				responseReq.Input = append(responseReq.Input, convertedMsg)
 			}
-		}
-	}
-
-	// Add any remaining pending function call summary at the end
-	if len(pendingToolCalls) > 0 && len(pendingToolResults) > 0 {
-		summary := "Previous function calls:\n"
-		for i, toolCall := range pendingToolCalls {
-			summary += fmt.Sprintf("- Called %s(%s)", toolCall.Function.Name, toolCall.Function.Arguments)
-			if i < len(pendingToolResults) {
-				summary += fmt.Sprintf(" → %s", pendingToolResults[i])
+			if len(message.ToolCalls) == 0 {
+				continue
 			}
-			summary += "\n"
-		}
-
-		summaryMsg := model.Message{
-			Role:    "assistant",
-			Content: summary,
-		}
-		if convertedSummaryMsg := convertMessageToResponseAPIFormat(summaryMsg); convertedSummaryMsg != nil {
-			responseReq.Input = append(responseReq.Input, convertedSummaryMsg)
+			for _, toolCall := range message.ToolCalls {
+				if toolCall.Function != nil && toolCall.Function.Name != "" && toolCall.Id != "" {
+					toolNameByID[toolCall.Id] = toolCall.Function.Name
+				}
+				fcID, callID := convertToolCallIDToResponseAPI(toolCall.Id)
+				item := map[string]any{
+					"type": "function_call",
+				}
+				if fcID != "" {
+					item["id"] = fcID
+				}
+				if callID != "" {
+					item["call_id"] = callID
+				}
+				if toolCall.Function != nil {
+					if toolCall.Function.Name != "" {
+						item["name"] = toolCall.Function.Name
+					}
+					if args := toolCall.Function.Arguments; args != "" {
+						item["arguments"] = args
+					}
+				}
+				responseReq.Input = append(responseReq.Input, item)
+			}
+		case "tool":
+			fcID, callID := convertToolCallIDToResponseAPI(message.ToolCallId)
+			item := map[string]any{
+				"type": "function_call_output",
+			}
+			if fcID != "" {
+				item["id"] = fcID
+			}
+			if callID != "" {
+				item["call_id"] = callID
+			}
+			if output := message.StringContent(); output != "" {
+				item["output"] = output
+			}
+			responseReq.Input = append(responseReq.Input, item)
+		default:
+			if convertedMsg := convertMessageToResponseAPIFormat(message); convertedMsg != nil {
+				responseReq.Input = append(responseReq.Input, convertedMsg)
+			}
 		}
 	}
 
@@ -1166,6 +1181,68 @@ func ConvertResponseAPIToChatCompletionRequest(request *ResponseAPIRequest) (*mo
 		case string:
 			chatReq.Messages = append(chatReq.Messages, model.Message{Role: "user", Content: v})
 		case map[string]any:
+			if typeVal, ok := v["type"].(string); ok {
+				switch strings.ToLower(typeVal) {
+				case "function_call":
+					fcID, _ := v["id"].(string)
+					callID, _ := v["call_id"].(string)
+					normalizedID := convertResponseAPIIDToToolCall(fcID, callID)
+					if normalizedID == "" && callID != "" {
+						normalizedID = callID
+					} else if normalizedID == "" && fcID != "" {
+						normalizedID = fcID
+					}
+
+					name, _ := v["name"].(string)
+					arguments := stringifyFunctionCallArguments(v["arguments"])
+
+					toolCall := model.Tool{
+						Id:   normalizedID,
+						Type: "function",
+						Function: &model.Function{
+							Name:      name,
+							Arguments: arguments,
+						},
+					}
+
+					role := "assistant"
+					if r, ok := v["role"].(string); ok && r != "" {
+						role = r
+					}
+
+					chatReq.Messages = append(chatReq.Messages, model.Message{
+						Role:      role,
+						ToolCalls: []model.Tool{toolCall},
+					})
+					continue
+				case "function_call_output":
+					fcID, _ := v["id"].(string)
+					callID, _ := v["call_id"].(string)
+					normalizedID := convertResponseAPIIDToToolCall(fcID, callID)
+					if normalizedID == "" && callID != "" {
+						normalizedID = callID
+					} else if normalizedID == "" && fcID != "" {
+						normalizedID = fcID
+					}
+
+					output := stringifyFunctionCallOutput(v["output"])
+					if output == "" {
+						output = stringifyFunctionCallOutput(v["content"])
+					}
+
+					role := "tool"
+					if r, ok := v["role"].(string); ok && r != "" {
+						role = r
+					}
+
+					chatReq.Messages = append(chatReq.Messages, model.Message{
+						Role:       role,
+						ToolCallId: normalizedID,
+						Content:    output,
+					})
+					continue
+				}
+			}
 			msg, err := responseContentItemToMessage(v)
 			if err != nil {
 				return nil, errors.Wrap(err, "convert response api content to chat message")
@@ -1803,6 +1880,7 @@ func ConvertResponseAPIToChatCompletion(responseAPIResp *ResponseAPIResponse) *T
 	var responseText string
 	var reasoningText string
 	tools := make([]model.Tool, 0)
+	toolCallSeen := make(map[string]bool)
 
 	// Extract content from output array
 	for _, outputItem := range responseAPIResp.Output {
@@ -1845,6 +1923,7 @@ func ConvertResponseAPIToChatCompletion(responseAPIResp *ResponseAPIResponse) *T
 					},
 				}
 				tools = append(tools, tool)
+				toolCallSeen[outputItem.CallId] = true
 			}
 		case "mcp_list_tools":
 			// Handle MCP list tools output - add server tools information to response text
@@ -1873,6 +1952,39 @@ func ConvertResponseAPIToChatCompletion(responseAPIResp *ResponseAPIResponse) *T
 		// Reasoning content would be handled here if needed
 	}
 
+	// Include pending tool calls that require client action
+	if responseAPIResp.RequiredAction != nil && responseAPIResp.RequiredAction.SubmitToolOutputs != nil {
+		for _, call := range responseAPIResp.RequiredAction.SubmitToolOutputs.ToolCalls {
+			if call.Function == nil {
+				continue
+			}
+
+			toolID := call.Id
+			if toolID == "" {
+				toolID = call.Function.Name
+			}
+			if toolID != "" && toolCallSeen[toolID] {
+				continue
+			}
+
+			tool := model.Tool{
+				Id:   call.Id,
+				Type: strings.ToLower(strings.TrimSpace(call.Type)),
+				Function: sanitizeDecodedFunction(&model.Function{
+					Name:      call.Function.Name,
+					Arguments: call.Function.Arguments,
+				}),
+			}
+			if tool.Type == "" {
+				tool.Type = "function"
+			}
+			tools = append(tools, tool)
+			if toolID != "" {
+				toolCallSeen[toolID] = true
+			}
+		}
+	}
+
 	// Convert status to finish reason
 	finishReason := "stop"
 	switch responseAPIResp.Status {
@@ -1888,7 +2000,7 @@ func ConvertResponseAPIToChatCompletion(responseAPIResp *ResponseAPIResponse) *T
 		finishReason = "stop"
 	}
 
-	if len(tools) > 0 && finishReason == "stop" {
+	if len(tools) > 0 {
 		finishReason = "tool_calls"
 	}
 
@@ -1943,6 +2055,7 @@ func ConvertResponseAPIStreamToChatCompletionWithIndex(responseAPIChunk *Respons
 	var reasoningText string
 	var finishReason *string
 	var toolCalls []model.Tool
+	toolCallSeen := make(map[string]bool)
 
 	// Extract content from output array
 	for _, outputItem := range responseAPIChunk.Output {
@@ -1994,6 +2107,7 @@ func ConvertResponseAPIStreamToChatCompletionWithIndex(responseAPIChunk *Respons
 					Index: &index, // Set index for streaming delta accumulation
 				}
 				toolCalls = append(toolCalls, tool)
+				toolCallSeen[outputItem.CallId] = true
 			}
 		// Note: This is currently unavailable in the OpenAI Docs.
 		// It's added here for reference because OpenAI's Remote MCP is included in their tools, unlike other Remote MCPs such as Anthropic Claude.
@@ -2015,6 +2129,40 @@ func ConvertResponseAPIStreamToChatCompletionWithIndex(responseAPIChunk *Respons
 			if outputItem.ServerLabel != "" && outputItem.Name != "" {
 				deltaContent += fmt.Sprintf("\nMCP Approval Required: Server '%s' requests approval to call '%s'",
 					outputItem.ServerLabel, outputItem.Name)
+			}
+		}
+	}
+
+	// Include required_action tool calls in the streaming delta when present
+	if responseAPIChunk.RequiredAction != nil && responseAPIChunk.RequiredAction.SubmitToolOutputs != nil {
+		for _, call := range responseAPIChunk.RequiredAction.SubmitToolOutputs.ToolCalls {
+			if call.Function == nil {
+				continue
+			}
+			identifier := call.Id
+			if identifier == "" {
+				identifier = call.Function.Name
+			}
+			if identifier != "" && toolCallSeen[identifier] {
+				continue
+			}
+
+			idx := len(toolCalls)
+			tool := model.Tool{
+				Id:   call.Id,
+				Type: strings.ToLower(strings.TrimSpace(call.Type)),
+				Function: sanitizeDecodedFunction(&model.Function{
+					Name:      call.Function.Name,
+					Arguments: call.Function.Arguments,
+				}),
+				Index: &idx,
+			}
+			if tool.Type == "" {
+				tool.Type = "function"
+			}
+			toolCalls = append(toolCalls, tool)
+			if identifier != "" {
+				toolCallSeen[identifier] = true
 			}
 		}
 	}

@@ -5,7 +5,7 @@ package client
 // 	"os"
 // 	"time"
 
-// 	gutils "github.com/Laisky/go-utils/v5"
+// 	gutils "github.com/Laisky/go-utils/v6"
 // 	"github.com/songquanpeng/one-api/common/config"
 // )
 

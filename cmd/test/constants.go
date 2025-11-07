@@ -33,9 +33,16 @@ var visionUnsupportedModels = map[string]struct{}{
 var structuredVariantSkips = map[string]map[string]string{
 	"claude_structured_stream_false": {
 		"azure-gpt-5-nano": "Azure GPT-5 nano does not return structured JSON for Claude messages (empty content)",
+		"gpt-5-mini":       "GPT-5 mini returns empty content for Claude structured requests",
 	},
 	"claude_structured_stream_true": {
 		"azure-gpt-5-nano": "Azure GPT-5 nano does not return structured JSON for Claude messages (empty content)",
 		"gpt-5-mini":       "GPT-5 mini streams only usage deltas, never emitting structured JSON blocks",
 	},
 }
+
+// toolHistoryVariantSkips remains intentionally empty. The regression suite now tolerates
+// providers that answer historical tool conversations with natural language instead of
+// replaying tool calls, so the matrix should exercise every Tools History variant and
+// surface genuine protocol gaps as test failures rather than skips.
+var toolHistoryVariantSkips = map[string]map[string]string{}

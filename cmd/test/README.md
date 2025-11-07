@@ -1,6 +1,6 @@
 # one-api Regression Harness
 
-`go run ./cmd/test` exercises every configured upstream adaptor across the Chat Completions, Response API, and Claude Messages surfaces. For each model the tool fires streaming, non-streaming, and tool-invocation calls, using consistent hyperparameters (`temperature`, `top_p`, `top_k`) to catch regressions before they reach production.
+`go run ./cmd/test` exercises every configured upstream adaptor across the Chat Completions, Response API, and Claude Messages surfaces. For each model the tool fires streaming, non-streaming, tool-invocation, and tool-history calls, using consistent hyperparameters (`temperature`, `top_p`, `top_k`) to catch regressions before they reach production.
 
 ## Environment variables
 
@@ -15,10 +15,10 @@
 
 ## What the harness does
 
-- Sends _eighteen_ requests per model:
-  - Chat Completions with `stream=false`, `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
-  - Response API with `stream=false`, `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
-  - Claude Messages with `stream=false`, `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
+- Sends _twenty-six_ requests per model:
+  - Chat Completions with `stream=false`, `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `tool history` + `stream=false`, `tool history` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
+  - Response API with `stream=false`, `stream=true`, `vision` + `stream=false`, `vision` + `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `tool history` + `stream=false`, `tool history` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
+  - Claude Messages with `stream=false`, `stream=true`, `tool` + `stream=false`, `tool` + `stream=true`, `tool history` + `stream=false`, `tool history` + `stream=true`, `structured` + `stream=false`, and `structured` + `stream=true`.
 - Applies consistent sampling parameters:
   - `temperature = 0.7`
   - `top_p = 0.9`
@@ -36,7 +36,17 @@ Streaming responses are captured by accumulating the opening SSE/event payload. 
 API_TOKEN=sk-... ONEAPI_TEST_MODELS="gpt-4o-mini,claude-3.5-haiku" go run ./cmd/test
 ```
 
-The command exits **non-zero** when at least one request fails (excluding skips). Unsupported combinations still appear in the report but do not flip the exit code.
+`run` is also accepted explicitly (`go run ./cmd/test run`). The command exits **non-zero** when at least one request fails (excluding skips). Unsupported combinations still appear in the report but do not flip the exit code.
+
+### Capturing payload samples
+
+Use the `generate` subcommand to execute the configured variants and write request/response artefacts to `cmd/test/generated`:
+
+```bash
+API_TOKEN=sk-... go run ./cmd/test generate
+```
+
+Each file bundles the canonical request payload, the truncated request/response bodies logged by the harness, HTTP metadata, and the observed outcome.
 
 ### Sample output (trimmed)
 

@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Laisky/errors/v2"
-	glog "github.com/Laisky/go-utils/v5/log"
+	glog "github.com/Laisky/go-utils/v6/log"
 	"github.com/Laisky/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -31,7 +31,8 @@ func run(ctx context.Context, logger glog.Logger) error {
 		zap.Strings("variants", variantLabels),
 	)
 
-	httpClient := &http.Client{Timeout: 60 * time.Second}
+	// Allow slower providers (e.g. Azure Responses) to finish multi-modal requests.
+	httpClient := &http.Client{Timeout: 120 * time.Second}
 	resultsCh := make(chan testResult, len(cfg.Models)*len(cfg.Variants))
 
 	var (
@@ -172,6 +173,14 @@ func buildRequestSpecs(model string, variants []requestVariant) []requestSpec {
 // shouldSkipVariant reports whether the provided request specification should be skipped for the model.
 // The second return value describes the reason when the combination is unsupported.
 func shouldSkipVariant(model string, spec requestSpec) (bool, string) {
+	if spec.Expectation == expectationToolHistory {
+		if reasons, ok := toolHistoryVariantSkips[spec.RequestFormat]; ok {
+			if reason, exists := reasons[strings.ToLower(model)]; exists {
+				return true, reason
+			}
+		}
+	}
+
 	if spec.Expectation == expectationStructuredOutput {
 		if reasons, ok := structuredVariantSkips[spec.RequestFormat]; ok {
 			if reason, exists := reasons[strings.ToLower(model)]; exists {

@@ -80,6 +80,15 @@ func TestEvaluateResponseChatToolInvocation(t *testing.T) {
 	}
 }
 
+func TestEvaluateResponseChatToolHistory(t *testing.T) {
+	body := []byte(`{"choices":[{"message":{"tool_calls":[{"id":"tool_hist","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"San Francisco\"}"}}]}}]}`)
+	spec := requestSpec{Type: requestTypeChatCompletion, Expectation: expectationToolHistory}
+	success, reason := evaluateResponse(spec, body)
+	if !success {
+		t.Fatalf("expected chat tool history success, got: %s", reason)
+	}
+}
+
 func TestEvaluateResponseResponseAPIToolInvocation(t *testing.T) {
 	body := []byte(`{"required_action":{"type":"submit_tool_outputs","submit_tool_outputs":{"tool_calls":[{"id":"call_1","name":"get_weather","arguments":"{\"location\":\"San Francisco\"}"}]}}}`)
 	spec := requestSpec{Type: requestTypeResponseAPI, Expectation: expectationToolInvocation}
@@ -89,12 +98,30 @@ func TestEvaluateResponseResponseAPIToolInvocation(t *testing.T) {
 	}
 }
 
+func TestEvaluateResponseResponseAPIToolHistory(t *testing.T) {
+	body := []byte(`{"required_action":{"type":"submit_tool_outputs","submit_tool_outputs":{"tool_calls":[{"id":"call_hist","name":"get_weather","arguments":"{\"location\":\"San Francisco\"}"}]}}}`)
+	spec := requestSpec{Type: requestTypeResponseAPI, Expectation: expectationToolHistory}
+	success, reason := evaluateResponse(spec, body)
+	if !success {
+		t.Fatalf("expected Response API tool history success, got: %s", reason)
+	}
+}
+
 func TestEvaluateResponseClaudeToolInvocation(t *testing.T) {
 	body := []byte(`{"content":[{"type":"tool_use","name":"get_weather","input":{"location":"San Francisco"}}]}`)
 	spec := requestSpec{Type: requestTypeClaudeMessages, Expectation: expectationToolInvocation}
 	success, reason := evaluateResponse(spec, body)
 	if !success {
 		t.Fatalf("expected Claude tool invocation success, got: %s", reason)
+	}
+}
+
+func TestEvaluateResponseClaudeToolHistory(t *testing.T) {
+	body := []byte(`{"content":[{"type":"tool_use","name":"get_weather","input":{"location":"San Francisco"}}]}`)
+	spec := requestSpec{Type: requestTypeClaudeMessages, Expectation: expectationToolHistory}
+	success, reason := evaluateResponse(spec, body)
+	if !success {
+		t.Fatalf("expected Claude tool history success, got: %s", reason)
 	}
 }
 
@@ -129,6 +156,15 @@ func TestEvaluateStreamResponseToolInvocationChat(t *testing.T) {
 	success, reason := evaluateStreamResponse(spec, data)
 	if !success {
 		t.Fatalf("expected stream tool invocation success, got failure: %s", reason)
+	}
+}
+
+func TestEvaluateStreamResponseToolHistoryChat(t *testing.T) {
+	data := []byte("data: {\"choices\":[{\"delta\":{\"tool_calls\":[{\"id\":\"call_hist\"}]}}]}\n\n")
+	spec := requestSpec{Type: requestTypeChatCompletion, Expectation: expectationToolHistory}
+	success, reason := evaluateStreamResponse(spec, data)
+	if !success {
+		t.Fatalf("expected stream tool history success, got failure: %s", reason)
 	}
 }
 
@@ -217,5 +253,30 @@ func TestEvaluateStreamResponseStructuredSplitTokens(t *testing.T) {
 	success, reason := evaluateStreamResponse(spec, data)
 	if !success {
 		t.Fatalf("expected structured stream success despite split tokens, got: %s", reason)
+	}
+}
+
+func TestShouldSkipVariantStructuredGpt5Mini(t *testing.T) {
+	spec := requestSpec{
+		RequestFormat: "claude_structured_stream_false",
+		Expectation:   expectationStructuredOutput,
+	}
+	skipped, reason := shouldSkipVariant("gpt-5-mini", spec)
+	if !skipped {
+		t.Fatalf("expected gpt-5-mini structured variant to be skipped")
+	}
+	if !strings.Contains(strings.ToLower(reason), "gpt-5 mini") {
+		t.Fatalf("unexpected skip reason: %s", reason)
+	}
+}
+
+func TestShouldSkipVariantClaudeToolHistoryAzure(t *testing.T) {
+	spec := requestSpec{
+		RequestFormat: "claude_tools_history_stream_false",
+		Expectation:   expectationToolHistory,
+	}
+	skipped, reason := shouldSkipVariant("azure-gpt-5-nano", spec)
+	if skipped {
+		t.Fatalf("expected azure-gpt-5-nano tool history variant to run, got skip: %s", reason)
 	}
 }

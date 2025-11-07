@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
-	glog "github.com/Laisky/go-utils/v5/log"
+	glog "github.com/Laisky/go-utils/v6/log"
 	"github.com/Laisky/zap"
 	_ "github.com/joho/godotenv/autoload"
 )
@@ -23,10 +24,26 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	if err := run(ctx, logger); err != nil {
-		logger.Error("test run failed", zap.Error(err))
+	command := "run"
+	if len(os.Args) > 1 {
+		command = strings.ToLower(strings.TrimSpace(os.Args[1]))
+	}
+
+	var execErr error
+	switch command {
+	case "", "run":
+		execErr = run(ctx, logger)
+	case "generate":
+		execErr = generate(ctx, logger)
+	default:
+		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
 		os.Exit(1)
 	}
 
-	logger.Info("all tests passed")
+	if execErr != nil {
+		logger.Error("command failed", zap.String("command", command), zap.Error(execErr))
+		os.Exit(1)
+	}
+
+	logger.Info("command completed", zap.String("command", command))
 }

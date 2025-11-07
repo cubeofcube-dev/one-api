@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/Laisky/errors/v2"
-	gmw "github.com/Laisky/gin-middlewares/v6"
-	"github.com/Laisky/go-utils/v5/log"
+	gmw "github.com/Laisky/gin-middlewares/v7"
+	"github.com/Laisky/go-utils/v6/log"
 	"github.com/Laisky/zap"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"

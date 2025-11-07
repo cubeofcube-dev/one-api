@@ -30,6 +30,7 @@ const (
 	expectationToolInvocation
 	expectationVision
 	expectationStructuredOutput
+	expectationToolHistory
 )
 
 // testResult captures the outcome for a single request.

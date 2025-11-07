@@ -23,3 +23,6 @@ errlog
 .github/instructions/filesystem.instructions.md
 .github/instructions/gopls.instructions.md
 .github/instructions/laisky.instructions.md
+
+# test
+/cmd/test/generated/*
