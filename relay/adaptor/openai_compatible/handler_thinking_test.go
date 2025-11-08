@@ -65,6 +65,55 @@ func TestHandler_NonStream_ThinkingParam(t *testing.T) {
 	}
 }
 
+// TestHandler_NonStream_ReasoningFormatThinking ensures reasoning_content is remapped when thinking format requested.
+func TestHandler_NonStream_ReasoningFormatThinking(t *testing.T) {
+	reasoning := "walkthrough"
+	respStruct := SlimTextResponse{
+		Choices: []TextResponseChoice{
+			{
+				Index: 0,
+				Message: model.Message{
+					Role:             "assistant",
+					Content:          "1+1=2",
+					ReasoningContent: &reasoning,
+				},
+				FinishReason: "stop",
+			},
+		},
+		Usage: modelUsage(2, 3),
+	}
+	body, _ := json.Marshal(respStruct)
+
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions?thinking=true&reasoning_format=thinking", nil)
+	c.Request = req
+
+	upstream := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(string(body))),
+	}
+
+	if err, _ := Handler(c, upstream, 0, "kimi-k2-thinking"); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var out SlimTextResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &out); err != nil {
+		t.Fatalf("failed to decode handler output: %v", err)
+	}
+	if len(out.Choices) != 1 {
+		t.Fatalf("expected single choice, got %d", len(out.Choices))
+	}
+	msg := out.Choices[0].Message
+	if msg.Thinking == nil || *msg.Thinking != "walkthrough" {
+		t.Fatalf("expected thinking field to carry reasoning, got %#v", msg.Thinking)
+	}
+	if msg.ReasoningContent != nil {
+		t.Fatalf("expected reasoning_content cleared, got %#v", msg.ReasoningContent)
+	}
+}
+
 // TestHandler_NonStream_OmitsEmptyErrorField verifies that the handler does not emit the error field
 // when upstream responses omit it, preserving OpenAI compatibility for clients that gate on its presence.
 func TestHandler_NonStream_OmitsEmptyErrorField(t *testing.T) {

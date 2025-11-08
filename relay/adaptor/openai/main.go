@@ -344,6 +344,7 @@ func extractReasoningContent(delta *model.Message) string {
 // Handler processes non-streaming responses from OpenAI API
 // Returns error (if any) and token usage information
 func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName string) (*model.ErrorWithStatusCode, *model.Usage) {
+	logger := gmw.GetLogger(c)
 	// Read the entire response body
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -370,19 +371,16 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 	}
 
 	// Process reasoning content in each choice
-	for _, msg := range textResponse.Choices {
-		reasoningContent := processReasoningContent(&msg)
+	reasoningFormat := c.Query("reasoning_format")
+	for i := range textResponse.Choices {
+		choice := &textResponse.Choices[i]
+		reasoningContent := processReasoningContent(choice)
 
 		// Set reasoning in requested format if content exists
 		if reasoningContent != "" {
-			msg.SetReasoningContent(c.Query("reasoning_format"), reasoningContent)
+			choice.SetReasoningContent(reasoningFormat, reasoningContent)
 		}
 	}
-
-	// Reset response body for forwarding to client
-	resp.Body = io.NopCloser(bytes.NewBuffer(responseBody))
-	lg := gmw.GetLogger(c)
-	lg.Debug("handler response", zap.ByteString("body", responseBody))
 
 	// Check if this is a Claude Messages conversion - if so, don't write response here
 	// The DoResponse method will handle the conversion and response writing
@@ -396,6 +394,16 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 	// Calculate token usage BEFORE writing to client so we can still return usage
 	// even if client disconnects causes a write error.
 	calculateTokenUsage(&textResponse, promptTokens, modelName)
+
+	if modifiedBody, marshalErr := json.Marshal(textResponse); marshalErr != nil {
+		logger.Error("failed to marshal modified response body",
+			zap.Error(marshalErr))
+		resp.Body = io.NopCloser(bytes.NewBuffer(responseBody))
+	} else {
+		responseBody = modifiedBody
+		resp.Body = io.NopCloser(bytes.NewBuffer(responseBody))
+	}
+	logger.Debug("handler response", zap.ByteString("body", responseBody))
 
 	// Forward all response headers (not just first value of each)
 	for k, values := range resp.Header {
@@ -440,6 +448,12 @@ func processReasoningContent(msg *TextResponseChoice) string {
 	case msg.Message.ReasoningContent != nil:
 		reasoningContent = *msg.Message.ReasoningContent
 		msg.Message.ReasoningContent = nil
+	case msg.Thinking != nil:
+		reasoningContent = *msg.Thinking
+		msg.Thinking = nil
+	case msg.Message.Thinking != nil:
+		reasoningContent = *msg.Message.Thinking
+		msg.Message.Thinking = nil
 	}
 
 	return reasoningContent

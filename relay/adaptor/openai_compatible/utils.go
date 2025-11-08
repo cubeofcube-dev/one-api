@@ -290,6 +290,11 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			"no_choices_in_response", http.StatusInternalServerError), nil
 	}
 
+	reasoningFormat := c.Query("reasoning_format")
+	for i := range textResponse.Choices {
+		normalizeReasoningChoice(&textResponse.Choices[i], reasoningFormat)
+	}
+
 	// Optionally extract <think> blocks when enabled via URL param and map to requested field
 	if isThinkingEnabled(c.Query("thinking")) {
 		for i := range textResponse.Choices {
@@ -300,7 +305,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			}
 			thinkingContent, clean := ExtractThinkingContent(content)
 			if thinkingContent != "" {
-				msg.SetReasoningContent(c.Query("reasoning_format"), thinkingContent)
+				msg.SetReasoningContent(reasoningFormat, thinkingContent)
 				msg.Content = clean
 			}
 		}
@@ -361,6 +366,41 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 	c.JSON(resp.StatusCode, textResponse)
 
 	return nil, &usage
+}
+
+// normalizeReasoningChoice rewrites any upstream reasoning fields into the requested format.
+func normalizeReasoningChoice(choice *TextResponseChoice, reasoningFormat string) {
+	if choice == nil {
+		return
+	}
+	reasoning := extractReasoningFromMessage(&choice.Message)
+	if reasoning == "" {
+		return
+	}
+	choice.Message.SetReasoningContent(reasoningFormat, reasoning)
+}
+
+// extractReasoningFromMessage captures the first non-empty reasoning payload and clears the source field.
+func extractReasoningFromMessage(msg *model.Message) string {
+	if msg == nil {
+		return ""
+	}
+	switch {
+	case msg.ReasoningContent != nil && *msg.ReasoningContent != "":
+		content := *msg.ReasoningContent
+		msg.ReasoningContent = nil
+		return content
+	case msg.Reasoning != nil && *msg.Reasoning != "":
+		content := *msg.Reasoning
+		msg.Reasoning = nil
+		return content
+	case msg.Thinking != nil && *msg.Thinking != "":
+		content := *msg.Thinking
+		msg.Thinking = nil
+		return content
+	default:
+		return ""
+	}
 }
 
 // ExtractThinkingContent extracts content within the FIRST <think></think> tag only and returns
