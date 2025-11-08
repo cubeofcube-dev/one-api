@@ -353,7 +353,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		// Replicate always returns 1 image; charge for a single image
 		if imagePriceUsd > 0 {
 			// Per-image billing path
-			perImageQuota := math.Ceil(imagePriceUsd * billingratio.ImageUsdPerPic * imageCostRatio * groupRatio)
+			perImageQuota := math.Ceil(imagePriceUsd * billingratio.QuotaPerUsd * imageCostRatio * groupRatio)
 			usedQuota = int64(perImageQuota)
 		} else {
 			usedQuota = int64(math.Ceil(ratio * imageCostRatio))
@@ -361,7 +361,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	default:
 		// Charge per requested image count (n)
 		if imagePriceUsd > 0 {
-			perImageQuota := math.Ceil(imagePriceUsd * billingratio.ImageUsdPerPic * imageCostRatio * groupRatio)
+			perImageQuota := math.Ceil(imagePriceUsd * billingratio.QuotaPerUsd * imageCostRatio * groupRatio)
 			usedQuota = int64(perImageQuota) * int64(imageRequest.N)
 		} else {
 			usedQuota = int64(math.Ceil(ratio*imageCostRatio)) * int64(imageRequest.N)

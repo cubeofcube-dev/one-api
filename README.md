@@ -129,6 +129,8 @@ The original author stopped maintaining the project, leaving critical PRs and ne
       - [Support Cohere Command R \& Rerank](#support-cohere-command-r--rerank)
     - [Coze Features](#coze-features)
       - [Support coze oauth authentication](#support-coze-oauth-authentication)
+    - [Moonshot Features](#moonshot-features)
+      - [Support kimi-k2 Family](#support-kimi-k2-family)
     - [XAI / Grok Features](#xai--grok-features)
       - [Support XAI/Grok Text \& Image Models](#support-xaigrok-text--image-models)
     - [Black Forest Labs Features](#black-forest-labs-features)
@@ -1162,6 +1164,18 @@ Response:
 #### Support coze oauth authentication
 
 - [feat: support coze oauth authentication](https://github.com/Laisky/one-api/pull/52)
+
+### Moonshot Features
+
+#### Support kimi-k2 Family
+
+Support:
+
+- `kimi-k2-0905-preview`
+- `kimi-k2-0711-preview`
+- `kimi-k2-turbo-preview`
+- `kimi-k2-thinking`
+- `kimi-k2-thinking-turbo`
 
 ### XAI / Grok Features
 

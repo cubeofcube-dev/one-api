@@ -182,7 +182,7 @@ func TestSpecificAdapterPricing(t *testing.T) {
 				expected.description)
 		}
 
-		// Special test for image model which uses ImageUsdPerPic (1000)
+		// Special test for image model which uses QuotaPerUsd (1000)
 		imageModel := "grok-2-image-1212"
 		expectedImageRatio := xai.ModelRatios[imageModel].Ratio // $0.07 per image
 		expectedImageCompletionRatio := xai.ModelRatios[imageModel].CompletionRatio
@@ -201,7 +201,7 @@ func TestSpecificAdapterPricing(t *testing.T) {
 
 		t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - %s",
 			imageModel, imageModelRatio, expectedImageRatio, imageModelCompletionRatio, expectedImageCompletionRatio,
-			"$0.07 per image using ImageUsdPerPic")
+			"$0.07 per image using QuotaPerUsd")
 	})
 
 	t.Run("Gemini_Pricing", func(t *testing.T) {

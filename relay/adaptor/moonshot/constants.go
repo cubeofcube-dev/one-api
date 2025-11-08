@@ -9,10 +9,44 @@ import (
 // Model list is derived from the keys of this map, eliminating redundancy
 // Based on Moonshot pricing: https://platform.moonshot.cn/docs/pricing
 var ModelRatios = map[string]adaptor.ModelConfig{
-	// Moonshot Models - Based on https://platform.moonshot.cn/docs/pricing
-	"moonshot-v1-8k":   {Ratio: 12 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"moonshot-v1-32k":  {Ratio: 24 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"moonshot-v1-128k": {Ratio: 60 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Moonshot legacy models (keep for compatibility)
+	// "moonshot-v1-8k":   {Ratio: 12 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// "moonshot-v1-32k":  {Ratio: 24 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// "moonshot-v1-128k": {Ratio: 60 * ratio.MilliTokensRmb, CompletionRatio: 1},
+
+	// Kimi-K2 models (2025-11)
+	// All prices per 1M tokens, in RMB
+	// input: cache-hit, input: cache-miss, output, context
+	"kimi-k2-0905-preview": {
+		Ratio:            4 * ratio.MilliTokensRmb,  // input (cache-miss)
+		CompletionRatio:  16 * ratio.MilliTokensRmb, // output
+		CachedInputRatio: 1 * ratio.MilliTokensRmb,  // input (cache-hit)
+		// MaxTokens:        262144,
+	},
+	"kimi-k2-0711-preview": {
+		Ratio:            4 * ratio.MilliTokensRmb,
+		CompletionRatio:  16 * ratio.MilliTokensRmb,
+		CachedInputRatio: 1 * ratio.MilliTokensRmb,
+		// MaxTokens:        131072,
+	},
+	"kimi-k2-turbo-preview": {
+		Ratio:            8 * ratio.MilliTokensRmb,
+		CompletionRatio:  58 * ratio.MilliTokensRmb,
+		CachedInputRatio: 1 * ratio.MilliTokensRmb,
+		// MaxTokens:        262144,
+	},
+	"kimi-k2-thinking": {
+		Ratio:            4 * ratio.MilliTokensRmb,
+		CompletionRatio:  16 * ratio.MilliTokensRmb,
+		CachedInputRatio: 1 * ratio.MilliTokensRmb,
+		// MaxTokens:        262144,
+	},
+	"kimi-k2-thinking-turbo": {
+		Ratio:            8 * ratio.MilliTokensRmb,
+		CompletionRatio:  58 * ratio.MilliTokensRmb,
+		CachedInputRatio: 1 * ratio.MilliTokensRmb,
+		// MaxTokens:        262144,
+	},
 }
 
 // ModelList derived from ModelRatios for backward compatibility

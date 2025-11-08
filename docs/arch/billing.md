@@ -41,6 +41,8 @@
       - [Key Functions](#key-functions-2)
     - [Post-consumption Phase](#post-consumption-phase)
       - [Key Functions](#key-functions-3)
+    - [Provisional Request Cost Reconciliation (2025-09)](#provisional-request-cost-reconciliation-2025-09)
+    - [Streaming Incremental Billing (2025-09)](#streaming-incremental-billing-2025-09)
     - [Quota Calculation](#quota-calculation)
       - [Text Requests](#text-requests)
       - [Audio Requests](#audio-requests)
@@ -89,7 +91,7 @@
       - [Quota Refund Mechanism](#quota-refund-mechanism)
       - [Key Files](#key-files-4)
     - [Structured Output Pricing](#structured-output-pricing)
-      - [Key Files](#key-files-5)
+      - [Key Notes](#key-notes)
   - [Performance Considerations](#performance-considerations)
     - [Caching Strategy](#caching-strategy-1)
     - [Database Optimization](#database-optimization)
@@ -102,7 +104,7 @@
     - [Implementation](#implementation)
     - [Log Levels and Keywords](#log-levels-and-keywords)
     - [Coverage Analysis](#coverage-analysis)
-    - [Key Files](#key-files-6)
+    - [Key Files](#key-files-5)
   - [Summary](#summary)
 
 ## Overview
@@ -442,12 +444,9 @@ This four-layer approach ensures that custom channels with common models can aut
 // Currency and token conversion constants
 const (
     QuotaPerUsd     = 500000 // $1 = 500,000 quota
+    ExchangeRateRmb  = 8
     MilliTokensUsd  = 0.5    // 0.5 quota per milli-token (0.000001 USD * 500000)
-    ImageUsdPerPic  = 1000   // 1000 quota per image (0.002 USD * 500000)
-    MilliTokensRmb  = 3.5    // 3.5 quota per milli-token (0.000007 RMB * 500000)
-    ImageRmbPerPic  = 7000   // 7000 quota per image (0.014 RMB * 500000)
-    MilliTokensYuan = 3.5    // 3.5 quota per milli-token (0.000007 Yuan * 500000)
-    ImageYuanPerPic = 7000   // 7000 quota per image (0.014 Yuan * 500000)
+    MilliTokensRmb  = MilliTokensUsd / ExchangeRateRmb
     TokensPerSec    = 10     // Video tokens per second for video generation models
 )
 ```

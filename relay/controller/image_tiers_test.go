@@ -7,7 +7,7 @@ import (
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
 
-// Sanity check: usd_per_image * ImageUsdPerPic with $0.04 → 0.04 * 500000 = 20000
+// Sanity check: usd_per_image * QuotaPerUsd with $0.04 → 0.04 * 500000 = 20000
 // We purposely do not call adapters; this guards controller math/unit consistency.
 func TestImageUsdToQuotaMath(t *testing.T) {
 	const quotaPerUsd = 500000.0
