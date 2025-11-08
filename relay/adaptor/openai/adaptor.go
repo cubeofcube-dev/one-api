@@ -768,6 +768,7 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 	resp *http.Response,
 	meta *meta.Meta) (usage *model.Usage,
 	err *model.ErrorWithStatusCode) {
+	skipUsageAdjustments := false
 	if meta.IsStream {
 		var responseText string
 		handledClaudeStream := false
@@ -814,6 +815,15 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 			}
 		}
 	} else {
+		shouldConvertToClaude := false
+		if meta.Mode == relaymode.ChatCompletions {
+			if raw, exists := c.Get(ctxkey.ClaudeMessagesConversion); exists {
+				if flag, ok := raw.(bool); ok && flag {
+					shouldConvertToClaude = true
+				}
+			}
+		}
+
 		switch meta.Mode {
 		case relaymode.ImagesGenerations,
 			relaymode.ImagesEdits:
@@ -825,6 +835,11 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 			// without conversion back to ChatCompletion format
 			err, usage = ResponseAPIDirectHandler(c, resp, meta.PromptTokens, meta.ActualModelName)
 		case relaymode.ChatCompletions:
+			if shouldConvertToClaude {
+				skipUsageAdjustments = true
+				// Skip Handler to keep body intact for Claude conversion.
+				break
+			}
 			// Check if we need to convert Response API response back to ChatCompletion format
 			if vi, ok := c.Get(ctxkey.ConvertedRequest); ok {
 				if _, ok := vi.(*ResponseAPIRequest); ok {
@@ -843,8 +858,10 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 		}
 	}
 
-	if errCost := applyWebSearchToolCost(c, &usage, meta); errCost != nil {
-		return nil, errCost
+	if !skipUsageAdjustments {
+		if errCost := applyWebSearchToolCost(c, &usage, meta); errCost != nil {
+			return nil, errCost
+		}
 	}
 
 	// Handle Claude Messages response conversion
