@@ -131,6 +131,8 @@ The original author stopped maintaining the project, leaving critical PRs and ne
       - [Support coze oauth authentication](#support-coze-oauth-authentication)
     - [Moonshot Features](#moonshot-features)
       - [Support kimi-k2 Family](#support-kimi-k2-family)
+    - [GLM Features](#glm-features)
+      - [Support GLM-4 Family](#support-glm-4-family)
     - [XAI / Grok Features](#xai--grok-features)
       - [Support XAI/Grok Text \& Image Models](#support-xaigrok-text--image-models)
     - [Black Forest Labs Features](#black-forest-labs-features)
@@ -1176,6 +1178,27 @@ Support:
 - `kimi-k2-turbo-preview`
 - `kimi-k2-thinking`
 - `kimi-k2-thinking-turbo`
+
+### GLM Features
+
+Support:
+
+- `glm-zero-preview`
+- `glm-3-turbo`
+- `cogview-3-flash`
+- `codegeex-4`
+- `embedding-3`
+- `embedding-2`
+
+#### Support GLM-4 Family
+
+- `glm-4.6`
+- `glm-4.5`
+- `glm-4.5-x`
+- `glm-4.5-air`
+- `glm-4.5-airx`
+- `glm-4.5-flash`
+- `glm-4v-flash`
 
 ### XAI / Grok Features
 
