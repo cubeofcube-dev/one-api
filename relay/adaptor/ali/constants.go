@@ -5,119 +5,133 @@ import (
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 )
 
-// ModelRatios contains all supported models and their pricing ratios
-// Model list is derived from the keys of this map, eliminating redundancy
+// ModelRatios contains all supported models and their pricing ratios.
+// The model list is derived from the keys of this map.
+// All prices are in MilliTokensRmb (quota per milli-token, RMB pricing):
+//
+//	1 RMB per 1,000 tokens = 1 * 1000 * ratio.MilliTokensRmb
+//	Example: 0.002 RMB/1k tokens = 0.002 * 1000 * ratio.MilliTokensRmb
+//
+// https://help.aliyun.com/zh/model-studio/models
 var ModelRatios = map[string]adaptor.ModelConfig{
-	// Qwen Turbo Models
-	"qwen-turbo":        {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-turbo-latest": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Turbo Models (2025-11)
+	// Non-thinking mode: 0.0006 RMB/1k tokens, Thinking mode: 0.0003 RMB/1k tokens
+	"qwen-turbo":        {Ratio: 0.0006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-turbo-latest": {Ratio: 0.0006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Plus Models
-	"qwen-plus":        {Ratio: 0.8 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-plus-latest": {Ratio: 0.8 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Plus Models (2025-11)
+	// Non-thinking mode: 0.002 RMB/1k tokens, Thinking mode: 0.008 RMB/1k tokens
+	"qwen-plus":        {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-plus-latest": {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Max Models
-	"qwen-max":             {Ratio: 2.4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-max-latest":      {Ratio: 2.4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-max-longcontext": {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Max Models (2025-11)
+	// Tiered pricing: 0<Token≤32K: 0.006 RMB/1k tokens, 32K<Token≤128K: 0.01 RMB/1k tokens, 128K<Token≤252K: 0.015 RMB/1k tokens
+	// Using the lowest tier here
+	"qwen-max":             {Ratio: 0.006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-max-latest":      {Ratio: 0.006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-max-longcontext": {Ratio: 0.006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Vision Models
-	"qwen-vl-max":         {Ratio: 3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-max-latest":  {Ratio: 3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-plus":        {Ratio: 1.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-plus-latest": {Ratio: 1.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-ocr":         {Ratio: 5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-ocr-latest":  {Ratio: 5 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Vision Models (2025-11)
+	// Example: VL Plus, 0.001 RMB/1k tokens
+	"qwen-vl-max":         {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-max-latest":  {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-plus":        {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-plus-latest": {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// OCR 0.005 RMB/1k tokens
+	"qwen-vl-ocr":        {Ratio: 0.005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-ocr-latest": {Ratio: 0.005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Audio Models
-	"qwen-audio-turbo": {Ratio: 1.4286, CompletionRatio: 1},
+	// Qwen Audio Models (2025-11)
+	// Currently free for trial
+	"qwen-audio-turbo": {Ratio: 0, CompletionRatio: 1},
 
-	// Qwen Math Models
-	"qwen-math-plus":         {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-math-plus-latest":  {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-math-turbo":        {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-math-turbo-latest": {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Math Models (2025-11)
+	"qwen-math-plus":         {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-math-plus-latest":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-math-turbo":        {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-math-turbo-latest": {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Coder Models
-	"qwen-coder-plus":         {Ratio: 3.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-coder-plus-latest":  {Ratio: 3.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-coder-turbo":        {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-coder-turbo-latest": {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Coder Models (2025-11)
+	// Example: Plus, 0.004 RMB/1k tokens
+	"qwen-coder-plus":         {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-coder-plus-latest":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-coder-turbo":        {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-coder-turbo-latest": {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen MT Models
-	"qwen-mt-plus":  {Ratio: 15 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-mt-turbo": {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen MT Models (2025-11)
+	"qwen-mt-plus":  {Ratio: 0.0018 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-mt-turbo": {Ratio: 0.0007 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// QwQ Models
-	"qwq-32b-preview": {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// QwQ Models (2025-11)
+	"qwq-32b-preview": {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 2.5 Models
-	"qwen2.5-72b-instruct":  {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-32b-instruct":  {Ratio: 30 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-14b-instruct":  {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-7b-instruct":   {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-3b-instruct":   {Ratio: 6 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-1.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-0.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 2.5 Models (2025-11)
+	"qwen2.5-72b-instruct":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-32b-instruct":  {Ratio: 0.03 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-14b-instruct":  {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-7b-instruct":   {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-3b-instruct":   {Ratio: 0.006 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-1.5b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-0.5b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 2 Models
-	"qwen2-72b-instruct":      {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-57b-a14b-instruct": {Ratio: 3.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-7b-instruct":       {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-1.5b-instruct":     {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-0.5b-instruct":     {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 2 Models (2025-11)
+	"qwen2-72b-instruct":      {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-57b-a14b-instruct": {Ratio: 0.0035 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-7b-instruct":       {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-1.5b-instruct":     {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-0.5b-instruct":     {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 1.5 Models
-	"qwen1.5-110b-chat": {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-72b-chat":  {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-32b-chat":  {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-14b-chat":  {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-7b-chat":   {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-1.8b-chat": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen1.5-0.5b-chat": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 1.5 Models (2025-11)
+	"qwen1.5-110b-chat": {Ratio: 0.008 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-72b-chat":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-32b-chat":  {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-14b-chat":  {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-7b-chat":   {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-1.8b-chat": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen1.5-0.5b-chat": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 1 Models
-	"qwen-72b-chat":              {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-14b-chat":              {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-7b-chat":               {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-1.8b-chat":             {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-1.8b-longcontext-chat": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 1 Models (2025-11)
+	"qwen-72b-chat":              {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-14b-chat":              {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-7b-chat":               {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-1.8b-chat":             {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-1.8b-longcontext-chat": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// QVQ Models
-	"qvq-72b-preview": {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// QVQ Models (2025-11)
+	"qvq-72b-preview": {Ratio: 0.012 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 2.5 VL Models
-	"qwen2.5-vl-72b-instruct":  {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-vl-7b-instruct":   {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-vl-2b-instruct":   {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-vl-1b-instruct":   {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-vl-0.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 2.5 VL Models (2025-11)
+	"qwen2.5-vl-72b-instruct":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-vl-7b-instruct":   {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-vl-2b-instruct":   {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-vl-1b-instruct":   {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-vl-0.5b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen 2 VL Models
-	"qwen2-vl-7b-instruct": {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-vl-2b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-v1":           {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-vl-chat-v1":      {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen 2 VL Models (2025-11)
+	"qwen2-vl-7b-instruct": {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-vl-2b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-v1":           {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen-vl-chat-v1":      {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Audio Models
-	"qwen2-audio-instruct": {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen-audio-chat":      {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Audio Models (2025-11)
+	"qwen2-audio-instruct": {Ratio: 0, CompletionRatio: 1},
+	"qwen-audio-chat":      {Ratio: 0, CompletionRatio: 1},
 
-	// Qwen Math Models (additional)
-	"qwen2.5-math-72b-instruct":  {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-math-7b-instruct":   {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-math-1.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-math-72b-instruct":    {Ratio: 4 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-math-7b-instruct":     {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2-math-1.5b-instruct":   {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Math Models (additional, 2025-11)
+	"qwen2.5-math-72b-instruct":  {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-math-7b-instruct":   {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-math-1.5b-instruct": {Ratio: 0, CompletionRatio: 1},
+	"qwen2-math-72b-instruct":    {Ratio: 0.004 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-math-7b-instruct":     {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2-math-1.5b-instruct":   {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
-	// Qwen Coder Models (additional)
-	"qwen2.5-coder-32b-instruct":  {Ratio: 2 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-coder-14b-instruct":  {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-coder-7b-instruct":   {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-coder-3b-instruct":   {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-coder-1.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"qwen2.5-coder-0.5b-instruct": {Ratio: 0.3 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	// Qwen Coder Models (additional, 2025-11)
+	"qwen2.5-coder-32b-instruct":  {Ratio: 0.002 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-coder-14b-instruct":  {Ratio: 0.001 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-coder-7b-instruct":   {Ratio: 0.0005 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-coder-3b-instruct":   {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-coder-1.5b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"qwen2.5-coder-0.5b-instruct": {Ratio: 0.0003 * 1000 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
 	// DeepSeek Models (hosted on Ali)
 	"deepseek-r1":                   {Ratio: 1 * ratio.MilliTokensRmb, CompletionRatio: 8},
