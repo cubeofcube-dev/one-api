@@ -3,6 +3,7 @@ package relay
 import (
 	"testing"
 
+	"github.com/songquanpeng/one-api/relay/adaptor/ali"
 	"github.com/songquanpeng/one-api/relay/adaptor/openrouter"
 	"github.com/songquanpeng/one-api/relay/adaptor/xai"
 	"github.com/songquanpeng/one-api/relay/apitype"
@@ -82,25 +83,23 @@ func TestSpecificAdapterPricing(t *testing.T) {
 			t.Fatal("Ali adaptor not found")
 		}
 
-		// Ali uses RMB pricing with ratio.MilliTokensRmb = 3.5
-		testModels := map[string]struct {
-			expectedRatio           float64
-			expectedCompletionRatio float64
-		}{
-			"qwen-turbo": {0.3 * 3.5, 1.0}, // 0.3 * ratio.MilliTokensRmb
-			"qwen-plus":  {0.8 * 3.5, 1.0}, // 0.8 * ratio.MilliTokensRmb
-			"qwen-max":   {2.4 * 3.5, 1.0}, // 2.4 * ratio.MilliTokensRmb
-		}
+		// Verify adapter pricing matches the authoritative ModelRatios table.
+		testModels := []string{"qwen-turbo", "qwen-plus", "qwen-max"}
 
-		for model, expected := range testModels {
+		for _, model := range testModels {
+			expectedConfig, ok := ali.ModelRatios[model]
+			if !ok {
+				t.Fatalf("Ali model %s missing from ModelRatios", model)
+			}
+
 			ratio := adaptor.GetModelRatio(model)
 			completionRatio := adaptor.GetCompletionRatio(model)
 
-			if ratio != expected.expectedRatio {
-				t.Errorf("Ali %s: expected ratio %.6f, got %.6f", model, expected.expectedRatio, ratio)
+			if ratio != expectedConfig.Ratio {
+				t.Errorf("Ali %s: expected ratio %.6f, got %.6f", model, expectedConfig.Ratio, ratio)
 			}
-			if completionRatio != expected.expectedCompletionRatio {
-				t.Errorf("Ali %s: expected completion ratio %.2f, got %.2f", model, expected.expectedCompletionRatio, completionRatio)
+			if completionRatio != expectedConfig.CompletionRatio {
+				t.Errorf("Ali %s: expected completion ratio %.2f, got %.2f", model, expectedConfig.CompletionRatio, completionRatio)
 			}
 		}
 	})

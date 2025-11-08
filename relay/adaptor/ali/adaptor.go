@@ -263,8 +263,11 @@ func (a *Adaptor) GetModelRatio(modelName string) float64 {
 	if price, exists := pricing[modelName]; exists {
 		return price.Ratio
 	}
-	// Default Ali pricing
-	return 0.8 * 0.0001 // Default RMB pricing
+	for _, price := range pricing {
+		return price.Ratio
+	}
+	var defaultPricing adaptor.DefaultPricingMethods
+	return defaultPricing.GetModelRatio(modelName)
 }
 
 func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
@@ -272,6 +275,11 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	if price, exists := pricing[modelName]; exists {
 		return price.CompletionRatio
 	}
-	// Default completion ratio for Ali
-	return 1.0
+	for _, price := range pricing {
+		if price.CompletionRatio > 0 {
+			return price.CompletionRatio
+		}
+	}
+	var defaultPricing adaptor.DefaultPricingMethods
+	return defaultPricing.GetCompletionRatio(modelName)
 }
