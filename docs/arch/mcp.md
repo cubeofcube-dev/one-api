@@ -531,11 +531,3 @@ MCP transport / server errors appear inside `mcp_call` items: `error` field popu
 2. When unmarshalling JSON verify `tool.Function` nil before dereference.
 3. Add validation step for externally supplied MCP tool objects.
 4. Update any custom serialization assumptions (Function no longer guaranteed non-nil).
-
----
-
-For deeper architectural details, read preceding sections; this How-to-Use focuses on practical invocation patterns and safe integration.
-
-```
-
-```

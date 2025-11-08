@@ -33,7 +33,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// "deepseek-r1-distill-qwen-32b":          {Ratio: 0.29 * ratio.MilliTokensUsd, CompletionRatio: 1},
 	// "deepseek-r1-distill-llama-70b-specdec": {Ratio: 0.75 * ratio.MilliTokensUsd, CompletionRatio: 0.99 / 0.75},
 	// "deepseek-r1-distill-llama-70b":         {Ratio: 0.75 * ratio.MilliTokensUsd, CompletionRatio: 0.99 / 0.75},
-	"moonshotai/kimi-k2-instruct": {Ratio: 1 * ratio.MilliTokensUsd, CompletionRatio: 3},
+	"moonshotai/kimi-k2-instruct-0905": {Ratio: 1 * ratio.MilliTokensUsd, CachedInputRatio: 0.5 * ratio.MilliTokensUsd, CompletionRatio: 3},
 	// "llama-3.2-1b-preview":                          {Ratio: 0.04 * ratio.MilliTokensUsd, CompletionRatio: 1},
 	// "llama-3.2-3b-preview":                          {Ratio: 0.06 * ratio.MilliTokensUsd, CompletionRatio: 1},
 	// "llama-3.2-11b-vision-preview":                  {Ratio: 0.18 * ratio.MilliTokensUsd, CompletionRatio: 1},
