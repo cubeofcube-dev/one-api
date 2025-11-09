@@ -11,6 +11,7 @@ vi.mock('@/lib/api')
 
 const mockLogin = vi.fn()
 const mockUseAuthStore = useAuthStore as any
+const mockApiGet = vi.mocked(api.get)
 
 // Mock localStorage
 const mockLocalStorage = {
@@ -18,11 +19,12 @@ const mockLocalStorage = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
 }
-Object.defineProperty(window, 'localStorage', { value: mockLocalStorage })
+Object.defineProperty(window, 'localStorage', { value: mockLocalStorage, configurable: true })
 
 // Mock window.history
 Object.defineProperty(window, 'history', {
   value: { replaceState: vi.fn() },
+  configurable: true,
 })
 
 const renderLoginPage = () => {
@@ -36,6 +38,13 @@ const renderLoginPage = () => {
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockApiGet.mockReset()
+    mockApiGet.mockResolvedValue({
+      data: {
+        success: true,
+        data: { turnstile_check: false },
+      },
+    } as any)
     mockUseAuthStore.mockReturnValue({
       login: mockLogin,
     })
@@ -43,8 +52,6 @@ describe('LoginPage', () => {
       system_name: 'Test API',
       github_oauth: false,
     }))
-    // Restore real implementation of useNavigate for all tests except the one that mocks it
-    vi.resetModules()
   })
 
   it('renders login form correctly', () => {

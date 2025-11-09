@@ -29,6 +29,7 @@ import { StatusPage } from '@/pages/status/StatusPage'
 import { TopUpPage } from '@/pages/topup/TopUpPage'
 import { NotFoundPage } from '@/pages/NotFoundPage'
 import { api } from '@/lib/api'
+import { persistSystemStatus } from '@/lib/utils'
 import { ResponsiveDebugger } from '@/components/dev/responsive-debugger'
 import { ResponsiveValidator } from '@/components/dev/responsive-validator'
 import { PlaygroundPage } from './pages/chat/PlaygroundPage'
@@ -43,19 +44,7 @@ const initializeSystem = async () => {
     const { success, data } = response.data
 
     if (success && data) {
-      // Set up localStorage with system settings
-      localStorage.setItem('status', JSON.stringify(data))
-      localStorage.setItem('system_name', data.system_name || 'One API')
-      localStorage.setItem('logo', data.logo || '')
-      localStorage.setItem('footer_html', data.footer_html || '')
-      localStorage.setItem('quota_per_unit', data.quota_per_unit || '500000')
-      localStorage.setItem('display_in_currency', data.display_in_currency || 'true')
-
-      if (data.chat_link) {
-        localStorage.setItem('chat_link', data.chat_link)
-      } else {
-        localStorage.removeItem('chat_link')
-      }
+      persistSystemStatus(data)
     }
   } catch (error) {
     console.error('Failed to initialize system settings:', error)

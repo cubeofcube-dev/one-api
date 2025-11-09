@@ -85,7 +85,23 @@ export interface SystemStatus {
   turnstile_site_key?: string
   github_oauth?: boolean
   github_client_id?: string
+  chat_link?: string
   [key: string]: any
+}
+
+export const persistSystemStatus = (data: SystemStatus) => {
+  localStorage.setItem('status', JSON.stringify(data))
+  localStorage.setItem('system_name', data.system_name || 'One API')
+  localStorage.setItem('logo', data.logo || '')
+  localStorage.setItem('footer_html', data.footer_html || '')
+  localStorage.setItem('quota_per_unit', data.quota_per_unit || '500000')
+  localStorage.setItem('display_in_currency', data.display_in_currency || 'true')
+
+  if (data.chat_link) {
+    localStorage.setItem('chat_link', data.chat_link)
+  } else {
+    localStorage.removeItem('chat_link')
+  }
 }
 
 export const loadSystemStatus = async (): Promise<SystemStatus | null> => {
@@ -94,6 +110,7 @@ export const loadSystemStatus = async (): Promise<SystemStatus | null> => {
   if (status) {
     try {
       const parsedStatus = JSON.parse(status)
+      persistSystemStatus(parsedStatus)
       return parsedStatus
     } catch (error) {
       console.error('Error parsing system status:', error)
@@ -106,13 +123,7 @@ export const loadSystemStatus = async (): Promise<SystemStatus | null> => {
     const { success, data } = response.data
 
     if (success && data) {
-      localStorage.setItem('status', JSON.stringify(data))
-      localStorage.setItem('system_name', data.system_name || 'One API')
-      localStorage.setItem('logo', data.logo || '')
-      localStorage.setItem('footer_html', data.footer_html || '')
-      localStorage.setItem('quota_per_unit', data.quota_per_unit || '500000')
-      localStorage.setItem('display_in_currency', data.display_in_currency || 'true')
-
+      persistSystemStatus(data)
       return data
     }
   } catch (error) {

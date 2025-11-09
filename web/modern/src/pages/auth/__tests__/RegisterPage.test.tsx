@@ -2,6 +2,9 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { RegisterPage } from '../RegisterPage'
 import { vi } from 'vitest'
+import { api } from '@/lib/api'
+
+vi.mock('@/lib/api')
 
 // Mock localStorage used by the page to read cached system status
 const mockLocalStorage = {
@@ -9,11 +12,20 @@ const mockLocalStorage = {
   setItem: vi.fn(),
   removeItem: vi.fn(),
 }
-Object.defineProperty(window, 'localStorage', { value: mockLocalStorage })
+Object.defineProperty(window, 'localStorage', { value: mockLocalStorage, configurable: true })
+
+const mockApiGet = vi.mocked(api.get)
 
 describe('RegisterPage (modern)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockApiGet.mockReset()
+    mockApiGet.mockResolvedValue({
+      data: {
+        success: true,
+        data: { turnstile_check: false },
+      },
+    } as any)
     // Provide minimal system status cache to avoid optional UI branches
     mockLocalStorage.getItem.mockReturnValue(
       JSON.stringify({ system_name: 'Test API', github_oauth: false })

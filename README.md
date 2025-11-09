@@ -15,6 +15,8 @@ Open‑source version of OpenRouter, managed through a unified gateway that hand
 
 Also welcome to register and use my deployed one-api gateway, which supports various mainstream models. For usage instructions, please refer to <https://wiki.laisky.com/projects/gpt/pay/>.
 
+Try it at <https://oneapi.laisky.com>, login with `test` / `test`. 🚀
+
 ```plain
 === One-API Compatibility Matrix ===
 

@@ -28,6 +28,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { useAuthStore } from "@/lib/stores/auth";
 import { api } from "@/lib/api";
+import { useSystemStatus } from "@/hooks/useSystemStatus";
 import Turnstile from "@/components/Turnstile";
 import { buildGitHubOAuthUrl, getOAuthState } from "@/lib/oauth";
 
@@ -44,21 +45,9 @@ const loginSchema = z.object({
 
 type LoginForm = z.infer<typeof loginSchema>;
 
-interface SystemStatus {
-  github_oauth?: boolean;
-  github_client_id?: string;
-  wechat_login?: boolean;
-  lark_client_id?: string;
-  system_name?: string;
-  logo?: string;
-  turnstile_check?: boolean;
-  turnstile_site_key?: string;
-}
-
 export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [totpRequired, setTotpRequired] = useState(false);
-  const [systemStatus, setSystemStatus] = useState<SystemStatus>({});
   const [successMessage, setSuccessMessage] = useState<string>("");
   const [totpValue, setTotpValue] = useState("");
   const [turnstileToken, setTurnstileToken] = useState("");
@@ -67,6 +56,9 @@ export function LoginPage() {
   const [searchParams] = useSearchParams();
   const location = useLocation();
   const { login } = useAuthStore();
+  const { systemStatus } = useSystemStatus();
+  const turnstileEnabled = Boolean(systemStatus?.turnstile_check);
+  const turnstileRenderable = turnstileEnabled && Boolean(systemStatus?.turnstile_site_key);
 
   const form = useForm<LoginForm>({
     resolver: zodResolver(loginSchema),
@@ -86,15 +78,6 @@ export function LoginPage() {
       window.history.replaceState({}, document.title);
     }
 
-    // Load system status
-    const status = localStorage.getItem("status");
-    if (status) {
-      try {
-        setSystemStatus(JSON.parse(status));
-      } catch (error) {
-        console.error("Error parsing system status:", error);
-      }
-    }
   }, [searchParams, location.state]);
 
   const onGitHubOAuth = async () => {
@@ -121,7 +104,7 @@ export function LoginPage() {
   };
 
   const onSubmit = async (data: LoginForm) => {
-    if (systemStatus?.turnstile_check && !turnstileToken) {
+    if (turnstileEnabled && !turnstileToken) {
       form.setError("root", { message: "Please complete the Turnstile verification" });
       return;
     }
@@ -134,7 +117,7 @@ export function LoginPage() {
       if (totpRequired && totpValue) payload.totp_code = totpValue;
       // Unified API call - complete URL with /api prefix
       const query =
-        systemStatus?.turnstile_check && turnstileToken
+        turnstileEnabled && turnstileToken
           ? `?turnstile=${encodeURIComponent(turnstileToken)}`
           : "";
       const response = await api.post(`/api/user/login${query}`, payload);
@@ -305,7 +288,7 @@ export function LoginPage() {
                 disabled={
                   isLoading ||
                   (totpRequired && totpValue.length !== 6) ||
-                  (systemStatus?.turnstile_check && !turnstileToken)
+                  (turnstileEnabled && !turnstileToken)
                 }
               >
                 {isLoading
@@ -315,7 +298,7 @@ export function LoginPage() {
                     : "Sign In"}
               </Button>
 
-              {systemStatus?.turnstile_check && systemStatus?.turnstile_site_key && (
+              {turnstileRenderable && systemStatus?.turnstile_site_key && (
                 <Turnstile
                   siteKey={systemStatus.turnstile_site_key}
                   onVerify={(token) => setTurnstileToken(token)}

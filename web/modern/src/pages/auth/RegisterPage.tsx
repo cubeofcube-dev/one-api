@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { api } from '@/lib/api'
 import Turnstile from '@/components/Turnstile'
+import { useSystemStatus } from '@/hooks/useSystemStatus'
 import { buildGitHubOAuthUrl, getOAuthState } from '@/lib/oauth'
 
 const registerSchema = z.object({
@@ -28,10 +29,10 @@ type RegisterForm = z.infer<typeof registerSchema>
 export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
-  const [systemStatus, setSystemStatus] = useState<any>({})
   const [turnstileToken, setTurnstileToken] = useState<string>('')
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const { systemStatus } = useSystemStatus()
 
   // Extract affiliate code from URL parameter
   const affCodeFromUrl = searchParams.get('aff') || ''
@@ -50,14 +51,6 @@ export function RegisterPage() {
 
   // Watch email field to enable/disable send code button
   const emailValue = form.watch('email')
-
-  // Load cached system status (set by App on startup)
-  useEffect(() => {
-    const status = localStorage.getItem('status')
-    if (status) {
-      try { setSystemStatus(JSON.parse(status)) } catch { }
-    }
-  }, [])
 
   const onGitHubOAuth = async () => {
     const clientId = systemStatus?.github_client_id
