@@ -10,13 +10,15 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { renderQuota } from '@/lib/utils'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
 import { Plus, Copy, Eye, EyeOff, Check } from 'lucide-react'
+import { useAuthStore } from '@/lib/stores/auth'
 import { useClipboardManager } from './useClipboardManager'
 
-interface Token {
+export interface Token {
   id: number
   name: string
   key: string
@@ -66,12 +68,23 @@ const getStatusBadge = (status: number) => {
   }
 }
 
+export const shouldHighlightTokenQuota = (token: Token, userQuota: number | null): boolean => {
+  if (userQuota === null || userQuota < 0) {
+    return false
+  }
+  if (token.unlimited_quota) {
+    return true
+  }
+  return token.remain_quota > userQuota
+}
+
 /**
  * TokensPage renders the management interface for API tokens, including search, sorting, and key utilities.
  */
 export function TokensPage() {
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const userQuota = useAuthStore(state => state.user?.quota ?? null)
   const [data, setData] = useState<Token[]>([])
   const [loading, setLoading] = useState(false)
   const [pageIndex, setPageIndex] = useState(0)
@@ -314,11 +327,36 @@ export function TokensPage() {
     {
       accessorKey: 'remain_quota',
       header: 'Remaining Quota',
-      cell: ({ row }) => (
-        <span className="font-mono text-sm" title={`Remaining: ${formatQuota(row.original.remain_quota, row.original.unlimited_quota)}`}>
-          {formatQuota(row.original.remain_quota, row.original.unlimited_quota)}
-        </span>
-      ),
+      cell: ({ row }) => {
+        const token = row.original
+        const quotaLabel = formatQuota(token.remain_quota, token.unlimited_quota)
+        const highlight = shouldHighlightTokenQuota(token, userQuota)
+        const quotaClasses = cn(
+          'font-mono text-sm',
+          highlight && 'text-amber-600 font-semibold'
+        )
+
+        if (!highlight) {
+          return (
+            <span className={quotaClasses} title={`Remaining: ${quotaLabel}`}>
+              {quotaLabel}
+            </span>
+          )
+        }
+
+        return (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className={quotaClasses} title={`Remaining: ${quotaLabel}`}>
+                {quotaLabel}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              This token retains more quota than your account allocation.
+            </TooltipContent>
+          </Tooltip>
+        )
+      },
     },
     {
       accessorKey: 'used_quota',
@@ -421,7 +459,7 @@ export function TokensPage() {
   }
 
   return (
-    <>
+    <TooltipProvider delayDuration={150}>
       <ResponsivePageContainer
         title="Tokens"
         description="Manage your API access tokens"
@@ -499,7 +537,7 @@ export function TokensPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </TooltipProvider>
   )
 }
 
