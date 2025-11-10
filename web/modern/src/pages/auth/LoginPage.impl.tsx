@@ -193,6 +193,17 @@ export function LoginPage() {
     systemStatus.wechat_login ||
     systemStatus.lark_client_id;
 
+  const handleTurnstileVerify = (token: string) => {
+    setTurnstileToken(token);
+    if (!totpRequired && form.formState.errors.root?.message) {
+      form.clearErrors("root");
+    }
+  };
+
+  const handleTurnstileExpire = () => {
+    setTurnstileToken("");
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
@@ -212,7 +223,11 @@ export function LoginPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form
+              data-testid="login-form"
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-4"
+            >
               <FormField
                 control={form.control}
                 name="username"
@@ -301,8 +316,8 @@ export function LoginPage() {
               {turnstileRenderable && systemStatus?.turnstile_site_key && (
                 <Turnstile
                   siteKey={systemStatus.turnstile_site_key}
-                  onVerify={(token) => setTurnstileToken(token)}
-                  onExpire={() => setTurnstileToken("")}
+                  onVerify={handleTurnstileVerify}
+                  onExpire={handleTurnstileExpire}
                   className="mt-2 flex justify-center"
                 />
               )}

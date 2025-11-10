@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { renderQuota, cn } from '@/lib/utils'
+import { useNotifications } from '@/components/ui/notifications'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
 
 interface UserRow {
@@ -32,6 +33,7 @@ interface UserRow {
 export function UsersPage() {
   const navigate = useNavigate()
   const { isMobile } = useResponsive()
+  const { notify } = useNotifications()
   const [data, setData] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(false)
   const [pageIndex, setPageIndex] = useState(0)
@@ -59,6 +61,9 @@ export function UsersPage() {
         setPageIndex(p)
         setPageSize(size)
       }
+    } catch (error) {
+      const message = (error as any)?.response?.data?.message || 'Failed to load users.'
+      notify({ type: 'error', title: 'Access denied', message })
     } finally {
       setLoading(false)
     }
@@ -120,6 +125,9 @@ export function UsersPage() {
         setData(data)
         setPageIndex(0)
       }
+    } catch (error) {
+      const message = (error as any)?.response?.data?.message || 'Search failed.'
+      notify({ type: 'error', title: 'Search failed', message })
     } finally {
       setLoading(false)
     }
@@ -180,24 +188,29 @@ export function UsersPage() {
   ]
 
   const manage = async (id: number, action: 'enable' | 'disable' | 'delete', idx: number) => {
-    let res: any
-    if (action === 'delete') {
-      // Unified API call - complete URL with /api prefix
-      res = await api.delete(`/api/user/${id}`)
-    } else {
-      const body: any = { id, status: action === 'enable' ? 1 : 2 }
-      res = await api.put('/api/user/?status_only=true', body)
-    }
-    const { success } = res.data
-    if (success) {
-      // Optimistic update like legacy
-      const next = [...data]
+    try {
+      let res: any
       if (action === 'delete') {
-        next.splice(idx, 1)
+        // Unified API call - complete URL with /api prefix
+        res = await api.delete(`/api/user/${id}`)
       } else {
-        next[idx].status = action === 'enable' ? 1 : 2
+        const body: any = { id, status: action === 'enable' ? 1 : 2 }
+        res = await api.put('/api/user/?status_only=true', body)
       }
-      setData(next)
+      const { success } = res.data
+      if (success) {
+        // Optimistic update like legacy
+        const next = [...data]
+        if (action === 'delete') {
+          next.splice(idx, 1)
+        } else {
+          next[idx].status = action === 'enable' ? 1 : 2
+        }
+        setData(next)
+      }
+    } catch (error) {
+      const message = (error as any)?.response?.data?.message || 'Unable to apply change.'
+      notify({ type: 'error', title: 'Action failed', message })
     }
   }
 

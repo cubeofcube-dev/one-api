@@ -62,10 +62,9 @@ api.interceptors.response.use(
     // Handle legacy 200 OK with success: false for auth errors
     if (response.data && response.data.success === false) {
       const url = response.config?.url || ''
-      const message = response.data.message || ''
+      const message = (response.data.message || '').toLowerCase()
       const isAuthError = message.includes('access token is invalid') ||
-                         message.includes('not logged in') ||
-                         message.includes('No permission to perform this operation')
+                         message.includes('not logged in')
 
       // Do not redirect for known public endpoints
       const isPublicEndpoint = url.startsWith('/api/models/display')
@@ -79,7 +78,9 @@ api.interceptors.response.use(
   },
   (error) => {
     // Handle proper HTTP status codes for authentication/authorization failures
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    const status = error.response?.status
+    const message = (error.response?.data?.message || '').toLowerCase()
+    if (status === 401 || (status === 403 && message.includes('not logged in'))) {
       handleAuthFailure()
     }
     return Promise.reject(error)

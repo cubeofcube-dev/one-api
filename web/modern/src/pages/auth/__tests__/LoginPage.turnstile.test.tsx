@@ -1,5 +1,6 @@
 import { describe, expect, test, beforeEach, beforeAll, afterAll, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { act } from 'react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { LoginPage } from '../LoginPage.impl'
@@ -103,10 +104,52 @@ describe('LoginPage Turnstile integration', () => {
     await user.type(screen.getByLabelText(/username/i), 'demo')
     await user.type(screen.getByLabelText(/password/i), 'password')
 
-    await user.click(screen.getByRole('button', { name: /sign in/i }))
+    const submitButton = screen.getByRole('button', { name: /sign in/i })
+    expect(submitButton).toBeDisabled()
+
+    await act(async () => {
+      fireEvent.submit(screen.getByTestId('login-form'))
+    })
 
     expect(postSpy).not.toHaveBeenCalled()
-    expect(screen.getByText('Please complete the Turnstile verification')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Please complete the Turnstile verification')).toBeInTheDocument()
+    })
+  })
+
+  test('clears Turnstile warning after verification succeeds', async () => {
+    vi.spyOn(api, 'get').mockResolvedValue({
+      data: {
+        success: true,
+        data: { turnstile_check: true, turnstile_site_key: 'site-key' },
+      },
+    } as any)
+
+    const user = userEvent.setup()
+
+    render(
+      <MemoryRouter initialEntries={["/login"]}>
+        <LoginPage />
+      </MemoryRouter>
+    )
+
+    const widget = await screen.findByTestId('turnstile-mock')
+
+    await user.type(screen.getByLabelText(/username/i), 'demo')
+    await user.type(screen.getByLabelText(/password/i), 'password')
+
+    await act(async () => {
+      fireEvent.submit(screen.getByTestId('login-form'))
+    })
+    await waitFor(() => {
+      expect(screen.getByText('Please complete the Turnstile verification')).toBeInTheDocument()
+    })
+
+    await user.click(widget)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Please complete the Turnstile verification')).not.toBeInTheDocument()
+    })
   })
 
   test('submits login with Turnstile token once verification passes', async () => {
@@ -134,7 +177,11 @@ describe('LoginPage Turnstile integration', () => {
     await user.type(screen.getByLabelText(/password/i), 'password')
 
     await user.click(widget)
-    await user.click(screen.getByRole('button', { name: /sign in/i }))
+
+    const submitButton = screen.getByRole('button', { name: /sign in/i })
+    await waitFor(() => expect(submitButton).not.toBeDisabled())
+
+    await user.click(submitButton)
 
     await waitFor(() => expect(postSpy).toHaveBeenCalledTimes(1))
     const [requestedPath] = postSpy.mock.calls[0]
