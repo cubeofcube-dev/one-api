@@ -981,6 +981,9 @@ func supportsNativeResponseAPI(meta *metalib.Meta) bool {
 			return true
 		}
 		return strings.Contains(base, "api.openai.com")
+	case channeltype.XAI:
+		// XAI supports Response API natively
+		return true
 	case channeltype.OpenAICompatible:
 		return channeltype.UseOpenAICompatibleResponseAPI(meta.Config.APIFormat)
 	default:
