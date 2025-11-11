@@ -75,28 +75,6 @@ func shouldForceResponseAPI(metaInfo *meta.Meta) bool {
 	}
 }
 
-// webSearchCallUSDPerThousand returns the USD cost per 1000 calls for the given model name
-//
-//   - https://openai.com/api/pricing/
-//   - https://platform.openai.com/docs/pricing#built-in-tools
-func webSearchCallUSDPerThousand(modelName string) float64 {
-	lower := normalizedModelName(modelName)
-
-	if isModelSupportedReasoning(lower) {
-		return 10.0
-	}
-
-	if isWebSearchPreviewModel(lower) {
-		return 25.0
-	}
-
-	if strings.Contains(lower, "-web-search") || strings.Contains(lower, "-search") {
-		return 10.0
-	}
-
-	return 25.0
-}
-
 func normalizedModelName(modelName string) string {
 	return strings.ToLower(strings.TrimSpace(modelName))
 }
@@ -867,6 +845,12 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 	}
 
 	return
+}
+
+// DefaultToolingConfig returns OpenAI's upstream tooling defaults so channel
+// policy resolution can merge in provider pricing and allowlists.
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return openAIToolingDefaults
 }
 
 // convertToClaudeResponse converts OpenAI response format to Claude Messages format

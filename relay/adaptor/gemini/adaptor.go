@@ -21,6 +21,7 @@ import (
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/random"
 	channelhelper "github.com/songquanpeng/one-api/relay/adaptor"
+	"github.com/songquanpeng/one-api/relay/adaptor/geminiOpenaiCompatible"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	"github.com/songquanpeng/one-api/relay/meta"
@@ -643,6 +644,12 @@ func (a *Adaptor) GetModelList() []string {
 
 func (a *Adaptor) GetChannelName() string {
 	return "google gemini"
+}
+
+// DefaultToolingConfig exposes Google's default grounded web search tooling
+// metadata so channel policy builders can merge in provider pricing.
+func (a *Adaptor) DefaultToolingConfig() channelhelper.ChannelToolConfig {
+	return geminiOpenaiCompatible.GeminiToolingDefaults()
 }
 
 func mapGeminiFinishReason(reason string) string {

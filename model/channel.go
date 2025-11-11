@@ -64,17 +64,18 @@ type Channel struct {
 }
 
 type ChannelConfig struct {
-	Region            string `json:"region,omitempty"`
-	SK                string `json:"sk,omitempty"`
-	AK                string `json:"ak,omitempty"`
-	UserID            string `json:"user_id,omitempty"`
-	APIVersion        string `json:"api_version,omitempty"`
-	LibraryID         string `json:"library_id,omitempty"`
-	Plugin            string `json:"plugin,omitempty"`
-	VertexAIProjectID string `json:"vertex_ai_project_id,omitempty"`
-	VertexAIADC       string `json:"vertex_ai_adc,omitempty"`
-	AuthType          string `json:"auth_type,omitempty"`
-	APIFormat         string `json:"api_format,omitempty"`
+	Region            string                `json:"region,omitempty"`
+	SK                string                `json:"sk,omitempty"`
+	AK                string                `json:"ak,omitempty"`
+	UserID            string                `json:"user_id,omitempty"`
+	APIVersion        string                `json:"api_version,omitempty"`
+	LibraryID         string                `json:"library_id,omitempty"`
+	Plugin            string                `json:"plugin,omitempty"`
+	VertexAIProjectID string                `json:"vertex_ai_project_id,omitempty"`
+	VertexAIADC       string                `json:"vertex_ai_adc,omitempty"`
+	AuthType          string                `json:"auth_type,omitempty"`
+	APIFormat         string                `json:"api_format,omitempty"`
+	Tooling           *ChannelToolingConfig `json:"tooling,omitempty"`
 }
 
 type ModelConfig struct {
@@ -84,11 +85,9 @@ type ModelConfig struct {
 // ModelConfigLocal represents the local definition of ModelConfig to avoid import cycles
 // This should match the structure in relay/adaptor/interface.go
 type ModelConfigLocal struct {
-	Ratio           float64                     `json:"ratio"`
-	CompletionRatio float64                     `json:"completion_ratio,omitempty"`
-	MaxTokens       int32                       `json:"max_tokens,omitempty"`
-	ToolWhitelist   []string                    `json:"tool_whitelist,omitempty"`
-	ToolPricing     map[string]ToolPricingLocal `json:"tool_pricing,omitempty"`
+	Ratio           float64 `json:"ratio"`
+	CompletionRatio float64 `json:"completion_ratio,omitempty"`
+	MaxTokens       int32   `json:"max_tokens,omitempty"`
 }
 
 // ToolPricingLocal is the channel-scoped representation of adaptor.ToolPricingConfig.
@@ -98,60 +97,113 @@ type ToolPricingLocal struct {
 	QuotaPerCall int64   `json:"quota_per_call,omitempty"`
 }
 
-// normalizeModelConfigLocal trims whitespace, deduplicates tool lists, and validates pricing values.
-func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
-	normalized := ModelConfigLocal{
-		Ratio:           cfg.Ratio,
-		CompletionRatio: cfg.CompletionRatio,
-		MaxTokens:       cfg.MaxTokens,
+// normalizeToolWhitelist trims, deduplicates, and validates the provided tooling whitelist.
+func normalizeToolWhitelist(list []string) ([]string, error) {
+	if len(list) == 0 {
+		return nil, nil
 	}
-
-	if len(cfg.ToolWhitelist) > 0 {
-		seen := make(map[string]struct{}, len(cfg.ToolWhitelist))
-		normalized.ToolWhitelist = make([]string, 0, len(cfg.ToolWhitelist))
-		for _, raw := range cfg.ToolWhitelist {
-			trimmed := strings.TrimSpace(raw)
-			if trimmed == "" {
-				return ModelConfigLocal{}, errors.New("tool whitelist cannot contain empty entries")
-			}
-			lower := strings.ToLower(trimmed)
-			if _, exists := seen[lower]; exists {
-				continue
-			}
-			seen[lower] = struct{}{}
-			normalized.ToolWhitelist = append(normalized.ToolWhitelist, trimmed)
+	seen := make(map[string]struct{}, len(list))
+	normalized := make([]string, 0, len(list))
+	for _, raw := range list {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			return nil, errors.New("tool whitelist cannot contain empty entries")
 		}
-		if len(normalized.ToolWhitelist) == 0 {
-			normalized.ToolWhitelist = nil
+		lower := strings.ToLower(trimmed)
+		if _, exists := seen[lower]; exists {
+			continue
 		}
+		seen[lower] = struct{}{}
+		normalized = append(normalized, trimmed)
 	}
-
-	if len(cfg.ToolPricing) > 0 {
-		normalized.ToolPricing = make(map[string]ToolPricingLocal, len(cfg.ToolPricing))
-		for rawName, pricing := range cfg.ToolPricing {
-			trimmedName := strings.TrimSpace(rawName)
-			if trimmedName == "" {
-				return ModelConfigLocal{}, errors.New("tool pricing cannot contain empty tool names")
-			}
-			if pricing.UsdPerCall < 0 {
-				return ModelConfigLocal{}, errors.Errorf("tool %s usd_per_call cannot be negative", trimmedName)
-			}
-			if pricing.QuotaPerCall < 0 {
-				return ModelConfigLocal{}, errors.Errorf("tool %s quota_per_call cannot be negative", trimmedName)
-			}
-			normalized.ToolPricing[trimmedName] = pricing
-		}
-		if len(normalized.ToolPricing) == 0 {
-			normalized.ToolPricing = nil
-		}
+	if len(normalized) == 0 {
+		return nil, nil
 	}
-
 	return normalized, nil
 }
 
-// hasToolingData reports whether the configuration contains tool whitelist or pricing data.
-func hasToolingData(cfg ModelConfigLocal) bool {
-	return len(cfg.ToolWhitelist) > 0 || len(cfg.ToolPricing) > 0
+// normalizeToolPricingMap validates provider pricing definitions and removes empty entries.
+func normalizeToolPricingMap(pricing map[string]ToolPricingLocal) (map[string]ToolPricingLocal, error) {
+	if len(pricing) == 0 {
+		return nil, nil
+	}
+	normalized := make(map[string]ToolPricingLocal, len(pricing))
+	for rawName, value := range pricing {
+		name := strings.TrimSpace(rawName)
+		if name == "" {
+			return nil, errors.New("tool pricing cannot contain empty tool names")
+		}
+		if value.UsdPerCall < 0 {
+			return nil, errors.Errorf("tool %s usd_per_call cannot be negative", name)
+		}
+		if value.QuotaPerCall < 0 {
+			return nil, errors.Errorf("tool %s quota_per_call cannot be negative", name)
+		}
+		normalized[name] = value
+	}
+	if len(normalized) == 0 {
+		return nil, nil
+	}
+	return normalized, nil
+}
+
+// normalizeChannelToolingConfig applies whitelist/pricing validation to a channel tooling configuration.
+func normalizeChannelToolingConfig(cfg *ChannelToolingConfig) (*ChannelToolingConfig, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	normalized := &ChannelToolingConfig{}
+	list, err := normalizeToolWhitelist(cfg.Whitelist)
+	if err != nil {
+		return nil, err
+	}
+	if len(list) > 0 {
+		normalized.Whitelist = list
+	}
+	pricing, err := normalizeToolPricingMap(cfg.Pricing)
+	if err != nil {
+		return nil, err
+	}
+	if len(pricing) > 0 {
+		normalized.Pricing = pricing
+	}
+	if len(normalized.Whitelist) == 0 && len(normalized.Pricing) == 0 {
+		return nil, nil
+	}
+	return normalized, nil
+}
+
+// cloneChannelToolingConfig produces a deep copy of the tooling configuration so callers can mutate safely.
+func cloneChannelToolingConfig(cfg *ChannelToolingConfig) *ChannelToolingConfig {
+	if cfg == nil {
+		return nil
+	}
+	clone := &ChannelToolingConfig{}
+	if len(cfg.Whitelist) > 0 {
+		clone.Whitelist = append([]string(nil), cfg.Whitelist...)
+	}
+	if len(cfg.Pricing) > 0 {
+		clone.Pricing = make(map[string]ToolPricingLocal, len(cfg.Pricing))
+		for k, v := range cfg.Pricing {
+			clone.Pricing[k] = v
+		}
+	}
+	return clone
+}
+
+// normalizeModelConfigLocal trims whitespace and validates numeric fields.
+func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
+	return ModelConfigLocal{
+		Ratio:           cfg.Ratio,
+		CompletionRatio: cfg.CompletionRatio,
+		MaxTokens:       cfg.MaxTokens,
+	}, nil
+}
+
+// ChannelToolingConfig captures channel-scoped built-in tool policy and pricing.
+type ChannelToolingConfig struct {
+	Whitelist []string                    `json:"whitelist,omitempty"`
+	Pricing   map[string]ToolPricingLocal `json:"pricing,omitempty"`
 }
 
 // Migration control & state
@@ -577,29 +629,8 @@ func (channel *Channel) validateModelPriceConfigs(configs map[string]ModelConfig
 			return errors.Errorf("negative MaxTokens for model %s: %d", modelName, config.MaxTokens)
 		}
 
-		// Validate tool whitelist consistency
-		allowed := make(map[string]struct{}, len(config.ToolWhitelist))
-		for _, toolName := range config.ToolWhitelist {
-			if toolName == "" {
-				return errors.Errorf("tool whitelist for model %s contains empty entries", modelName)
-			}
-			allowed[strings.ToLower(toolName)] = struct{}{}
-		}
-
-		for toolName := range config.ToolPricing {
-			if toolName == "" {
-				return errors.Errorf("tool pricing for model %s contains empty tool name", modelName)
-			}
-			// When a whitelist is configured, enforce that priced tools appear in the list
-			if len(allowed) > 0 {
-				if _, ok := allowed[strings.ToLower(toolName)]; !ok {
-					return errors.Errorf("tool %s has pricing but is not in the whitelist for model %s", toolName, modelName)
-				}
-			}
-		}
-
 		// Validate that at least one field has meaningful data
-		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 && !hasToolingData(config) {
+		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 {
 			return errors.Errorf("model %s has no meaningful configuration data", modelName)
 		}
 	}
@@ -658,6 +689,32 @@ func (channel *Channel) SetModelPriceConfigs(modelPriceConfigs map[string]ModelC
 	jsonStr := string(jsonBytes)
 	channel.ModelConfigs = &jsonStr
 	return nil
+}
+
+// GetToolingConfig returns the channel-level tooling policy configuration, if any.
+func (channel *Channel) GetToolingConfig() *ChannelToolingConfig {
+	cfg, err := channel.LoadConfig()
+	if err != nil {
+		logger.Logger.Error("failed to load channel config for tooling",
+			zap.Int("channel_id", channel.Id),
+			zap.Error(err))
+		return nil
+	}
+	return cloneChannelToolingConfig(cfg.Tooling)
+}
+
+// SetToolingConfig updates the channel-level tooling configuration stored in the config JSON blob.
+func (channel *Channel) SetToolingConfig(tooling *ChannelToolingConfig) error {
+	normalized, err := normalizeChannelToolingConfig(tooling)
+	if err != nil {
+		return errors.Wrap(err, "invalid tooling configuration")
+	}
+	cfg, err := channel.LoadConfig()
+	if err != nil {
+		return err
+	}
+	cfg.Tooling = cloneChannelToolingConfig(normalized)
+	return channel.storeConfig(cfg)
 }
 
 // GetModelPriceConfig returns the price configuration for a specific model
@@ -890,6 +947,21 @@ func (channel *Channel) LoadConfig() (ChannelConfig, error) {
 		return cfg, errors.Wrapf(err, "unmarshal channel %d config", channel.Id)
 	}
 	return cfg, nil
+}
+
+// storeConfig persists the provided ChannelConfig into the serialized Config
+// column, clearing the field when the configuration is effectively empty.
+func (channel *Channel) storeConfig(cfg ChannelConfig) error {
+	data, err := json.Marshal(cfg)
+	if err != nil {
+		return errors.Wrapf(err, "marshal channel %d config", channel.Id)
+	}
+	if len(data) == 0 || string(data) == "{}" {
+		channel.Config = ""
+		return nil
+	}
+	channel.Config = string(data)
+	return nil
 }
 
 // GetModelRatio returns the channel-specific model ratio map

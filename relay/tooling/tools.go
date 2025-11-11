@@ -199,7 +199,7 @@ func ValidateRequestedBuiltins(modelName string, meta *metalib.Meta, channel *mo
 	policy := buildToolPolicy(channel, provider, effectiveModel)
 	for toolName := range requested {
 		if !policy.isAllowed(toolName) {
-			return errors.Errorf("tool %s is not allowed for model %s; add it to tool_whitelist or define tool_pricing", toolName, effectiveModel)
+			return errors.Errorf("tool %s is not allowed on this channel (model=%s); update the tooling whitelist or pricing", toolName, effectiveModel)
 		}
 	}
 
@@ -234,40 +234,29 @@ func (p toolPolicy) isAllowed(tool string) bool {
 }
 
 // buildToolPolicy merges channel overrides with provider defaults to construct the effective policy.
-// buildToolPolicy merges channel overrides with provider defaults to construct the effective policy.
-func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, modelName string) toolPolicy {
+func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, _ string) toolPolicy {
 	policy := toolPolicy{
 		allowed: make(map[string]struct{}),
 		pricing: make(map[string]int64),
 	}
 
-	var channelCfg *model.ModelConfigLocal
-	if channel != nil && modelName != "" {
-		channelCfg = channel.GetModelPriceConfig(modelName)
-	}
-
-	var providerCfg *adaptor.ModelConfig
-	if provider != nil && modelName != "" {
-		if cfg, ok := provider.GetDefaultModelPricing()[modelName]; ok {
-			providerCfg = &cfg
+	setWhitelist := func(list []string) {
+		if len(list) == 0 {
+			return
 		}
-	}
-
-	switch {
-	case channelCfg != nil && len(channelCfg.ToolWhitelist) > 0:
 		policy.whitelistDefined = true
-		for _, name := range channelCfg.ToolWhitelist {
-			policy.allowed[strings.ToLower(strings.TrimSpace(name))] = struct{}{}
-		}
-	case providerCfg != nil && len(providerCfg.ToolWhitelist) > 0:
-		policy.whitelistDefined = true
-		for _, name := range providerCfg.ToolWhitelist {
-			policy.allowed[strings.ToLower(strings.TrimSpace(name))] = struct{}{}
+		policy.allowed = make(map[string]struct{}, len(list))
+		for _, name := range list {
+			canonical := strings.ToLower(strings.TrimSpace(name))
+			if canonical == "" {
+				continue
+			}
+			policy.allowed[canonical] = struct{}{}
 		}
 	}
 
-	if providerCfg != nil {
-		for name, cfg := range providerCfg.ToolPricing {
+	applyProviderPricing := func(pricing map[string]adaptor.ToolPricingConfig) {
+		for name, cfg := range pricing {
 			canonical := strings.ToLower(strings.TrimSpace(name))
 			if canonical == "" {
 				continue
@@ -276,14 +265,41 @@ func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, modelName
 		}
 	}
 
-	if channelCfg != nil {
-		for name, cfg := range channelCfg.ToolPricing {
+	applyChannelPricing := func(pricing map[string]model.ToolPricingLocal) {
+		for name, cfg := range pricing {
 			canonical := strings.ToLower(strings.TrimSpace(name))
 			if canonical == "" {
 				continue
 			}
 			policy.pricing[canonical] = quotaPerCallFromLocal(cfg)
 		}
+	}
+
+	var providerTooling *adaptor.ChannelToolConfig
+	if provider != nil {
+		if defaults, ok := provider.(adaptor.ToolingDefaultsProvider); ok {
+			cfg := defaults.DefaultToolingConfig()
+			providerTooling = &cfg
+		}
+	}
+
+	if providerTooling != nil {
+		if len(providerTooling.Whitelist) > 0 {
+			setWhitelist(providerTooling.Whitelist)
+		}
+		applyProviderPricing(providerTooling.Pricing)
+	}
+
+	var channelTooling *model.ChannelToolingConfig
+	if channel != nil {
+		channelTooling = channel.GetToolingConfig()
+	}
+
+	if channelTooling != nil {
+		if len(channelTooling.Whitelist) > 0 {
+			setWhitelist(channelTooling.Whitelist)
+		}
+		applyChannelPricing(channelTooling.Pricing)
 	}
 
 	return policy

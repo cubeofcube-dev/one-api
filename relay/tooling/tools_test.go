@@ -20,6 +20,7 @@ import (
 
 type adaptorStub struct {
 	pricing map[string]adaptor.ModelConfig
+	tooling adaptor.ChannelToolConfig
 }
 
 func (s *adaptorStub) Init(*metalib.Meta)                          {}
@@ -47,6 +48,7 @@ func (s *adaptorStub) GetChannelName() string                                 { 
 func (s *adaptorStub) GetDefaultModelPricing() map[string]adaptor.ModelConfig { return s.pricing }
 func (s *adaptorStub) GetModelRatio(string) float64                           { return 0 }
 func (s *adaptorStub) GetCompletionRatio(string) float64                      { return 0 }
+func (s *adaptorStub) DefaultToolingConfig() adaptor.ChannelToolConfig        { return s.tooling }
 
 func TestApplyBuiltinToolCharges_ProviderPricing(t *testing.T) {
 	gin.SetMode(gin.TestMode)
@@ -58,14 +60,17 @@ func TestApplyBuiltinToolCharges_ProviderPricing(t *testing.T) {
 	usage := &relaymodel.Usage{PromptTokens: 120, CompletionTokens: 30}
 
 	perCallUSD := 0.02
-	provider := &adaptorStub{pricing: map[string]adaptor.ModelConfig{
-		"gpt-4o": {
-			ToolWhitelist: []string{"web_search"},
-			ToolPricing: map[string]adaptor.ToolPricingConfig{
+	provider := &adaptorStub{
+		pricing: map[string]adaptor.ModelConfig{
+			"gpt-4o": {},
+		},
+		tooling: adaptor.ChannelToolConfig{
+			Whitelist: []string{"web_search"},
+			Pricing: map[string]adaptor.ToolPricingConfig{
 				"web_search": {UsdPerCall: perCallUSD},
 			},
 		},
-	}}
+	}
 
 	ApplyBuiltinToolCharges(c, &usage, meta, nil, provider)
 
@@ -90,22 +95,23 @@ func TestApplyBuiltinToolCharges_ChannelOverrides(t *testing.T) {
 	meta := &metalib.Meta{ActualModelName: "gpt-4o"}
 	usage := &relaymodel.Usage{PromptTokens: 50, CompletionTokens: 10}
 
-	provider := &adaptorStub{pricing: map[string]adaptor.ModelConfig{
-		"gpt-4o": {
-			ToolWhitelist: []string{"web_search"},
-			ToolPricing: map[string]adaptor.ToolPricingConfig{
+	provider := &adaptorStub{
+		pricing: map[string]adaptor.ModelConfig{
+			"gpt-4o": {},
+		},
+		tooling: adaptor.ChannelToolConfig{
+			Whitelist: []string{"web_search"},
+			Pricing: map[string]adaptor.ToolPricingConfig{
 				"web_search": {QuotaPerCall: 10},
 			},
 		},
-	}}
+	}
 
 	channel := &model.Channel{}
-	require.NoError(t, channel.SetModelPriceConfigs(map[string]model.ModelConfigLocal{
-		"gpt-4o": {
-			ToolWhitelist: []string{"web_search"},
-			ToolPricing: map[string]model.ToolPricingLocal{
-				"web_search": {QuotaPerCall: 42},
-			},
+	require.NoError(t, channel.SetToolingConfig(&model.ChannelToolingConfig{
+		Whitelist: []string{"web_search"},
+		Pricing: map[string]model.ToolPricingLocal{
+			"web_search": {QuotaPerCall: 42},
 		},
 	}))
 
@@ -133,10 +139,10 @@ func TestValidateChatBuiltinTools_Disallowed(t *testing.T) {
 
 	channel := &model.Channel{}
 	require.NoError(t, channel.SetModelPriceConfigs(map[string]model.ModelConfigLocal{
-		"gpt-4o": {
-			Ratio:         1,
-			ToolWhitelist: []string{"code_interpreter"},
-		},
+		"gpt-4o": {Ratio: 1},
+	}))
+	require.NoError(t, channel.SetToolingConfig(&model.ChannelToolingConfig{
+		Whitelist: []string{"code_interpreter"},
 	}))
 
 	err := ValidateChatBuiltinTools(c, request, meta, channel, nil)
@@ -157,11 +163,11 @@ func TestValidateChatBuiltinTools_AllowsPricedToolWithoutWhitelist(t *testing.T)
 
 	channel := &model.Channel{}
 	require.NoError(t, channel.SetModelPriceConfigs(map[string]model.ModelConfigLocal{
-		"gpt-4o": {
-			Ratio: 1,
-			ToolPricing: map[string]model.ToolPricingLocal{
-				"web_search": {UsdPerCall: 0.01},
-			},
+		"gpt-4o": {Ratio: 1},
+	}))
+	require.NoError(t, channel.SetToolingConfig(&model.ChannelToolingConfig{
+		Pricing: map[string]model.ToolPricingLocal{
+			"web_search": {UsdPerCall: 0.01},
 		},
 	}))
 
@@ -179,13 +185,16 @@ func TestValidateChatBuiltinTools_PricingFallback(t *testing.T) {
 	}
 	meta := &metalib.Meta{ActualModelName: "gpt-4o"}
 
-	provider := &adaptorStub{pricing: map[string]adaptor.ModelConfig{
-		"gpt-4o": {
-			ToolPricing: map[string]adaptor.ToolPricingConfig{
+	provider := &adaptorStub{
+		pricing: map[string]adaptor.ModelConfig{
+			"gpt-4o": {},
+		},
+		tooling: adaptor.ChannelToolConfig{
+			Pricing: map[string]adaptor.ToolPricingConfig{
 				"web_search": {UsdPerCall: 0.02},
 			},
 		},
-	}}
+	}
 
 	require.NoError(t, ValidateChatBuiltinTools(c, request, meta, nil, provider))
 }
@@ -203,10 +212,10 @@ func TestValidateChatBuiltinTools_RejectsWhenNeitherWhitelistedNorPriced(t *test
 
 	channel := &model.Channel{}
 	require.NoError(t, channel.SetModelPriceConfigs(map[string]model.ModelConfigLocal{
-		"gpt-4o": {
-			Ratio:         1,
-			ToolWhitelist: []string{"code_interpreter"},
-		},
+		"gpt-4o": {Ratio: 1},
+	}))
+	require.NoError(t, channel.SetToolingConfig(&model.ChannelToolingConfig{
+		Whitelist: []string{"code_interpreter"},
 	}))
 
 	err := ValidateChatBuiltinTools(c, request, meta, channel, nil)

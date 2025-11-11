@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"strconv"
@@ -324,6 +325,7 @@ func GetChannelPricing(c *gin.Context) {
 
 	// Also get the unified ModelConfigs
 	modelConfigs := channel.GetModelPriceConfigs()
+	tooling := channel.GetToolingConfig()
 
 	// Debug logging to help identify data issues
 	if len(modelConfigs) > 0 {
@@ -341,6 +343,7 @@ func GetChannelPricing(c *gin.Context) {
 			"model_ratio":      modelRatio,
 			"completion_ratio": completionRatio,
 			"model_configs":    modelConfigs,
+			"tooling":          tooling,
 		},
 	})
 }
@@ -360,6 +363,7 @@ func UpdateChannelPricing(c *gin.Context) {
 		ModelRatio      map[string]float64                `json:"model_ratio"`
 		CompletionRatio map[string]float64                `json:"completion_ratio"`
 		ModelConfigs    map[string]model.ModelConfigLocal `json:"model_configs"`
+		Tooling         json.RawMessage                   `json:"tooling"`
 	}
 
 	err = c.ShouldBindJSON(&request)
@@ -437,6 +441,35 @@ func UpdateChannelPricing(c *gin.Context) {
 		}
 	}
 
+	if len(request.Tooling) > 0 {
+		trimmed := bytes.TrimSpace(request.Tooling)
+		if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+			if err := channel.SetToolingConfig(nil); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "Failed to clear tooling config: " + err.Error(),
+				})
+				return
+			}
+		} else {
+			var tooling model.ChannelToolingConfig
+			if err := json.Unmarshal(trimmed, &tooling); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "Invalid tooling config: " + err.Error(),
+				})
+				return
+			}
+			if err := channel.SetToolingConfig(&tooling); err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "Failed to set tooling config: " + err.Error(),
+				})
+				return
+			}
+		}
+	}
+
 	err = channel.Update()
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -463,7 +496,10 @@ func GetChannelDefaultPricing(c *gin.Context) {
 		return
 	}
 
-	var defaultPricing map[string]adaptor.ModelConfig
+	var (
+		defaultPricing  map[string]adaptor.ModelConfig
+		providerAdaptor adaptor.Adaptor
+	)
 
 	// OpenAI-compatible channels use global pricing so operators can mix models from
 	// multiple providers without defining per-channel price maps.
@@ -474,15 +510,15 @@ func GetChannelDefaultPricing(c *gin.Context) {
 		// For specific channel types, use their adapter's default pricing
 		// Convert channel type to API type first
 		apiType := channeltype.ToAPIType(channelType)
-		adaptor := relay.GetAdaptor(apiType)
-		if adaptor == nil {
+		providerAdaptor = relay.GetAdaptor(apiType)
+		if providerAdaptor == nil {
 			c.JSON(http.StatusOK, gin.H{
 				"success": false,
 				"message": "Unsupported channel type",
 			})
 			return
 		}
-		defaultPricing = adaptor.GetDefaultModelPricing()
+		defaultPricing = providerAdaptor.GetDefaultModelPricing()
 	}
 
 	// Separate model ratios and completion ratios for UI compatibility
@@ -495,25 +531,29 @@ func GetChannelDefaultPricing(c *gin.Context) {
 		completionRatios[model] = price.CompletionRatio
 	}
 
-	// Create unified model configs format
+	// Create unified model configs format without tooling metadata
 	modelConfigs := make(map[string]model.ModelConfigLocal)
 	for modelName, price := range defaultPricing {
-		var toolPricing map[string]model.ToolPricingLocal
-		if len(price.ToolPricing) > 0 {
-			toolPricing = make(map[string]model.ToolPricingLocal, len(price.ToolPricing))
-			for toolName, cfg := range price.ToolPricing {
-				toolPricing[toolName] = model.ToolPricingLocal{
-					UsdPerCall:   cfg.UsdPerCall,
-					QuotaPerCall: cfg.QuotaPerCall,
-				}
-			}
-		}
 		modelConfigs[modelName] = model.ModelConfigLocal{
 			Ratio:           price.Ratio,
 			CompletionRatio: price.CompletionRatio,
 			MaxTokens:       price.MaxTokens,
-			ToolWhitelist:   price.ToolWhitelist,
-			ToolPricing:     toolPricing,
+		}
+	}
+
+	var toolingConfigJSON string
+	if toolingProvider, ok := providerAdaptor.(adaptor.ToolingDefaultsProvider); ok {
+		tooling := convertAdaptorTooling(toolingProvider.DefaultToolingConfig())
+		if tooling != nil {
+			data, err := json.Marshal(tooling)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"success": false,
+					"message": "Failed to serialize tooling config: " + err.Error(),
+				})
+				return
+			}
+			toolingConfigJSON = string(data)
 		}
 	}
 
@@ -552,6 +592,32 @@ func GetChannelDefaultPricing(c *gin.Context) {
 			"model_ratio":      string(modelRatioJSON),
 			"completion_ratio": string(completionRatioJSON),
 			"model_configs":    string(modelConfigsJSON),
+			"tooling":          toolingConfigJSON,
 		},
 	})
+}
+
+// convertAdaptorTooling translates provider default tooling metadata into the
+// channel-scoped DTO representation used by persistence and API responses.
+func convertAdaptorTooling(cfg adaptor.ChannelToolConfig) *model.ChannelToolingConfig {
+	if len(cfg.Whitelist) == 0 && len(cfg.Pricing) == 0 {
+		return nil
+	}
+	tooling := &model.ChannelToolingConfig{}
+	if len(cfg.Whitelist) > 0 {
+		tooling.Whitelist = append([]string(nil), cfg.Whitelist...)
+	}
+	if len(cfg.Pricing) > 0 {
+		tooling.Pricing = make(map[string]model.ToolPricingLocal, len(cfg.Pricing))
+		for tool, price := range cfg.Pricing {
+			tooling.Pricing[tool] = model.ToolPricingLocal{
+				UsdPerCall:   price.UsdPerCall,
+				QuotaPerCall: price.QuotaPerCall,
+			}
+		}
+	}
+	if len(tooling.Whitelist) == 0 && len(tooling.Pricing) == 0 {
+		return nil
+	}
+	return tooling
 }

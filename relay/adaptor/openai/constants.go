@@ -1,6 +1,8 @@
 package openai
 
 import (
+	"strings"
+
 	"github.com/songquanpeng/one-api/relay/adaptor"
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 )
@@ -163,22 +165,36 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 
-func init() {
-	for modelName, cfg := range ModelRatios {
-		usdPerThousand := webSearchCallUSDPerThousand(modelName)
-		if usdPerThousand <= 0 {
-			continue
+var openAIToolingDefaults = buildOpenAIToolingDefaults()
+
+// buildOpenAIToolingDefaults constructs the baseline tooling configuration for
+// OpenAI channels with a channel-level web search pricing recommendation.
+func buildOpenAIToolingDefaults() adaptor.ChannelToolConfig {
+	maxPerCall := 0.0
+	for modelName := range ModelRatios {
+		if perCallUSD := openAIWebSearchPerCallUSD(modelName); perCallUSD > maxPerCall {
+			maxPerCall = perCallUSD
 		}
-		perCallUsd := usdPerThousand / 1000.0
-		if perCallUsd <= 0 {
-			continue
-		}
-		if cfg.ToolPricing == nil {
-			cfg.ToolPricing = make(map[string]adaptor.ToolPricingConfig)
-		}
-		if _, exists := cfg.ToolPricing["web_search"]; !exists {
-			cfg.ToolPricing["web_search"] = adaptor.ToolPricingConfig{UsdPerCall: perCallUsd}
-		}
-		ModelRatios[modelName] = cfg
 	}
+	if maxPerCall <= 0 {
+		return adaptor.ChannelToolConfig{}
+	}
+	return adaptor.ChannelToolConfig{
+		Pricing: map[string]adaptor.ToolPricingConfig{
+			"web_search": {UsdPerCall: maxPerCall},
+		},
+	}
+}
+
+// openAIWebSearchPerCallUSD returns the per-call USD cost for the upstream web search tool.
+// Non-preview tools cost $10 per 1K calls (0.01 per invocation); preview variants cost $25 per 1K.
+func openAIWebSearchPerCallUSD(modelName string) float64 {
+	name := strings.ToLower(strings.TrimSpace(modelName))
+	if name == "" {
+		return 0
+	}
+	if isWebSearchPreviewModel(name) {
+		return 0.025
+	}
+	return 0.01
 }

@@ -40,11 +40,6 @@ type ModelConfig struct {
 	// MaxTokens represents the maximum token limit for this model on this channel
 	// 0 means no limit (infinity)
 	MaxTokens int32 `json:"max_tokens,omitempty"`
-	// ToolWhitelist enumerates provider-built tools permitted for this model.
-	// Empty slice or nil means all built-in tools are allowed by default.
-	ToolWhitelist []string `json:"tool_whitelist,omitempty"`
-	// ToolPricing defines per-tool invocation pricing. Keys are tool identifiers (case-insensitive).
-	ToolPricing map[string]ToolPricingConfig `json:"tool_pricing,omitempty"`
 }
 
 // ModelRatioTier describes pricing for a specific input token tier. It overrides
@@ -77,6 +72,19 @@ type ToolPricingConfig struct {
 	// QuotaPerCall overrides the per-invocation cost directly in quota units.
 	// Zero means "not specified" unless the tool is intentionally free.
 	QuotaPerCall int64 `json:"quota_per_call,omitempty"`
+}
+
+// ChannelToolConfig defines channel-scoped built-in tool policies and pricing metadata.
+type ChannelToolConfig struct {
+	// Whitelist enumerates provider-built tools permitted for this channel. Nil/empty allows all.
+	Whitelist []string `json:"whitelist,omitempty"`
+	// Pricing defines per-tool invocation pricing for the entire channel.
+	Pricing map[string]ToolPricingConfig `json:"pricing,omitempty"`
+}
+
+// ToolingDefaultsProvider is implemented by adaptors that expose built-in tool defaults.
+type ToolingDefaultsProvider interface {
+	DefaultToolingConfig() ChannelToolConfig
 }
 
 type Adaptor interface {

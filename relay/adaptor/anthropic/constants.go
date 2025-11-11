@@ -50,3 +50,38 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"claude-2.0":         {Ratio: 8 * ratio.MilliTokensUsd, CompletionRatio: 3.0, CachedInputRatio: 0.8 * ratio.MilliTokensUsd, CacheWrite5mRatio: 10 * ratio.MilliTokensUsd, CacheWrite1hRatio: 16 * ratio.MilliTokensUsd},
 	"claude-instant-1.2": {Ratio: 0.8 * ratio.MilliTokensUsd, CompletionRatio: 3.0, CachedInputRatio: 0.08 * ratio.MilliTokensUsd, CacheWrite5mRatio: 1.0 * ratio.MilliTokensUsd, CacheWrite1hRatio: 1.6 * ratio.MilliTokensUsd},
 }
+
+const anthropicWebSearchUsdPerCall = 10.0 / 1000.0
+
+// anthropicWebSearchModels enumerates Claude models with published web search pricing.
+// Source: https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool
+// (content retrieved via https://r.jina.ai/https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool)
+var anthropicWebSearchModels = map[string]struct{}{
+	"claude-opus-4-0":            {},
+	"claude-opus-4-20250514":     {},
+	"claude-opus-4-1":            {},
+	"claude-opus-4-1-20250805":   {},
+	"claude-sonnet-4-0":          {},
+	"claude-sonnet-4-20250514":   {},
+	"claude-sonnet-4-5":          {},
+	"claude-sonnet-4-5-20250929": {},
+	"claude-3-7-sonnet-20250219": {},
+	"claude-haiku-4-5":           {},
+	"claude-haiku-4-5-20251001":  {},
+	"claude-3-5-haiku-latest":    {},
+}
+
+var anthropicToolingDefaults = buildAnthropicToolingDefaults()
+
+// buildAnthropicToolingDefaults assembles the provider's default tooling policy
+// using channel-level pricing metadata.
+func buildAnthropicToolingDefaults() adaptor.ChannelToolConfig {
+	if len(anthropicWebSearchModels) == 0 {
+		return adaptor.ChannelToolConfig{}
+	}
+	return adaptor.ChannelToolConfig{
+		Pricing: map[string]adaptor.ToolPricingConfig{
+			"web_search": {UsdPerCall: anthropicWebSearchUsdPerCall},
+		},
+	}
+}

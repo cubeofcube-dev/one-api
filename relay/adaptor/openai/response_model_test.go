@@ -2472,50 +2472,6 @@ func TestResponseAPIUsageWithFallback(t *testing.T) {
 	}
 }
 
-func TestWebSearchCallUSDPerThousandPreviewTiers(t *testing.T) {
-	cases := []struct {
-		model string
-		usd   float64
-	}{
-		{"gpt-4o-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview-2025-01-01", 25.0},
-		{"gpt-5-search-preview", 10.0},
-		{"o1-preview-search", 10.0},
-		{"o3-deep-research", 10.0},
-		{"gpt-4o-web-search", 10.0},
-	}
-
-	for _, tc := range cases {
-		got := webSearchCallUSDPerThousand(tc.model)
-		if got != tc.usd {
-			t.Fatalf("model %s: expected USD %.2f, got %.2f", tc.model, tc.usd, got)
-		}
-	}
-}
-
-func TestWebSearchCallUSDPerThousandTiering(t *testing.T) {
-	cases := []struct {
-		model string
-		usd   float64
-	}{
-		{"gpt-4o-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview-2025-01-01", 25.0},
-		{"gpt-4.1-mini-search-preview", 25.0},
-		{"gpt-5-search", 10.0},
-		{"o1-preview-search", 10.0},
-		{"gpt-4o-search", 10.0},
-		{"o3-deep-research", 10.0},
-	}
-
-	for _, tc := range cases {
-		got := webSearchCallUSDPerThousand(tc.model)
-		if got != tc.usd {
-			t.Fatalf("model %s: expected USD %.2f, got %.2f", tc.model, tc.usd, got)
-		}
-	}
-}
-
 func TestResponseAPIUsageToModelMatchesRealLog(t *testing.T) {
 	payload := []byte(`{"input_tokens":8555,"input_tokens_details":{"cached_tokens":4224},"output_tokens":889,"output_tokens_details":{"reasoning_tokens":640},"total_tokens":9444}`)
 	var usage ResponseAPIUsage

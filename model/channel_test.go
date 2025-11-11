@@ -466,10 +466,6 @@ func TestChannel_SetModelPriceConfigs(t *testing.T) {
 			Ratio:           0.0015,
 			CompletionRatio: 2.0,
 			MaxTokens:       65536,
-			ToolWhitelist:   []string{"web_search", "WEB_SEARCH", " web_search "},
-			ToolPricing: map[string]ToolPricingLocal{
-				" web_search ": {UsdPerCall: 0.025},
-			},
 		},
 	}
 
@@ -478,10 +474,6 @@ func TestChannel_SetModelPriceConfigs(t *testing.T) {
 			Ratio:           0.0015,
 			CompletionRatio: 2.0,
 			MaxTokens:       65536,
-			ToolWhitelist:   []string{"web_search"},
-			ToolPricing: map[string]ToolPricingLocal{
-				"web_search": {UsdPerCall: 0.025},
-			},
 		},
 	}
 
