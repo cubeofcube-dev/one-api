@@ -202,10 +202,14 @@ func UpdateTraceStatus(ctx context.Context, traceId string, status int) error {
 	return nil
 }
 
-// GetTraceByTraceId retrieves a trace record by trace ID
-func GetTraceByTraceId(traceId string) (*Trace, error) {
+// GetTraceByTraceId retrieves a trace record by trace ID using the provided context.
+func GetTraceByTraceId(ctx context.Context, traceId string) (*Trace, error) {
+	dbCtx := ctx
+	if dbCtx == nil {
+		dbCtx = context.Background()
+	}
 	var trace Trace
-	db := traceDBWithContext(nil)
+	db := traceDBWithContext(dbCtx)
 	if err := db.Where("trace_id = ?", traceId).First(&trace).Error; err != nil {
 		return nil, errors.Wrapf(err, "failed to get trace by trace_id: %s", traceId)
 	}

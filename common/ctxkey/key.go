@@ -86,6 +86,13 @@ const (
 	// response. Set by adaptors after parsing provider responses and consumed during billing adjustments.
 	WebSearchCallCount = "web_search_call_count"
 
+	// ToolInvocationCounts stores raw built-in tool invocation counts aggregated during response handling.
+	// Adaptors may populate this alongside specialized counters like WebSearchCallCount.
+	ToolInvocationCounts = "tool_invocation_counts"
+	// ToolInvocationSummary captures per-request built-in tool usage, including counts and billed quota.
+	// Populated by tooling.ApplyBuiltinToolCharges and consumed by billing metadata generation.
+	ToolInvocationSummary = "tool_invocation_summary"
+
 	// Group is the user group resolved for the current user (affects routing & ratios).
 	// Set in: middleware/distributor (via model.CacheGetUserGroup).
 	// Read in: meta/metrics and for channel selection.

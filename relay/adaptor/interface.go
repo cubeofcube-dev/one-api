@@ -40,6 +40,11 @@ type ModelConfig struct {
 	// MaxTokens represents the maximum token limit for this model on this channel
 	// 0 means no limit (infinity)
 	MaxTokens int32 `json:"max_tokens,omitempty"`
+	// ToolWhitelist enumerates provider-built tools permitted for this model.
+	// Empty slice or nil means all built-in tools are allowed by default.
+	ToolWhitelist []string `json:"tool_whitelist,omitempty"`
+	// ToolPricing defines per-tool invocation pricing. Keys are tool identifiers (case-insensitive).
+	ToolPricing map[string]ToolPricingConfig `json:"tool_pricing,omitempty"`
 }
 
 // ModelRatioTier describes pricing for a specific input token tier. It overrides
@@ -61,6 +66,17 @@ type ModelRatioTier struct {
 
 	// The minimum input‑token count at which this tier becomes applicable
 	InputTokenThreshold int `json:"input_token_threshold"`
+}
+
+// ToolPricingConfig describes the per-invocation pricing for a provider built-in tool.
+// Prices can be expressed either as USD per call or precomputed quota units per call.
+type ToolPricingConfig struct {
+	// UsdPerCall represents the USD price per single invocation of the tool.
+	// Leave zero when using quota-based pricing.
+	UsdPerCall float64 `json:"usd_per_call,omitempty"`
+	// QuotaPerCall overrides the per-invocation cost directly in quota units.
+	// Zero means "not specified" unless the tool is intentionally free.
+	QuotaPerCall int64 `json:"quota_per_call,omitempty"`
 }
 
 type Adaptor interface {

@@ -193,6 +193,17 @@ func postConsumeQuota(ctx context.Context,
 	}
 	traceId := tracing.GetTraceIDFromContext(ctx)
 	if meta.TokenId > 0 && meta.UserId > 0 && meta.ChannelId > 0 {
+		var toolSummary *model.ToolUsageSummary
+		if ginCtx, ok := gmw.GetGinCtxFromStdCtx(ctx); ok {
+			if raw, exists := ginCtx.Get(ctxkey.ToolInvocationSummary); exists {
+				if summary, ok := raw.(*model.ToolUsageSummary); ok {
+					toolSummary = summary
+				}
+			}
+		}
+		metadata := model.AppendToolUsageMetadata(nil, toolSummary)
+		metadata = model.AppendCacheWriteTokensMetadata(metadata, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens)
+
 		billing.PostConsumeQuotaDetailed(billing.QuotaConsumeDetail{
 			Ctx:                    ctx,
 			TokenId:                meta.TokenId,
@@ -215,7 +226,7 @@ func postConsumeQuota(ctx context.Context,
 			CachedCompletionTokens: 0,
 			CacheWrite5mTokens:     usage.CacheWrite5mTokens,
 			CacheWrite1hTokens:     usage.CacheWrite1hTokens,
-			Metadata:               model.AppendCacheWriteTokensMetadata(nil, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens),
+			Metadata:               metadata,
 			RequestId:              requestId,
 			TraceId:                traceId,
 		})
@@ -270,6 +281,17 @@ func postConsumeQuotaWithTraceID(ctx context.Context, traceId string,
 		requestId = ginCtx.GetString(ctxkey.RequestId)
 	}
 	if meta.TokenId > 0 && meta.UserId > 0 && meta.ChannelId > 0 {
+		var toolSummary *model.ToolUsageSummary
+		if ginCtx, ok := gmw.GetGinCtxFromStdCtx(ctx); ok {
+			if raw, exists := ginCtx.Get(ctxkey.ToolInvocationSummary); exists {
+				if summary, ok := raw.(*model.ToolUsageSummary); ok {
+					toolSummary = summary
+				}
+			}
+		}
+		metadata := model.AppendToolUsageMetadata(nil, toolSummary)
+		metadata = model.AppendCacheWriteTokensMetadata(metadata, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens)
+
 		billing.PostConsumeQuotaDetailed(billing.QuotaConsumeDetail{
 			Ctx:                    ctx,
 			TokenId:                meta.TokenId,
@@ -292,7 +314,7 @@ func postConsumeQuotaWithTraceID(ctx context.Context, traceId string,
 			CachedCompletionTokens: 0,
 			CacheWrite5mTokens:     usage.CacheWrite5mTokens,
 			CacheWrite1hTokens:     usage.CacheWrite1hTokens,
-			Metadata:               model.AppendCacheWriteTokensMetadata(nil, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens),
+			Metadata:               metadata,
 			RequestId:              requestId,
 			TraceId:                traceId,
 		})

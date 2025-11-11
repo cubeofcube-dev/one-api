@@ -162,3 +162,23 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+func init() {
+	for modelName, cfg := range ModelRatios {
+		usdPerThousand := webSearchCallUSDPerThousand(modelName)
+		if usdPerThousand <= 0 {
+			continue
+		}
+		perCallUsd := usdPerThousand / 1000.0
+		if perCallUsd <= 0 {
+			continue
+		}
+		if cfg.ToolPricing == nil {
+			cfg.ToolPricing = make(map[string]adaptor.ToolPricingConfig)
+		}
+		if _, exists := cfg.ToolPricing["web_search"]; !exists {
+			cfg.ToolPricing["web_search"] = adaptor.ToolPricingConfig{UsdPerCall: perCallUsd}
+		}
+		ModelRatios[modelName] = cfg
+	}
+}

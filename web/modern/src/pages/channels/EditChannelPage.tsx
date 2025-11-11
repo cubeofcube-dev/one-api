@@ -165,16 +165,38 @@ const MODEL_MAPPING_EXAMPLE = {
 
 const MODEL_CONFIGS_EXAMPLE = {
   'gpt-3.5-turbo-0301': {
-    'ratio': 0.0015,
-    'completion_ratio': 2.0,
-    'max_tokens': 65536,
+    ratio: 0.0015,
+    completion_ratio: 2.0,
+    max_tokens: 65536,
   },
   'gpt-4': {
-    'ratio': 0.03,
-    'completion_ratio': 2.0,
-    'max_tokens': 128000,
-  }
+    ratio: 0.03,
+    completion_ratio: 2.0,
+    max_tokens: 128000,
+    tool_whitelist: ['web_search'],
+    tool_pricing: {
+      web_search: {
+        usd_per_call: 0.025,
+      },
+    },
+  },
+} satisfies Record<string, Record<string, unknown>>
+
+type ToolPricingEntry = {
+  usd_per_call?: number
+  quota_per_call?: number
 }
+
+type ParsedModelConfig = {
+  ratio?: number
+  completion_ratio?: number
+  max_tokens?: number
+  tool_whitelist?: string[]
+  tool_pricing?: Record<string, ToolPricingEntry>
+  [key: string]: unknown
+}
+
+type ParsedModelConfigs = Record<string, ParsedModelConfig>
 
 const OAUTH_JWT_CONFIG_EXAMPLE = {
   "client_type": "jwt",
@@ -229,6 +251,7 @@ const validateModelConfigs = (configStr: string) => {
       }
 
       const configObj = config as any
+      const whitelistSet = new Set<string>()
       // Validate ratio
       if (configObj.ratio !== undefined) {
         if (typeof configObj.ratio !== 'number' || configObj.ratio < 0) {
@@ -250,9 +273,55 @@ const validateModelConfigs = (configStr: string) => {
         }
       }
 
+      if (configObj.tool_whitelist !== undefined) {
+        if (!Array.isArray(configObj.tool_whitelist)) {
+          return { valid: false, error: `tool_whitelist for model "${modelName}" must be an array of strings` }
+        }
+        for (const entry of configObj.tool_whitelist) {
+          if (typeof entry !== 'string' || entry.trim() === '') {
+            return { valid: false, error: `tool_whitelist for model "${modelName}" contains an invalid entry` }
+          }
+          whitelistSet.add(entry.trim().toLowerCase())
+        }
+      }
+
+      if (configObj.tool_pricing !== undefined) {
+        if (typeof configObj.tool_pricing !== 'object' || configObj.tool_pricing === null || Array.isArray(configObj.tool_pricing)) {
+          return { valid: false, error: `tool_pricing for model "${modelName}" must be an object` }
+        }
+        const pricingEntries = Object.entries(configObj.tool_pricing as Record<string, any>)
+        if (pricingEntries.length === 0) {
+          return { valid: false, error: `tool_pricing for model "${modelName}" cannot be empty` }
+        }
+        for (const [toolName, pricing] of pricingEntries) {
+          if (!toolName || toolName.trim() === '') {
+            return { valid: false, error: `tool_pricing for model "${modelName}" has an empty tool name` }
+          }
+          if (typeof pricing !== 'object' || pricing === null || Array.isArray(pricing)) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" must be an object` }
+          }
+          const { usd_per_call, quota_per_call } = pricing as Record<string, any>
+          if (usd_per_call !== undefined && (typeof usd_per_call !== 'number' || usd_per_call < 0)) {
+            return { valid: false, error: `usd_per_call for tool "${toolName}" on model "${modelName}" must be a non-negative number` }
+          }
+          if (quota_per_call !== undefined && (typeof quota_per_call !== 'number' || quota_per_call < 0)) {
+            return { valid: false, error: `quota_per_call for tool "${toolName}" on model "${modelName}" must be a non-negative number` }
+          }
+          if (usd_per_call === undefined && quota_per_call === undefined) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" must specify usd_per_call or quota_per_call` }
+          }
+          if (whitelistSet.size > 0 && !whitelistSet.has(toolName.trim().toLowerCase())) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" is missing from tool_whitelist` }
+          }
+        }
+      }
+
       // Check if at least one meaningful field is provided
-      if (configObj.ratio === undefined && configObj.completion_ratio === undefined && configObj.max_tokens === undefined) {
-        return { valid: false, error: `Model "${modelName}" must have at least one configuration field (ratio, completion_ratio, or max_tokens)` }
+      const hasPricingField = configObj.ratio !== undefined || configObj.completion_ratio !== undefined || configObj.max_tokens !== undefined
+      const hasToolField = whitelistSet.size > 0 ||
+        (configObj.tool_pricing && Object.keys(configObj.tool_pricing).length > 0)
+      if (!hasPricingField && !hasToolField) {
+        return { valid: false, error: `Model "${modelName}" must include pricing or tool configuration` }
       }
     }
 
@@ -296,6 +365,8 @@ export function EditChannelPage() {
   const [customModel, setCustomModel] = useState('')
   const [formInitialized, setFormInitialized] = useState(!isEdit) // Track if form has been properly initialized
   const [loadedChannelType, setLoadedChannelType] = useState<number | null>(null) // Track the loaded channel type
+  const [selectedToolModel, setSelectedToolModel] = useState<string>('')
+  const [customTool, setCustomTool] = useState('')
 
   const form = useForm<ChannelForm>({
     resolver: zodResolver(channelSchema),
@@ -331,6 +402,7 @@ export function EditChannelPage() {
 
   const watchType = form.watch('type')
   const watchConfig = form.watch('config')
+  const watchModelConfigs = form.watch('model_configs') ?? ''
 
   const normalizedChannelType = useMemo(() => normalizeChannelType(watchType), [watchType])
 
@@ -344,6 +416,158 @@ export function EditChannelPage() {
   const availableModels = useMemo<Model[]>(() => {
     return currentCatalogModels.map((model) => ({ id: model, name: model }))
   }, [currentCatalogModels])
+
+  const parsedModelConfigs = useMemo<ParsedModelConfigs | null>(() => {
+    const raw = (watchModelConfigs ?? '').trim()
+    if (raw === '') {
+      return {}
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return {}
+      }
+      return parsed as ParsedModelConfigs
+    } catch (error) {
+      return null
+    }
+  }, [watchModelConfigs])
+
+  const toolModelNames = useMemo(() => {
+    if (!parsedModelConfigs || typeof parsedModelConfigs !== 'object') {
+      return [] as string[]
+    }
+    return Object.keys(parsedModelConfigs)
+  }, [parsedModelConfigs])
+
+  useEffect(() => {
+    if (!parsedModelConfigs || toolModelNames.length === 0) {
+      setSelectedToolModel('')
+      return
+    }
+    setSelectedToolModel((prev) => (prev && toolModelNames.includes(prev) ? prev : toolModelNames[0]))
+  }, [parsedModelConfigs, toolModelNames])
+
+  const currentToolWhitelist = useMemo(() => {
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return [] as string[]
+    }
+    const entry = parsedModelConfigs[selectedToolModel]
+    if (!entry || typeof entry !== 'object') {
+      return [] as string[]
+    }
+    const list = entry.tool_whitelist
+    return Array.isArray(list) ? list : []
+  }, [parsedModelConfigs, selectedToolModel])
+
+  const pricedToolSet = useMemo(() => {
+    const result = new Set<string>()
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return result
+    }
+    const entry = parsedModelConfigs[selectedToolModel]
+    if (!entry || typeof entry !== 'object') {
+      return result
+    }
+    const pricing = entry.tool_pricing
+    if (pricing && typeof pricing === 'object') {
+      Object.keys(pricing).forEach((tool) => {
+        result.add(tool.trim().toLowerCase())
+      })
+    }
+    return result
+  }, [parsedModelConfigs, selectedToolModel])
+
+  const availableDefaultTools = useMemo(() => {
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return [] as string[]
+    }
+    const entry = parsedModelConfigs[selectedToolModel]
+    if (!entry || typeof entry !== 'object') {
+      return [] as string[]
+    }
+    const defaults = new Set<string>()
+    if (Array.isArray(entry.tool_whitelist)) {
+      entry.tool_whitelist.forEach((tool) => defaults.add(tool))
+    }
+    if (entry.tool_pricing && typeof entry.tool_pricing === 'object') {
+      Object.keys(entry.tool_pricing).forEach((tool) => defaults.add(tool))
+    }
+    return Array.from(defaults).sort((a, b) => a.localeCompare(b))
+  }, [parsedModelConfigs, selectedToolModel])
+
+  const toolEditorDisabled = parsedModelConfigs === null || !selectedToolModel
+
+  const mutateToolWhitelist = useCallback((transform: (list: string[]) => string[] | null) => {
+    if (!selectedToolModel) {
+      return
+    }
+    const raw = watchModelConfigs ?? ''
+    let configs: ParsedModelConfigs
+    try {
+      if (!raw || raw.trim() === '') {
+        configs = {}
+      } else {
+        const parsed = JSON.parse(raw)
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+          configs = {}
+        } else {
+          configs = { ...(parsed as ParsedModelConfigs) }
+        }
+      }
+    } catch (error) {
+      notify({ type: 'error', title: 'Invalid JSON', message: 'Fix model_configs JSON before editing the tool whitelist.' })
+      return
+    }
+
+    const existingRaw = configs[selectedToolModel]
+    const existing: ParsedModelConfig = existingRaw && typeof existingRaw === 'object' && !Array.isArray(existingRaw)
+      ? { ...existingRaw }
+      : {}
+    const currentList = Array.isArray(existing.tool_whitelist) ? [...existing.tool_whitelist] : []
+    const updated = transform(currentList)
+    if (!updated) {
+      return
+    }
+    if (updated.length > 0) {
+      existing.tool_whitelist = updated
+    } else {
+      delete existing.tool_whitelist
+    }
+    configs[selectedToolModel] = existing
+    form.setValue('model_configs', JSON.stringify(configs, null, 2), { shouldDirty: true, shouldValidate: true })
+  }, [form, notify, selectedToolModel, watchModelConfigs])
+
+  const addToolToWhitelist = useCallback((toolName: string) => {
+    if (!toolName || !selectedToolModel || parsedModelConfigs === null) {
+      return
+    }
+    const trimmed = toolName.trim()
+    if (!trimmed) {
+      return
+    }
+    mutateToolWhitelist((list) => {
+      if (list.some((item) => item.toLowerCase() === trimmed.toLowerCase())) {
+        return null
+      }
+      return [...list, trimmed]
+    })
+    setCustomTool('')
+  }, [mutateToolWhitelist, parsedModelConfigs, selectedToolModel])
+
+  const removeToolFromWhitelist = useCallback((toolName: string) => {
+    if (!toolName || !selectedToolModel || parsedModelConfigs === null) {
+      return
+    }
+    const canonical = toolName.toLowerCase()
+    mutateToolWhitelist((list) => {
+      const filtered = list.filter((item) => item.toLowerCase() !== canonical)
+      if (filtered.length === list.length) {
+        return null
+      }
+      return filtered
+    })
+  }, [mutateToolWhitelist, parsedModelConfigs, selectedToolModel])
 
   const selectedChannelType = CHANNEL_TYPES.find(t => t.value === normalizedChannelType)
   const hasSelectedType = normalizedChannelType !== null && !!selectedChannelType
@@ -1899,6 +2123,122 @@ export function EditChannelPage() {
                             }}
                           />
                         </FormControl>
+                        {parsedModelConfigs === null && watchModelConfigs.trim() !== '' && (
+                          <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
+                            Fix the JSON above to manage the built-in tool whitelist.
+                          </div>
+                        )}
+                        {parsedModelConfigs !== null && toolModelNames.length > 0 && (
+                          <TooltipProvider>
+                            <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                              <div className="flex flex-wrap items-center justify-between gap-2">
+                                <span className="text-sm font-medium">Built-in Tool Whitelist</span>
+                                <span className="text-xs text-muted-foreground">
+                                  Click a badge to remove it. Tools not on this list must define tool_pricing.
+                                </span>
+                              </div>
+                              <div className="flex flex-wrap items-center gap-3">
+                                <Select
+                                  value={selectedToolModel || toolModelNames[0]}
+                                  onValueChange={(value) => setSelectedToolModel(value)}
+                                >
+                                  <SelectTrigger className="w-[220px]">
+                                    <SelectValue placeholder="Select model" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {toolModelNames.map((name) => (
+                                      <SelectItem key={name} value={name}>
+                                        {name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                {availableDefaultTools.length > 0 && (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className="text-xs font-medium text-muted-foreground">Known tools:</span>
+                                    {availableDefaultTools.map((tool) => {
+                                      const exists = currentToolWhitelist.some((item) => item.toLowerCase() === tool.toLowerCase())
+                                      return (
+                                        <button
+                                          type="button"
+                                          key={`${tool}-suggest`}
+                                          onClick={() => addToolToWhitelist(tool)}
+                                          disabled={exists}
+                                          className={`rounded-md border border-dashed border-border/60 px-2 py-1 text-xs transition ${exists
+                                            ? 'cursor-not-allowed text-muted-foreground/60'
+                                            : 'text-muted-foreground hover:bg-muted'
+                                            }`}
+                                        >
+                                          {tool}
+                                        </button>
+                                      )
+                                    })}
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex min-h-[2.5rem] flex-wrap gap-2">
+                                {currentToolWhitelist.length === 0 ? (
+                                  <span className="text-xs text-muted-foreground">
+                                    No tools pinned. All upstream tools remain available.
+                                  </span>
+                                ) : (
+                                  currentToolWhitelist.map((tool) => {
+                                    const canonical = tool.toLowerCase()
+                                    const priced = pricedToolSet.has(canonical)
+                                    const chip = (
+                                      <button
+                                        key={tool}
+                                        type="button"
+                                        onClick={() => removeToolFromWhitelist(tool)}
+                                        className={`flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium transition-colors ${priced
+                                          ? 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                                          : 'bg-destructive text-destructive-foreground hover:bg-destructive/90'
+                                          }`}
+                                      >
+                                        {tool}
+                                        <span className="text-[10px] opacity-80">×</span>
+                                      </button>
+                                    )
+                                    if (priced) {
+                                      return chip
+                                    }
+                                    return (
+                                      <Tooltip key={tool}>
+                                        <TooltipTrigger asChild>{chip}</TooltipTrigger>
+                                        <TooltipContent>
+                                          Pricing not set for “{tool}”. Define tool_pricing to keep requests from failing.
+                                        </TooltipContent>
+                                      </Tooltip>
+                                    )
+                                  })
+                                )}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Input
+                                  value={customTool}
+                                  onChange={(event) => setCustomTool(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault()
+                                      addToolToWhitelist(customTool)
+                                    }
+                                  }}
+                                  placeholder="Custom tool name"
+                                  disabled={toolEditorDisabled}
+                                  className="w-56"
+                                />
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  onClick={() => addToolToWhitelist(customTool)}
+                                  disabled={toolEditorDisabled || customTool.trim() === ''}
+                                >
+                                  Add tool
+                                </Button>
+                              </div>
+                            </div>
+                          </TooltipProvider>
+                        )}
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">
                             Configure pricing and limits per model (optional)

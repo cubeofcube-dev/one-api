@@ -498,10 +498,22 @@ func GetChannelDefaultPricing(c *gin.Context) {
 	// Create unified model configs format
 	modelConfigs := make(map[string]model.ModelConfigLocal)
 	for modelName, price := range defaultPricing {
+		var toolPricing map[string]model.ToolPricingLocal
+		if len(price.ToolPricing) > 0 {
+			toolPricing = make(map[string]model.ToolPricingLocal, len(price.ToolPricing))
+			for toolName, cfg := range price.ToolPricing {
+				toolPricing[toolName] = model.ToolPricingLocal{
+					UsdPerCall:   cfg.UsdPerCall,
+					QuotaPerCall: cfg.QuotaPerCall,
+				}
+			}
+		}
 		modelConfigs[modelName] = model.ModelConfigLocal{
 			Ratio:           price.Ratio,
 			CompletionRatio: price.CompletionRatio,
 			MaxTokens:       price.MaxTokens,
+			ToolWhitelist:   price.ToolWhitelist,
+			ToolPricing:     toolPricing,
 		}
 	}
 

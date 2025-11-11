@@ -84,9 +84,74 @@ type ModelConfig struct {
 // ModelConfigLocal represents the local definition of ModelConfig to avoid import cycles
 // This should match the structure in relay/adaptor/interface.go
 type ModelConfigLocal struct {
-	Ratio           float64 `json:"ratio"`
-	CompletionRatio float64 `json:"completion_ratio,omitempty"`
-	MaxTokens       int32   `json:"max_tokens,omitempty"`
+	Ratio           float64                     `json:"ratio"`
+	CompletionRatio float64                     `json:"completion_ratio,omitempty"`
+	MaxTokens       int32                       `json:"max_tokens,omitempty"`
+	ToolWhitelist   []string                    `json:"tool_whitelist,omitempty"`
+	ToolPricing     map[string]ToolPricingLocal `json:"tool_pricing,omitempty"`
+}
+
+// ToolPricingLocal is the channel-scoped representation of adaptor.ToolPricingConfig.
+// Administrators can express pricing either in USD per call or direct quota units.
+type ToolPricingLocal struct {
+	UsdPerCall   float64 `json:"usd_per_call,omitempty"`
+	QuotaPerCall int64   `json:"quota_per_call,omitempty"`
+}
+
+// normalizeModelConfigLocal trims whitespace, deduplicates tool lists, and validates pricing values.
+func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
+	normalized := ModelConfigLocal{
+		Ratio:           cfg.Ratio,
+		CompletionRatio: cfg.CompletionRatio,
+		MaxTokens:       cfg.MaxTokens,
+	}
+
+	if len(cfg.ToolWhitelist) > 0 {
+		seen := make(map[string]struct{}, len(cfg.ToolWhitelist))
+		normalized.ToolWhitelist = make([]string, 0, len(cfg.ToolWhitelist))
+		for _, raw := range cfg.ToolWhitelist {
+			trimmed := strings.TrimSpace(raw)
+			if trimmed == "" {
+				return ModelConfigLocal{}, errors.New("tool whitelist cannot contain empty entries")
+			}
+			lower := strings.ToLower(trimmed)
+			if _, exists := seen[lower]; exists {
+				continue
+			}
+			seen[lower] = struct{}{}
+			normalized.ToolWhitelist = append(normalized.ToolWhitelist, trimmed)
+		}
+		if len(normalized.ToolWhitelist) == 0 {
+			normalized.ToolWhitelist = nil
+		}
+	}
+
+	if len(cfg.ToolPricing) > 0 {
+		normalized.ToolPricing = make(map[string]ToolPricingLocal, len(cfg.ToolPricing))
+		for rawName, pricing := range cfg.ToolPricing {
+			trimmedName := strings.TrimSpace(rawName)
+			if trimmedName == "" {
+				return ModelConfigLocal{}, errors.New("tool pricing cannot contain empty tool names")
+			}
+			if pricing.UsdPerCall < 0 {
+				return ModelConfigLocal{}, errors.Errorf("tool %s usd_per_call cannot be negative", trimmedName)
+			}
+			if pricing.QuotaPerCall < 0 {
+				return ModelConfigLocal{}, errors.Errorf("tool %s quota_per_call cannot be negative", trimmedName)
+			}
+			normalized.ToolPricing[trimmedName] = pricing
+		}
+		if len(normalized.ToolPricing) == 0 {
+			normalized.ToolPricing = nil
+		}
+	}
+
+	return normalized, nil
+}
+
+// hasToolingData reports whether the configuration contains tool whitelist or pricing data.
+func hasToolingData(cfg ModelConfigLocal) bool {
+	return len(cfg.ToolWhitelist) > 0 || len(cfg.ToolPricing) > 0
 }
 
 // Migration control & state
@@ -512,8 +577,29 @@ func (channel *Channel) validateModelPriceConfigs(configs map[string]ModelConfig
 			return errors.Errorf("negative MaxTokens for model %s: %d", modelName, config.MaxTokens)
 		}
 
+		// Validate tool whitelist consistency
+		allowed := make(map[string]struct{}, len(config.ToolWhitelist))
+		for _, toolName := range config.ToolWhitelist {
+			if toolName == "" {
+				return errors.Errorf("tool whitelist for model %s contains empty entries", modelName)
+			}
+			allowed[strings.ToLower(toolName)] = struct{}{}
+		}
+
+		for toolName := range config.ToolPricing {
+			if toolName == "" {
+				return errors.Errorf("tool pricing for model %s contains empty tool name", modelName)
+			}
+			// When a whitelist is configured, enforce that priced tools appear in the list
+			if len(allowed) > 0 {
+				if _, ok := allowed[strings.ToLower(toolName)]; !ok {
+					return errors.Errorf("tool %s has pricing but is not in the whitelist for model %s", toolName, modelName)
+				}
+			}
+		}
+
 		// Validate that at least one field has meaningful data
-		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 {
+		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 && !hasToolingData(config) {
 			return errors.Errorf("model %s has no meaningful configuration data", modelName)
 		}
 	}
@@ -546,12 +632,25 @@ func (channel *Channel) SetModelPriceConfigs(modelPriceConfigs map[string]ModelC
 		return nil
 	}
 
+	cleaned := make(map[string]ModelConfigLocal, len(modelPriceConfigs))
+	for rawName, cfg := range modelPriceConfigs {
+		trimmedName := strings.TrimSpace(rawName)
+		if trimmedName == "" {
+			return errors.New("model name cannot be empty")
+		}
+		normalized, err := normalizeModelConfigLocal(cfg)
+		if err != nil {
+			return errors.Wrapf(err, "normalize model config for %s", rawName)
+		}
+		cleaned[trimmedName] = normalized
+	}
+
 	// Validate the configurations before setting
-	if err := channel.validateModelPriceConfigs(modelPriceConfigs); err != nil {
+	if err := channel.validateModelPriceConfigs(cleaned); err != nil {
 		return errors.Wrap(err, "invalid model price configurations")
 	}
 
-	jsonBytes, err := json.Marshal(modelPriceConfigs)
+	jsonBytes, err := json.Marshal(cleaned)
 	if err != nil {
 		return errors.Wrap(err, "failed to marshal model price configurations")
 	}

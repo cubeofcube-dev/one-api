@@ -58,7 +58,16 @@ const (
 	LogMetadataKeyCacheWrite5m = "ephemeral_5m"
 	// LogMetadataKeyCacheWrite1h records the count of 1-hour window cache write tokens.
 	LogMetadataKeyCacheWrite1h = "ephemeral_1h"
+	// LogMetadataKeyToolUsage stores structured metadata about built-in tool usage and charges.
+	LogMetadataKeyToolUsage = "tool_usage"
 )
+
+// ToolUsageSummary captures built-in tool invocation details for billing and logging purposes.
+type ToolUsageSummary struct {
+	TotalCost  int64            // Aggregated quota consumed by tools
+	Counts     map[string]int   // Invocation counts per tool
+	CostByTool map[string]int64 // Quota charged per tool
+}
 
 // Value converts LogMetadata to a driver-compatible JSON representation.
 func (m LogMetadata) Value() (driver.Value, error) {
@@ -151,6 +160,41 @@ func AppendCacheWriteTokensMetadata(metadata LogMetadata, cacheWrite5m, cacheWri
 	}
 
 	metadata[LogMetadataKeyCacheWriteTokens] = existing
+	return metadata
+}
+
+// AppendToolUsageMetadata attaches tool invocation details to the metadata map when present.
+func AppendToolUsageMetadata(metadata LogMetadata, summary *ToolUsageSummary) LogMetadata {
+	if summary == nil {
+		return metadata
+	}
+	if summary.TotalCost == 0 && len(summary.Counts) == 0 && len(summary.CostByTool) == 0 {
+		return metadata
+	}
+	if metadata == nil {
+		metadata = LogMetadata{}
+	}
+
+	entry := make(map[string]any, 3)
+	if summary.TotalCost != 0 {
+		entry["total_cost"] = summary.TotalCost
+	}
+	if len(summary.Counts) > 0 {
+		countsCopy := make(map[string]int, len(summary.Counts))
+		for k, v := range summary.Counts {
+			countsCopy[k] = v
+		}
+		entry["counts"] = countsCopy
+	}
+	if len(summary.CostByTool) > 0 {
+		costCopy := make(map[string]int64, len(summary.CostByTool))
+		for k, v := range summary.CostByTool {
+			costCopy[k] = v
+		}
+		entry["cost_by_tool"] = costCopy
+	}
+
+	metadata[LogMetadataKeyToolUsage] = entry
 	return metadata
 }
 

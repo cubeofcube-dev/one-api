@@ -60,7 +60,7 @@ func TestTraceDBSessionDisablesPreparedStatementsOnPostgres(t *testing.T) {
 	common.UsingPostgreSQL.Store(true)
 	t.Cleanup(func() { common.UsingPostgreSQL.Store(prev) })
 
-	session := traceDBWithContext(nil)
+	session := traceDBWithContext(context.Background())
 	require.False(t, session.Config.PrepareStmt)
 
 	sessionGin := traceDBWithGin(nil)

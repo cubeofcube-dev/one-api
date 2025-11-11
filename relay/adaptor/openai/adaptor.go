@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"math"
 	"net/http"
 	"strings"
 
@@ -107,14 +106,6 @@ func isWebSearchPreviewModel(lower string) bool {
 		return false
 	}
 	return strings.Contains(lower, "search-preview") || strings.Contains(lower, "web-search-preview")
-}
-
-func webSearchCallQuotaPerInvocation(modelName string) int64 {
-	usd := webSearchCallUSDPerThousand(modelName)
-	if usd <= 0 {
-		return 0
-	}
-	return int64(math.Ceil(usd / 1000.0 * ratio.QuotaPerUsd))
 }
 
 func (a *Adaptor) Init(meta *meta.Meta) {
@@ -768,7 +759,6 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 	resp *http.Response,
 	meta *meta.Meta) (usage *model.Usage,
 	err *model.ErrorWithStatusCode) {
-	skipUsageAdjustments := false
 	if meta.IsStream {
 		var responseText string
 		handledClaudeStream := false
@@ -836,7 +826,6 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 			err, usage = ResponseAPIDirectHandler(c, resp, meta.PromptTokens, meta.ActualModelName)
 		case relaymode.ChatCompletions:
 			if shouldConvertToClaude {
-				skipUsageAdjustments = true
 				// Skip Handler to keep body intact for Claude conversion.
 				break
 			}
@@ -855,12 +844,6 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 			}
 		default:
 			err, usage = Handler(c, resp, meta.PromptTokens, meta.ActualModelName)
-		}
-	}
-
-	if !skipUsageAdjustments {
-		if errCost := applyWebSearchToolCost(c, &usage, meta); errCost != nil {
-			return nil, errCost
 		}
 	}
 
@@ -884,57 +867,6 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 	}
 
 	return
-}
-
-func applyWebSearchToolCost(c *gin.Context, usage **model.Usage, meta *meta.Meta) *model.ErrorWithStatusCode {
-	if usage == nil || meta == nil {
-		return nil
-	}
-
-	ensureUsage := func() *model.Usage {
-		if *usage == nil {
-			*usage = &model.Usage{}
-		}
-		return *usage
-	}
-
-	modelName := meta.ActualModelName
-	perCallQuota := webSearchCallQuotaPerInvocation(modelName)
-
-	if callCountAny, ok := c.Get(ctxkey.WebSearchCallCount); ok {
-		count := 0
-		switch v := callCountAny.(type) {
-		case int:
-			count = v
-		case int32:
-			count = int(v)
-		case int64:
-			count = int(v)
-		case float64:
-			count = int(v)
-		}
-		if count < 0 {
-			count = 0
-		}
-		if count > 0 {
-			usagePtr := ensureUsage()
-			enforceWebSearchTokenPolicy(usagePtr, modelName, count)
-			if perCallQuota > 0 {
-				usagePtr.ToolsCost += int64(count) * perCallQuota
-			}
-		}
-	}
-
-	return nil
-}
-
-func enforceWebSearchTokenPolicy(usage *model.Usage, modelName string, callCount int) {
-	if usage == nil || callCount <= 0 {
-		return
-	}
-
-	_ = modelName // model retained for possible future policy tuning
-	usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
 }
 
 // convertToClaudeResponse converts OpenAI response format to Claude Messages format

@@ -36,6 +36,7 @@ import (
 	"github.com/songquanpeng/one-api/relay/pricing"
 	quotautil "github.com/songquanpeng/one-api/relay/quota"
 	"github.com/songquanpeng/one-api/relay/relaymode"
+	"github.com/songquanpeng/one-api/relay/tooling"
 )
 
 // RelayResponseAPIHelper handles Response API requests with direct pass-through
@@ -45,6 +46,13 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	meta := metalib.GetByContext(c)
 	if err := logClientRequestPayload(c, "response_api"); err != nil {
 		return openai.ErrorWrapper(err, "invalid_response_api_request", http.StatusBadRequest)
+	}
+
+	var channelRecord *model.Channel
+	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
+		if channel, ok := channelModel.(*model.Channel); ok {
+			channelRecord = channel
+		}
 	}
 
 	// get & validate Response API request
@@ -57,6 +65,13 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	applyThinkingQueryToResponseRequest(c, responseAPIRequest, meta)
 	if normalized, changed := openai.NormalizeToolChoiceForResponse(responseAPIRequest.ToolChoice); changed {
 		responseAPIRequest.ToolChoice = normalized
+	}
+
+	requestedBuiltins := make(map[string]struct{})
+	for _, tool := range responseAPIRequest.Tools {
+		if name := tooling.NormalizeBuiltinType(tool.Type); name != "" {
+			requestedBuiltins[name] = struct{}{}
+		}
 	}
 
 	// duplicated
@@ -75,6 +90,14 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	meta.ActualModelName = responseAPIRequest.Model
 	metalib.Set2Context(c, meta)
 	c.Set(ctxkey.ConvertedRequest, responseAPIRequest)
+
+	requestAdaptor := relay.GetAdaptor(meta.APIType)
+	if requestAdaptor == nil {
+		return openai.ErrorWrapper(errors.New("invalid api type"), "invalid_api_type", http.StatusBadRequest)
+	}
+	if err := tooling.ValidateRequestedBuiltins(responseAPIRequest.Model, meta, channelRecord, requestAdaptor, requestedBuiltins); err != nil {
+		return openai.ErrorWrapper(err, "tool_not_allowed", http.StatusBadRequest)
+	}
 
 	// get channel model ratio
 	channelModelRatio, channelCompletionRatio := getChannelRatios(c)
@@ -101,15 +124,11 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		return bizErr
 	}
 
-	adaptor := relay.GetAdaptor(meta.APIType)
-	if adaptor == nil {
-		return openai.ErrorWrapper(errors.New("invalid api type"), "invalid_api_type", http.StatusBadRequest)
-	}
-	adaptor.Init(meta)
+	requestAdaptor.Init(meta)
 
 	// get request body - for Response API, we pass through directly without conversion,
 	// but ensure mapped model is used in the outgoing JSON
-	requestBody, err := getResponseAPIRequestBody(c, meta, responseAPIRequest, adaptor)
+	requestBody, err := getResponseAPIRequestBody(c, meta, responseAPIRequest, requestAdaptor)
 	if err != nil {
 		return openai.ErrorWrapper(err, "convert_request_failed", http.StatusInternalServerError)
 	}
@@ -129,7 +148,7 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	requestBody = bytes.NewBuffer(requestBodyBytes)
 
 	// do request
-	resp, err := adaptor.DoRequest(c, meta, requestBody)
+	resp, err := requestAdaptor.DoRequest(c, meta, requestBody)
 	if err != nil {
 		// ErrorWrapper will log the error, so we don't need to log it here
 		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
@@ -171,7 +190,7 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	}
 
 	// do response
-	usage, respErr := adaptor.DoResponse(c, resp, meta)
+	usage, respErr := requestAdaptor.DoResponse(c, resp, meta)
 	if upstreamCapture != nil {
 		logUpstreamResponseFromCapture(lg, resp, upstreamCapture, "response_api")
 	} else {
@@ -189,6 +208,8 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		}
 		// Fall through to billing with available usage
 	}
+
+	tooling.ApplyBuiltinToolCharges(c, &usage, meta, channelRecord, requestAdaptor)
 
 	// post-consume quota
 	quotaId := c.GetInt(ctxkey.Id)
@@ -300,6 +321,21 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 		})
 	}
 
+	var channelRecord *model.Channel
+	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
+		if channel, ok := channelModel.(*model.Channel); ok {
+			channelRecord = channel
+		}
+	}
+
+	requestAdaptor := relay.GetAdaptor(meta.APIType)
+	if requestAdaptor == nil {
+		return openai.ErrorWrapper(errors.New("invalid api type"), "invalid_api_type", http.StatusBadRequest)
+	}
+	if err := tooling.ValidateChatBuiltinTools(c, chatRequest, meta, channelRecord, requestAdaptor); err != nil {
+		return openai.ErrorWrapper(err, "tool_not_allowed", http.StatusBadRequest)
+	}
+
 	channelModelRatio, channelCompletionRatio := getChannelRatios(c)
 	pricingAdaptor := relay.GetAdaptor(meta.ChannelType)
 	modelRatio := pricing.GetModelRatioWithThreeLayers(chatRequest.Model, channelModelRatio, pricingAdaptor)
@@ -317,14 +353,9 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 		return bizErr
 	}
 
-	adaptor := relay.GetAdaptor(meta.APIType)
-	if adaptor == nil {
-		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId)
-		return openai.ErrorWrapper(errors.New("invalid api type"), "invalid_api_type", http.StatusBadRequest)
-	}
-	adaptor.Init(meta)
+	requestAdaptor.Init(meta)
 
-	convertedRequest, err := adaptor.ConvertRequest(c, relaymode.ChatCompletions, chatRequest)
+	convertedRequest, err := requestAdaptor.ConvertRequest(c, relaymode.ChatCompletions, chatRequest)
 	if err != nil {
 		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId)
 		return openai.ErrorWrapper(err, "convert_request_failed", http.StatusInternalServerError)
@@ -338,7 +369,7 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 	}
 	requestBody := bytes.NewBuffer(jsonData)
 
-	resp, err := adaptor.DoRequest(c, meta, requestBody)
+	resp, err := requestAdaptor.DoRequest(c, meta, requestBody)
 	if err != nil {
 		billing.ReturnPreConsumedQuota(ctx, preConsumedQuota, meta.TokenId)
 		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
@@ -361,7 +392,7 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 		return RelayErrorHandlerWithContext(c, resp)
 	}
 
-	usage, respErr := adaptor.DoResponse(c, resp, meta)
+	usage, respErr := requestAdaptor.DoResponse(c, resp, meta)
 	if upstreamCapture != nil {
 		logUpstreamResponseFromCapture(lg, resp, upstreamCapture, "response_api_fallback")
 	} else {
@@ -375,6 +406,8 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 			return respErr
 		}
 	}
+
+	tooling.ApplyBuiltinToolCharges(c, &usage, meta, channelRecord, requestAdaptor)
 
 	if respErr == nil && capture != nil {
 		c.Writer = origWriter
@@ -1120,6 +1153,17 @@ func postConsumeResponseAPIQuota(ctx context.Context,
 	}
 	traceId := tracing.GetTraceIDFromContext(ctx)
 	if meta.TokenId > 0 && meta.UserId > 0 && meta.ChannelId > 0 {
+		var toolSummary *model.ToolUsageSummary
+		if ginCtx, ok := gmw.GetGinCtxFromStdCtx(ctx); ok {
+			if raw, exists := ginCtx.Get(ctxkey.ToolInvocationSummary); exists {
+				if summary, ok := raw.(*model.ToolUsageSummary); ok {
+					toolSummary = summary
+				}
+			}
+		}
+		metadata := model.AppendToolUsageMetadata(nil, toolSummary)
+		metadata = model.AppendCacheWriteTokensMetadata(metadata, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens)
+
 		billing.PostConsumeQuotaDetailed(billing.QuotaConsumeDetail{
 			Ctx:                    ctx,
 			TokenId:                meta.TokenId,
@@ -1142,7 +1186,7 @@ func postConsumeResponseAPIQuota(ctx context.Context,
 			CachedCompletionTokens: 0,
 			CacheWrite5mTokens:     usage.CacheWrite5mTokens,
 			CacheWrite1hTokens:     usage.CacheWrite1hTokens,
-			Metadata:               model.AppendCacheWriteTokensMetadata(nil, usage.CacheWrite5mTokens, usage.CacheWrite1hTokens),
+			Metadata:               metadata,
 			RequestId:              requestId,
 			TraceId:                traceId,
 		})
