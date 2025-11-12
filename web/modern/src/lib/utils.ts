@@ -24,11 +24,18 @@ export function formatTimestamp(timestamp: number): string {
 export function toDateTimeLocal(timestamp: number | undefined): string {
   if (!timestamp) return ''
   const date = new Date(timestamp * 1000)
-  return date.toISOString().slice(0, 16)
+  // Format for datetime-local input in user's local timezone
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
 export function fromDateTimeLocal(dateTimeLocal: string): number {
   if (!dateTimeLocal) return 0
+  // datetime-local input value is in user's local timezone
   return Math.floor(new Date(dateTimeLocal).getTime() / 1000)
 }
 
