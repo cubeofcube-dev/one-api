@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/relay/relaymode"
 )
 
@@ -118,5 +119,40 @@ data: [DONE]`
 	}
 	if finishCount != 1 {
 		t.Fatalf("expected exactly 1 finish_reason present, got %d", finishCount)
+	}
+}
+
+func TestResponseAPIStreamHandlerWebSearchUsageFallback(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+
+	sse := `event: response.completed
+data: {"type":"response.completed","response":{"id":"resp_ws","object":"response","created_at":1,"status":"completed","output":[{"id":"msg_ws","type":"message","status":"completed","role":"assistant","content":[{"type":"output_text","text":"hi"}]}],"usage":{"input_tokens":5,"output_tokens":2,"total_tokens":7,"input_tokens_details":{"web_search":{"requests":3}}}}}
+
+data: [DONE]`
+
+	resp := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(strings.NewReader(sse)),
+		Header:     make(http.Header),
+	}
+	resp.Header.Set("Content-Type", "text/event-stream")
+
+	err, _, usage := ResponseAPIStreamHandler(c, resp, relaymode.ChatCompletions)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if usage == nil || usage.TotalTokens != 7 {
+		t.Fatalf("unexpected usage: %v", usage)
+	}
+
+	countRaw, exists := c.Get(ctxkey.WebSearchCallCount)
+	if !exists {
+		t.Fatalf("expected web search count in context")
+	}
+	if count, ok := countRaw.(int); !ok || count != 3 {
+		t.Fatalf("expected web search count 3, got %v", countRaw)
 	}
 }

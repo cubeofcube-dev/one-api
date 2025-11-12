@@ -2549,6 +2549,30 @@ func TestResponseAPIUsageRoundTripPreservesKnownDetails(t *testing.T) {
 	}
 }
 
+func TestResponseAPIInputTokensDetailsWebSearchInvocationCount(t *testing.T) {
+	details := &ResponseAPIInputTokensDetails{
+		WebSearch: map[string]any{"requests": float64(4)},
+	}
+	if count := details.WebSearchInvocationCount(); count != 4 {
+		t.Fatalf("expected 4 requests, got %d", count)
+	}
+
+	details.WebSearch = map[string]any{"requests": []any{map[string]any{}, map[string]any{}, map[string]any{}}}
+	if count := details.WebSearchInvocationCount(); count != 3 {
+		t.Fatalf("expected 3 requests from slice, got %d", count)
+	}
+
+	details.WebSearch = " 2 "
+	if count := details.WebSearchInvocationCount(); count != 2 {
+		t.Fatalf("expected string count 2, got %d", count)
+	}
+
+	details.WebSearch = nil
+	if count := details.WebSearchInvocationCount(); count != 0 {
+		t.Fatalf("expected zero count for nil, got %d", count)
+	}
+}
+
 func TestCountWebSearchSearchActionsFromLog(t *testing.T) {
 	outputs := []OutputItem{
 		{Id: "rs_1", Type: "reasoning"},

@@ -89,6 +89,7 @@ func ApplyBuiltinToolCharges(c *gin.Context, usage **relaymodel.Usage, meta *met
 			}
 		}
 		if cost != 0 {
+			logger.Debug("applied builtin tool cost", zap.String("tool", canonical), zap.Int("count", count), zap.Int64("quota_cost", cost))
 			summary.CostByTool[canonical] = cost
 			totalCost += cost
 		}
