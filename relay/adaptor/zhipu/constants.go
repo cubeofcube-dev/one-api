@@ -96,12 +96,6 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // ZhipuToolingDefaults captures Open BigModel's published search-tool pricing tiers (retrieved 2025-11-12).
 // Source: https://r.jina.ai/https://open.bigmodel.cn/pricing
 var ZhipuToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"search_std",
-		"search_pro",
-		"search_pro_sogou",
-		"search_pro_quark",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"search_std":       {UsdPerCall: 0.01},
 		"search_pro":       {UsdPerCall: 0.03},

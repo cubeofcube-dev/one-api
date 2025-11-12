@@ -65,7 +65,6 @@ func TestApplyBuiltinToolCharges_ProviderPricing(t *testing.T) {
 			"gpt-4o": {},
 		},
 		tooling: adaptor.ChannelToolConfig{
-			Whitelist: []string{"web_search"},
 			Pricing: map[string]adaptor.ToolPricingConfig{
 				"web_search": {UsdPerCall: perCallUSD},
 			},
@@ -100,7 +99,6 @@ func TestApplyBuiltinToolCharges_ChannelOverrides(t *testing.T) {
 			"gpt-4o": {},
 		},
 		tooling: adaptor.ChannelToolConfig{
-			Whitelist: []string{"web_search"},
 			Pricing: map[string]adaptor.ToolPricingConfig{
 				"web_search": {QuotaPerCall: 10},
 			},

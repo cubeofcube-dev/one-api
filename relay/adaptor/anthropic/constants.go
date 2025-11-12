@@ -56,7 +56,6 @@ const anthropicWebSearchUsdPerCall = 10.0 / 1000.0
 // AnthropicToolingDefaults represents Anthropic's published built-in tool pricing (2025-11-11).
 // Source: https://r.jina.ai/https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool
 var AnthropicToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{"web_search"},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"web_search": {UsdPerCall: anthropicWebSearchUsdPerCall},
 	},

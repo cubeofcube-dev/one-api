@@ -248,21 +248,6 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // OpenRouterToolingDefaults enumerates OpenRouter's published web tooling prices (retrieved 2025-11-12).
 // Source: https://r.jina.ai/https://openrouter.ai/docs/features/web-search
 var OpenRouterToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"web_plugin_exa",
-		"openai_native_search_low",
-		"openai_native_search_medium",
-		"openai_native_search_high",
-		"openai_mini_native_search_low",
-		"openai_mini_native_search_medium",
-		"openai_mini_native_search_high",
-		"perplexity_native_search_low",
-		"perplexity_native_search_medium",
-		"perplexity_native_search_high",
-		"perplexity_pro_native_search_low",
-		"perplexity_pro_native_search_medium",
-		"perplexity_pro_native_search_high",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		// Exa plugin defaults to 5 results per request (5 * $0.004 = $0.02)
 		"web_plugin_exa":                      {UsdPerCall: 0.02},

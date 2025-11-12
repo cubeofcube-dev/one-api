@@ -166,13 +166,6 @@ var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 // OpenAIToolingDefaults enumerates OpenAI's built-in tool whitelist and pricing (retrieved 2025-11-11).
 // Source: https://r.jina.ai/https://platform.openai.com/docs/pricing#built-in-tools
 var OpenAIToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"code_interpreter",
-		"file_search",
-		"web_search",
-		"web_search_preview_reasoning",
-		"web_search_preview_non_reasoning",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"code_interpreter":                 {UsdPerCall: 0.03},   // $0.03 per container session
 		"file_search":                      {UsdPerCall: 0.0025}, // $2.50 per 1K tool calls

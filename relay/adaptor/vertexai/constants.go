@@ -5,13 +5,6 @@ import "github.com/songquanpeng/one-api/relay/adaptor"
 // VertexAIToolingDefaults captures Vertex AI's published tooling charges (retrieved 2025-11-12).
 // Source: https://r.jina.ai/https://cloud.google.com/vertex-ai/generative-ai/pricing
 var VertexAIToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"google_search_grounding",
-		"web_grounding_enterprise",
-		"grounding_with_your_data",
-		"google_maps_grounding",
-		"claude_web_search",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"google_search_grounding":  {UsdPerCall: 0.035},
 		"web_grounding_enterprise": {UsdPerCall: 0.045},

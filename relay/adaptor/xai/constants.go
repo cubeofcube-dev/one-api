@@ -40,14 +40,6 @@ var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 // XAIToolingDefaults captures xAI's published tool invocation fees (retrieved 2025-11-12).
 // Source: https://r.jina.ai/https://docs.x.ai/docs/models
 var XAIToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"web_search",
-		"x_search",
-		"code_execution",
-		"document_search",
-		"collections_search",
-		"live_search_source",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"web_search":         {UsdPerCall: 0.01},
 		"x_search":           {UsdPerCall: 0.01},

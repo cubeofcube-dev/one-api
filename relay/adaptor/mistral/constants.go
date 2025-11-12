@@ -38,13 +38,6 @@ var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 // MistralToolingDefaults captures Mistral's built-in connector pricing (retrieved 2025-11-12).
 // Source: https://r.jina.ai/https://www.walturn.com/insights/what-is-mistral-ai-features-pricing-and-use-cases
 var MistralToolingDefaults = adaptor.ChannelToolConfig{
-	Whitelist: []string{
-		"code_execution",
-		"document_library",
-		"image_generation",
-		"web_search",
-		"web_search_premium",
-	},
 	Pricing: map[string]adaptor.ToolPricingConfig{
 		"code_execution":     {UsdPerCall: 0.01}, // Connectors and code tools: $0.01 per API call
 		"document_library":   {UsdPerCall: 0.01}, // Document library billed under connector rate
