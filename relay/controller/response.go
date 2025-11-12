@@ -332,6 +332,9 @@ func relayResponseAPIThroughChat(c *gin.Context, meta *metalib.Meta, responseAPI
 	if requestAdaptor == nil {
 		return openai.ErrorWrapper(errors.New("invalid api type"), "invalid_api_type", http.StatusBadRequest)
 	}
+	if err := tooling.ValidateResponseBuiltinTools(responseAPIRequest, meta, channelRecord, requestAdaptor); err != nil {
+		return openai.ErrorWrapper(err, "tool_not_allowed", http.StatusBadRequest)
+	}
 	if err := tooling.ValidateChatBuiltinTools(c, chatRequest, meta, channelRecord, requestAdaptor); err != nil {
 		return openai.ErrorWrapper(err, "tool_not_allowed", http.StatusBadRequest)
 	}

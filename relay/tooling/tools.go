@@ -12,7 +12,9 @@ import (
 	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay/adaptor"
+	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
+	"github.com/songquanpeng/one-api/relay/channeltype"
 	metalib "github.com/songquanpeng/one-api/relay/meta"
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
 )
@@ -179,14 +181,43 @@ func CollectChatBuiltins(request *relaymodel.GeneralOpenAIRequest) map[string]st
 	return builtins
 }
 
+// CollectResponseBuiltins extracts built-in tool identifiers from a Response API request.
+func CollectResponseBuiltins(request *openai.ResponseAPIRequest) map[string]struct{} {
+	builtins := make(map[string]struct{})
+	if request == nil {
+		return builtins
+	}
+	for _, tool := range request.Tools {
+		if name := NormalizeBuiltinType(tool.Type); name != "" {
+			builtins[name] = struct{}{}
+		}
+	}
+	return builtins
+}
+
 // NormalizeBuiltinType normalizes known built-in tool identifiers (case-insensitive). Unknown tools return "".
 func NormalizeBuiltinType(toolType string) string {
 	switch strings.ToLower(strings.TrimSpace(toolType)) {
 	case "web_search":
 		return "web_search"
+	case "web_search_preview":
+		return "web_search"
 	default:
 		return ""
 	}
+}
+
+// ValidateResponseBuiltinTools verifies built-in tool usage on Response API requests prior to fallback conversions.
+func ValidateResponseBuiltinTools(request *openai.ResponseAPIRequest, meta *metalib.Meta, channel *model.Channel, provider adaptor.Adaptor) error {
+	if request == nil {
+		return nil
+	}
+	requested := CollectResponseBuiltins(request)
+	if len(requested) == 0 {
+		return nil
+	}
+	modelName := resolveModelName(meta, request.Model)
+	return ValidateRequestedBuiltins(modelName, meta, channel, provider, requested)
 }
 
 // ValidateRequestedBuiltins verifies the requested built-in tools against channel/provider policy.
@@ -196,7 +227,19 @@ func ValidateRequestedBuiltins(modelName string, meta *metalib.Meta, channel *mo
 	}
 
 	effectiveModel := resolveModelName(meta, modelName)
-	policy := buildToolPolicy(channel, provider, effectiveModel)
+	effectiveProvider := provider
+	if channel != nil {
+		switch channel.Type {
+		case channeltype.Azure:
+			effectiveProvider = nil
+		}
+	} else if meta != nil {
+		switch meta.ChannelType {
+		case channeltype.Azure:
+			effectiveProvider = nil
+		}
+	}
+	policy := buildToolPolicy(channel, effectiveProvider, effectiveModel)
 	for toolName := range requested {
 		if !policy.isAllowed(toolName) {
 			return errors.Errorf("tool %s is not allowed on this channel (model=%s); update the tooling whitelist or pricing", toolName, effectiveModel)
@@ -211,10 +254,31 @@ type toolPolicy struct {
 	whitelistDefined bool
 	allowed          map[string]struct{}
 	pricing          map[string]int64
+	channelPricing   map[string]struct{}
+	providerPricing  map[string]struct{}
 }
 
 func (p toolPolicy) hasPricing(tool string) bool {
-	_, ok := p.pricing[strings.ToLower(strings.TrimSpace(tool))]
+	canonical := strings.ToLower(strings.TrimSpace(tool))
+	if canonical == "" {
+		return false
+	}
+	if _, ok := p.channelPricing[canonical]; ok {
+		return true
+	}
+	if _, ok := p.providerPricing[canonical]; ok {
+		return true
+	}
+	return false
+}
+
+func (p toolPolicy) hasChannelPricing(tool string) bool {
+	_, ok := p.channelPricing[strings.ToLower(strings.TrimSpace(tool))]
+	return ok
+}
+
+func (p toolPolicy) hasProviderPricing(tool string) bool {
+	_, ok := p.providerPricing[strings.ToLower(strings.TrimSpace(tool))]
 	return ok
 }
 
@@ -224,20 +288,26 @@ func (p toolPolicy) isAllowed(tool string) bool {
 	if canonical == "" {
 		return false
 	}
+	if !p.hasPricing(canonical) {
+		return false
+	}
+	if p.whitelistDefined {
+		_, ok := p.allowed[canonical]
+		return ok
+	}
 	if _, ok := p.allowed[canonical]; ok {
 		return true
 	}
-	if p.hasPricing(canonical) {
-		return true
-	}
-	return !p.whitelistDefined
+	return true
 }
 
 // buildToolPolicy merges channel overrides with provider defaults to construct the effective policy.
 func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, _ string) toolPolicy {
 	policy := toolPolicy{
-		allowed: make(map[string]struct{}),
-		pricing: make(map[string]int64),
+		allowed:         make(map[string]struct{}),
+		pricing:         make(map[string]int64),
+		channelPricing:  make(map[string]struct{}),
+		providerPricing: make(map[string]struct{}),
 	}
 
 	setWhitelist := func(list []string) {
@@ -262,6 +332,7 @@ func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, _ string)
 				continue
 			}
 			policy.pricing[canonical] = quotaPerCallFromProvider(cfg)
+			policy.providerPricing[canonical] = struct{}{}
 		}
 	}
 
@@ -272,6 +343,7 @@ func buildToolPolicy(channel *model.Channel, provider adaptor.Adaptor, _ string)
 				continue
 			}
 			policy.pricing[canonical] = quotaPerCallFromLocal(cfg)
+			policy.channelPricing[canonical] = struct{}{}
 		}
 	}
 
