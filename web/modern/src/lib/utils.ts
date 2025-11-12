@@ -7,36 +7,150 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Date/time utility functions
-export function formatTimestamp(timestamp: number): string {
-  if (timestamp === undefined || timestamp === null) return '-'
-  if (timestamp <= 0) return '-'
-  const date = new Date(timestamp * 1000) // backend stores UTC seconds
-  const pad = (n: number) => n.toString().padStart(2, '0')
-  const yyyy = date.getFullYear()
-  const mm = pad(date.getMonth() + 1)
-  const dd = pad(date.getDate())
-  const HH = pad(date.getHours())
-  const MM = pad(date.getMinutes())
-  const SS = pad(date.getSeconds())
-  return `${yyyy}-${mm}-${dd} ${HH}:${MM}:${SS}` // local browser timezone
+type DateTimeOptions = {
+  timeZone?: string
 }
 
-export function toDateTimeLocal(timestamp: number | undefined): string {
-  if (!timestamp) return ''
+const DEFAULT_TZ = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  } catch (error) {
+    console.debug('[datetime] Failed to resolve default timezone, falling back to UTC', error)
+    return 'UTC'
+  }
+})()
+
+const dateTimeFormatterCache = new Map<string, Intl.DateTimeFormat>()
+
+const getFormatter = (timeZone: string, includeSeconds: boolean): Intl.DateTimeFormat => {
+  const key = `${timeZone}|${includeSeconds ? 'withSec' : 'noSec'}`
+  const cached = dateTimeFormatterCache.get(key)
+  if (cached) {
+    return cached
+  }
+
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }
+  if (includeSeconds) {
+    options.second = '2-digit'
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', options)
+  dateTimeFormatterCache.set(key, formatter)
+  return formatter
+}
+
+const formatToParts = (date: Date, timeZone: string, includeSeconds: boolean) => {
+  const formatter = getFormatter(timeZone, includeSeconds)
+  const parts: Record<string, string> = {}
+  formatter.formatToParts(date).forEach(part => {
+    if (part.type !== 'literal') {
+      parts[part.type] = part.value
+    }
+  })
+  return parts
+}
+
+const getTimeZoneOffsetMinutes = (date: Date, timeZone: string): number => {
+  const parts = formatToParts(date, timeZone, true)
+  const year = Number(parts.year)
+  const month = Number(parts.month)
+  const day = Number(parts.day)
+  const hour = Number(parts.hour)
+  const minute = Number(parts.minute)
+  const second = Number(parts.second ?? '0')
+  const asUTC = Date.UTC(year, month - 1, day, hour, minute, second)
+  return (asUTC - date.getTime()) / 60000
+}
+
+export function formatTimestamp(timestamp: number, options?: DateTimeOptions): string {
+  if (timestamp === undefined || timestamp === null) {
+    console.debug('[datetime] formatTimestamp received empty timestamp', { timestamp })
+    return '-'
+  }
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    console.debug('[datetime] formatTimestamp received invalid timestamp', { timestamp })
+    return '-'
+  }
+
+  const timeZone = options?.timeZone || DEFAULT_TZ
   const date = new Date(timestamp * 1000)
-  // Format for datetime-local input in user's local timezone
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  return `${year}-${month}-${day}T${hours}:${minutes}`
+  if (Number.isNaN(date.getTime())) {
+    console.debug('[datetime] formatTimestamp received NaN date', { timestamp, timeZone })
+    return '-'
+  }
+
+  const parts = formatToParts(date, timeZone, true)
+  const year = parts.year
+  const month = parts.month
+  const day = parts.day
+  const hour = parts.hour
+  const minute = parts.minute
+  const second = parts.second ?? '00'
+  return `${year}-${month}-${day} ${hour}:${minute}:${second}`
 }
 
-export function fromDateTimeLocal(dateTimeLocal: string): number {
-  if (!dateTimeLocal) return 0
-  // datetime-local input value is in user's local timezone
-  return Math.floor(new Date(dateTimeLocal).getTime() / 1000)
+export function toDateTimeLocal(timestamp: number | undefined, options?: DateTimeOptions): string {
+  if (!timestamp) {
+    console.debug('[datetime] toDateTimeLocal received empty timestamp', { timestamp })
+    return ''
+  }
+
+  const timeZone = options?.timeZone || DEFAULT_TZ
+  const date = new Date(timestamp * 1000)
+  if (Number.isNaN(date.getTime())) {
+    console.debug('[datetime] toDateTimeLocal received NaN date', { timestamp, timeZone })
+    return ''
+  }
+
+  const parts = formatToParts(date, timeZone, false)
+  const year = parts.year
+  const month = parts.month
+  const day = parts.day
+  const hour = parts.hour
+  const minute = parts.minute
+  return `${year}-${month}-${day}T${hour}:${minute}`
+}
+
+const DATETIME_LOCAL_REGEX = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/
+
+export function fromDateTimeLocal(dateTimeLocal: string, options?: DateTimeOptions): number {
+  if (!dateTimeLocal) {
+    console.debug('[datetime] fromDateTimeLocal received empty value')
+    return 0
+  }
+
+  const match = DATETIME_LOCAL_REGEX.exec(dateTimeLocal)
+  if (!match) {
+    console.debug('[datetime] fromDateTimeLocal value does not match expected pattern', { dateTimeLocal })
+    return 0
+  }
+
+  const [, yearRaw, monthRaw, dayRaw, hourRaw, minuteRaw, secondRaw] = match
+  const year = Number(yearRaw)
+  const month = Number(monthRaw)
+  const day = Number(dayRaw)
+  const hour = Number(hourRaw)
+  const minute = Number(minuteRaw)
+  const second = Number(secondRaw ?? '0')
+
+  if ([year, month, day, hour, minute, second].some(value => Number.isNaN(value))) {
+    console.debug('[datetime] fromDateTimeLocal parsed NaN component', { dateTimeLocal })
+    return 0
+  }
+
+  const baseUtc = Date.UTC(year, month - 1, day, hour, minute, second)
+  const timeZone = options?.timeZone || DEFAULT_TZ
+  const offsetMinutes = getTimeZoneOffsetMinutes(new Date(baseUtc), timeZone)
+  const adjusted = baseUtc - offsetMinutes * 60000
+  return Math.floor(adjusted / 1000)
 }
 
 // Number formatting
