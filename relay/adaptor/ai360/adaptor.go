@@ -100,3 +100,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Use default fallback from DefaultPricingMethods
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
+
+// DefaultToolingConfig returns AI360's published tooling defaults (none as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return AI360ToolingDefaults
+}

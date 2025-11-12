@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
 
@@ -22,7 +23,12 @@ func GetTraceByTraceId(c *gin.Context) {
 		return
 	}
 
-	trace, err := model.GetTraceByTraceId(traceId)
+	ctx := gmw.Ctx(c)
+	if ctx == nil && c.Request != nil {
+		ctx = c.Request.Context()
+	}
+
+	trace, err := model.GetTraceByTraceId(ctx, traceId)
 	if err != nil {
 		logger.Logger.Error("failed to get trace by trace ID",
 			zap.Error(err),
@@ -108,7 +114,12 @@ func GetTraceByLogId(c *gin.Context) {
 	}
 
 	// Get the trace information
-	trace, err := model.GetTraceByTraceId(log.TraceId)
+	ctx := gmw.Ctx(c)
+	if ctx == nil && c.Request != nil {
+		ctx = c.Request.Context()
+	}
+
+	trace, err := model.GetTraceByTraceId(ctx, log.TraceId)
 	if err != nil {
 		logger.Logger.Error("failed to get trace by trace ID from log",
 			zap.Error(err),

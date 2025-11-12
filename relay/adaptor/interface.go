@@ -63,6 +63,30 @@ type ModelRatioTier struct {
 	InputTokenThreshold int `json:"input_token_threshold"`
 }
 
+// ToolPricingConfig describes the per-invocation pricing for a provider built-in tool.
+// Prices can be expressed either as USD per call or precomputed quota units per call.
+type ToolPricingConfig struct {
+	// UsdPerCall represents the USD price per single invocation of the tool.
+	// Leave zero when using quota-based pricing.
+	UsdPerCall float64 `json:"usd_per_call,omitempty"`
+	// QuotaPerCall overrides the per-invocation cost directly in quota units.
+	// Zero means "not specified" unless the tool is intentionally free.
+	QuotaPerCall int64 `json:"quota_per_call,omitempty"`
+}
+
+// ChannelToolConfig defines channel-scoped built-in tool policies and pricing metadata.
+type ChannelToolConfig struct {
+	// Whitelist enumerates provider-built tools permitted for this channel. Nil/empty allows all.
+	Whitelist []string `json:"whitelist,omitempty"`
+	// Pricing defines per-tool invocation pricing for the entire channel.
+	Pricing map[string]ToolPricingConfig `json:"pricing,omitempty"`
+}
+
+// ToolingDefaultsProvider is implemented by adaptors that expose built-in tool defaults.
+type ToolingDefaultsProvider interface {
+	DefaultToolingConfig() ChannelToolConfig
+}
+
 type Adaptor interface {
 	Init(meta *meta.Meta)
 	GetRequestURL(meta *meta.Meta) (string, error)
@@ -102,6 +126,11 @@ func (d *DefaultPricingMethods) GetModelRatio(modelName string) float64 {
 
 func (d *DefaultPricingMethods) GetCompletionRatio(modelName string) float64 {
 	return 1.0 // Default completion ratio
+}
+
+// DefaultToolingConfig returns an empty tooling configuration so channels opt-in explicitly.
+func (d *DefaultPricingMethods) DefaultToolingConfig() ChannelToolConfig {
+	return ChannelToolConfig{}
 }
 
 func (d *DefaultPricingMethods) ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, error) {

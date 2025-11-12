@@ -527,6 +527,16 @@ func calculateAudioTokens(response *SlimTextResponse, modelName string) {
 	response.Usage.TotalTokens = response.Usage.PromptTokens + response.Usage.CompletionTokens
 }
 
+func deriveWebSearchInvocationCount(current int, usage *ResponseAPIUsage) (int, bool) {
+	if current > 0 || usage == nil || usage.InputTokensDetails == nil {
+		return current, false
+	}
+	if count := usage.InputTokensDetails.WebSearchInvocationCount(); count > 0 {
+		return count, true
+	}
+	return current, false
+}
+
 // ResponseAPIHandler processes non-streaming responses from Response API format and converts them back to ChatCompletion format
 // This function follows the same pattern as Handler but converts Response API responses to ChatCompletion format
 // Returns error (if any) and token usage information
@@ -560,7 +570,12 @@ func ResponseAPIHandler(c *gin.Context, resp *http.Response, promptTokens int, m
 		}, nil
 	}
 
-	if calls := countWebSearchSearchActions(responseAPIResp.Output); calls > 0 {
+	calls := countWebSearchSearchActions(responseAPIResp.Output)
+	if derived, usedFallback := deriveWebSearchInvocationCount(calls, responseAPIResp.Usage); usedFallback {
+		lg.Debug("web search count derived from usage details", zap.Int("web_search_requests", derived))
+		calls = derived
+	}
+	if calls > 0 {
 		c.Set(ctxkey.WebSearchCallCount, calls)
 	}
 
@@ -640,6 +655,7 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 	responseText := ""
 	reasoningText := ""
 	var usage *model.Usage
+	var lastUsage *ResponseAPIUsage
 	webSearchSeen := make(map[string]struct{})
 	webSearchCount := 0
 	toolStates := make(map[string]*responseStreamToolCallState)
@@ -908,6 +924,9 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 		}
 
 		// Accumulate usage information
+		if responseAPIChunk.Usage != nil {
+			lastUsage = responseAPIChunk.Usage
+		}
 		if chatCompletionChunk.Usage != nil {
 			usage = chatCompletionChunk.Usage
 		}
@@ -1061,6 +1080,10 @@ func ResponseAPIStreamHandler(c *gin.Context, resp *http.Response, relayMode int
 		return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), responseText, usage
 	}
 
+	if derived, usedFallback := deriveWebSearchInvocationCount(webSearchCount, lastUsage); usedFallback {
+		gmw.GetLogger(c).Debug("web search count derived from usage details (stream)", zap.Int("web_search_requests", derived))
+		webSearchCount = derived
+	}
 	if webSearchCount > 0 {
 		c.Set(ctxkey.WebSearchCallCount, webSearchCount)
 	}
@@ -1103,7 +1126,12 @@ func ResponseAPIDirectHandler(c *gin.Context, resp *http.Response, promptTokens 
 		}, nil
 	}
 
-	if calls := countWebSearchSearchActions(responseAPIResp.Output); calls > 0 {
+	calls := countWebSearchSearchActions(responseAPIResp.Output)
+	if derived, usedFallback := deriveWebSearchInvocationCount(calls, responseAPIResp.Usage); usedFallback {
+		gmw.GetLogger(c).Debug("web search count derived from usage details", zap.Int("web_search_requests", derived))
+		calls = derived
+	}
+	if calls > 0 {
 		c.Set(ctxkey.WebSearchCallCount, calls)
 	}
 
@@ -1165,6 +1193,7 @@ func ResponseAPIDirectStreamHandler(c *gin.Context, resp *http.Response, relayMo
 	// Initialize accumulators for the response
 	responseText := ""
 	var usage *model.Usage
+	var lastUsage *ResponseAPIUsage
 	webSearchSeen := make(map[string]struct{})
 	webSearchCount := 0
 	var lastFullResponse *ResponseAPIResponse
@@ -1234,6 +1263,7 @@ func ResponseAPIDirectStreamHandler(c *gin.Context, resp *http.Response, relayMo
 
 		// Accumulate usage information
 		if responseAPIChunk.Usage != nil {
+			lastUsage = responseAPIChunk.Usage
 			if convertedUsage := responseAPIChunk.Usage.ToModelUsage(); convertedUsage != nil {
 				usage = convertedUsage
 			}
@@ -1256,6 +1286,10 @@ func ResponseAPIDirectStreamHandler(c *gin.Context, resp *http.Response, relayMo
 		return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), responseText, usage
 	}
 
+	if derived, usedFallback := deriveWebSearchInvocationCount(webSearchCount, lastUsage); usedFallback {
+		gmw.GetLogger(c).Debug("web search count derived from usage details (direct stream)", zap.Int("web_search_requests", derived))
+		webSearchCount = derived
+	}
 	if webSearchCount > 0 {
 		c.Set(ctxkey.WebSearchCallCount, webSearchCount)
 	}

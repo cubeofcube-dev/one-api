@@ -39,3 +39,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// NovitaToolingDefaults notes that Novita's public pricing focuses on model tokens; no tool metering is published (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://novita.ai/pricing
+var NovitaToolingDefaults = adaptor.ChannelToolConfig{}

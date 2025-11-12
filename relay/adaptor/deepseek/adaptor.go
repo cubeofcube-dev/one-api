@@ -33,6 +33,11 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 	return ModelRatios
 }
 
+// DefaultToolingConfig returns DeepSeek's provider-level tooling defaults (none published as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return DeepseekToolingDefaults
+}
+
 func (a *Adaptor) GetModelRatio(modelName string) float64 {
 	pricing := a.GetDefaultModelPricing()
 	if price, exists := pricing[modelName]; exists {

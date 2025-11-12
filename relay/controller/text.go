@@ -32,6 +32,7 @@ import (
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
 	"github.com/songquanpeng/one-api/relay/pricing"
 	"github.com/songquanpeng/one-api/relay/streaming"
+	"github.com/songquanpeng/one-api/relay/tooling"
 )
 
 func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
@@ -63,14 +64,21 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	systemPromptReset := setSystemPrompt(ctx, textRequest, meta.ForcedSystemPrompt)
 
 	// get channel-specific pricing if available
+	var channelRecord *model.Channel
 	var channelModelRatio map[string]float64
 	var channelCompletionRatio map[string]float64
 	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
 		if channel, ok := channelModel.(*model.Channel); ok {
+			channelRecord = channel
 			// Get from unified ModelConfigs only (after migration)
 			channelModelRatio = channel.GetModelRatioFromConfigs()
 			channelCompletionRatio = channel.GetCompletionRatioFromConfigs()
 		}
+	}
+
+	requestAdaptor := relay.GetAdaptor(meta.APIType)
+	if requestAdaptor == nil {
+		return openai.ErrorWrapper(errors.Errorf("invalid api type: %d", meta.APIType), "invalid_api_type", http.StatusBadRequest)
 	}
 
 	// get model ratio using three-layer pricing system
@@ -80,6 +88,10 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	groupRatio := c.GetFloat64(ctxkey.ChannelRatio)
 
 	ratio := modelRatio * groupRatio
+	if err := tooling.ValidateChatBuiltinTools(c, textRequest, meta, channelRecord, requestAdaptor); err != nil {
+		return openai.ErrorWrapper(err, "tool_not_allowed", http.StatusBadRequest)
+	}
+
 	// pre-consume quota
 	promptTokens := getPromptTokens(gmw.Ctx(c), textRequest, meta.Mode)
 	meta.PromptTokens = promptTokens
@@ -111,11 +123,7 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		streaming.StoreTracker(c, tracker)
 	}
 
-	adaptor := relay.GetAdaptor(meta.APIType)
-	if adaptor == nil {
-		return openai.ErrorWrapper(errors.Errorf("invalid api type: %d", meta.APIType), "invalid_api_type", http.StatusBadRequest)
-	}
-	adaptor.Init(meta)
+	requestAdaptor.Init(meta)
 
 	// Downgrade structured JSON schema for providers that reject response_format
 	if requiresJSONSchemaDowngrade(meta, textRequest) {
@@ -124,7 +132,7 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	}
 
 	// get request body
-	requestBody, err := getRequestBody(c, meta, textRequest, adaptor, systemPromptReset)
+	requestBody, err := getRequestBody(c, meta, textRequest, requestAdaptor, systemPromptReset)
 	if err != nil {
 		// Check if this is a validation error and preserve the correct HTTP status code
 		//
@@ -144,7 +152,7 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	requestBody = bytes.NewBuffer(requestBodyBytes)
 
 	// do request
-	resp, err := adaptor.DoRequest(c, meta, requestBody)
+	resp, err := requestAdaptor.DoRequest(c, meta, requestBody)
 	if err != nil {
 		// ErrorWrapper will log the error, so we don't need to log it here
 		return openai.ErrorWrapper(err, "do_request_failed", http.StatusInternalServerError)
@@ -179,7 +187,7 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	}
 
 	// do response
-	usage, respErr := adaptor.DoResponse(c, resp, meta)
+	usage, respErr := requestAdaptor.DoResponse(c, resp, meta)
 	if upstreamCapture != nil {
 		logUpstreamResponseFromCapture(lg, resp, upstreamCapture, "chat_completions")
 	} else {
@@ -209,6 +217,8 @@ func RelayTextHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 			return openai.ErrorWrapper(trackerErr, "streaming_billing_failed", http.StatusInternalServerError)
 		}
 	}
+
+	tooling.ApplyBuiltinToolCharges(c, &usage, meta, channelRecord, requestAdaptor)
 
 	// post-consume quota
 	quotaId := c.GetInt(ctxkey.Id)

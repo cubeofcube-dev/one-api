@@ -66,6 +66,56 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 
+const geminiWebSearchUsdPerCall = 35.0 / 1000.0
+
+// geminiWebSearchModels enumerates Gemini models with grounded web search pricing in Google documentation.
+// Source: https://ai.google.dev/gemini-api/docs/pricing (retrieved via https://r.jina.ai/https://ai.google.dev/gemini-api/docs/pricing)
+var geminiWebSearchModels = map[string]struct{}{
+	"gemini-1.5-flash":                      {},
+	"gemini-1.5-flash-8b":                   {},
+	"gemini-1.5-pro":                        {},
+	"gemini-1.5-pro-experimental":           {},
+	"gemini-2.0-flash":                      {},
+	"gemini-2.0-flash-exp":                  {},
+	"gemini-2.0-flash-lite":                 {},
+	"gemini-2.0-flash-thinking-exp-01-21":   {},
+	"gemini-2.0-flash-exp-image-generation": {},
+	"gemini-2.0-pro-exp-02-05":              {},
+	"gemini-2.5-flash-lite":                 {},
+	"gemini-2.5-flash-lite-preview-06-17":   {},
+	"gemini-2.5-flash-lite-preview-09-2025": {},
+	"gemini-2.5-flash":                      {},
+	"gemini-2.5-flash-preview-04-17":        {},
+	"gemini-2.5-flash-preview-05-20":        {},
+	"gemini-2.5-flash-preview-09-2025":      {},
+	"gemini-2.5-flash-image":                {},
+	"gemini-2.5-flash-image-preview":        {},
+	"gemini-2.5-pro":                        {},
+	"gemini-2.5-pro-exp-03-25":              {},
+	"gemini-2.5-pro-preview-05-06":          {},
+	"gemini-2.5-pro-preview-06-05":          {},
+}
+
+var geminiToolingDefaults = buildGeminiToolingDefaults()
+
+// buildGeminiToolingDefaults attaches channel-level web search pricing derived from Google documentation.
+func buildGeminiToolingDefaults() adaptor.ChannelToolConfig {
+	if len(geminiWebSearchModels) == 0 {
+		return adaptor.ChannelToolConfig{}
+	}
+	return adaptor.ChannelToolConfig{
+		Pricing: map[string]adaptor.ToolPricingConfig{
+			"web_search": {UsdPerCall: geminiWebSearchUsdPerCall},
+		},
+	}
+}
+
+// GeminiToolingDefaults exposes the precomputed tooling defaults so callers
+// can reuse them without rebuilding the configuration repeatedly.
+func GeminiToolingDefaults() adaptor.ChannelToolConfig {
+	return geminiToolingDefaults
+}
+
 const (
 	ModalityText  = "TEXT"
 	ModalityImage = "IMAGE"

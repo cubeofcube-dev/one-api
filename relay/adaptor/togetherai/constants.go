@@ -18,3 +18,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// TogetherAIToolingDefaults notes that Together AI documentation covers model pricing only; tool metering is not published (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://docs.together.ai/docs/inference-models
+var TogetherAIToolingDefaults = adaptor.ChannelToolConfig{}

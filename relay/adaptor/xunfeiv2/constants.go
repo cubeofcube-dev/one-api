@@ -20,3 +20,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// XunfeiV2ToolingDefaults notes that iFLYTEK Spark HTTP documentation lists no tool-specific pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://www.xfyun.cn/doc/spark/HTTP%E8%B0%83%E7%94%A8%E6%96%87%E6%A1%A3.html
+var XunfeiV2ToolingDefaults = adaptor.ChannelToolConfig{}

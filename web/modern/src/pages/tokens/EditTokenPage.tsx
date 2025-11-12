@@ -15,6 +15,7 @@ import { logEditPageLayout } from '@/dev/layout-debug'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Info } from 'lucide-react'
 import { useNotifications } from '@/components/ui/notifications'
+import { toDateTimeLocal, fromDateTimeLocal } from '@/lib/utils'
 
 // Helper function to render quota with USD conversion (USD only)
 const renderQuotaWithPrompt = (quota: number): string => {
@@ -88,11 +89,10 @@ export function EditTokenPage() {
       const { success, message, data } = response.data
 
       if (success && data) {
-        // Convert timestamp to datetime-local format
+        // Convert timestamp to datetime-local format using local timezone
         const rawExpired = Number(data.expired_time)
         if (rawExpired && rawExpired > 0) {
-          const date = new Date(rawExpired * 1000)
-          data.expired_time = date.toISOString().slice(0, 16)
+          data.expired_time = toDateTimeLocal(rawExpired)
         } else {
           // Treat 0, -1, null, undefined as never
           data.expired_time = ''
@@ -168,8 +168,8 @@ export function EditTokenPage() {
       (hours * 60 * 60 * 1000) +
       (minutes * 60 * 1000)
 
-    const date = new Date(timestamp)
-    form.setValue('expired_time', date.toISOString().slice(0, 16))
+    // Convert to epoch seconds then to local datetime-local format
+    form.setValue('expired_time', toDateTimeLocal(Math.floor(timestamp / 1000)))
   }
 
   const filteredModels = modelOptions.filter(model =>
@@ -192,15 +192,15 @@ export function EditTokenPage() {
     try {
       let payload = { ...data }
 
-      // Convert datetime-local to timestamp
+      // Convert datetime-local to timestamp (local timezone to UTC)
       if (payload.expired_time) {
-        const time = Date.parse(payload.expired_time)
-        if (isNaN(time)) {
+        const timestamp = fromDateTimeLocal(payload.expired_time)
+        if (!timestamp || timestamp <= 0) {
           form.setError('expired_time', { message: 'Invalid expiration time' })
           notify({ type: 'error', title: 'Validation error', message: 'Invalid expiration time' })
           return
         }
-        payload.expired_time = Math.ceil(time / 1000) as any
+        payload.expired_time = timestamp as any
       } else {
         payload.expired_time = -1 as any
       }

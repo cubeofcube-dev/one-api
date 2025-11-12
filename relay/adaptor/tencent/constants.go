@@ -17,3 +17,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"hunyuan-vision":        {Ratio: 18 * ratio.MilliTokensRmb, CompletionRatio: 1},
 	"hunyuan-embedding":     {Ratio: 0.7 * ratio.MilliTokensRmb, CompletionRatio: 1},
 }
+
+// TencentToolingDefaults notes that Tencent Hunyuan pricing covers models only; no tool tariffs are posted (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://cloud.tencent.com/document/product/1729/97731
+var TencentToolingDefaults = adaptor.ChannelToolConfig{}

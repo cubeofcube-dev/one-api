@@ -17,3 +17,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// baichuanToolingDefaults documents that Baichuan's public console does not expose tool billing without authentication (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://platform.baichuan-ai.com/price (returns 404)
+var BaichuanToolingDefaults = adaptor.ChannelToolConfig{}

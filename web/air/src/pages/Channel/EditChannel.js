@@ -69,9 +69,51 @@ const validateModelConfigs = (configStr) => {
                 }
             }
 
+            if (config.tool_whitelist !== undefined) {
+                if (!Array.isArray(config.tool_whitelist)) {
+                    return { valid: false, error: `模型"${modelName}"的tool_whitelist必须是字符串数组` };
+                }
+                for (const entry of config.tool_whitelist) {
+                    if (typeof entry !== 'string' || entry.trim() === '') {
+                        return { valid: false, error: `模型"${modelName}"的tool_whitelist包含无效条目` };
+                    }
+                }
+            }
+
+            if (config.tool_pricing !== undefined) {
+                if (typeof config.tool_pricing !== 'object' || config.tool_pricing === null || Array.isArray(config.tool_pricing)) {
+                    return { valid: false, error: `模型"${modelName}"的tool_pricing必须是对象` };
+                }
+                const entries = Object.entries(config.tool_pricing);
+                if (entries.length === 0) {
+                    return { valid: false, error: `模型"${modelName}"的tool_pricing不能为空` };
+                }
+                for (const [toolName, pricing] of entries) {
+                    if (!toolName || toolName.trim() === '') {
+                        return { valid: false, error: `模型"${modelName}"的tool_pricing存在空的工具名称` };
+                    }
+                    if (typeof pricing !== 'object' || pricing === null || Array.isArray(pricing)) {
+                        return { valid: false, error: `模型"${modelName}"的工具"${toolName}"的pricing必须是对象` };
+                    }
+                    const { usd_per_call, quota_per_call } = pricing;
+                    if (usd_per_call !== undefined && (typeof usd_per_call !== 'number' || usd_per_call < 0)) {
+                        return { valid: false, error: `模型"${modelName}"的工具"${toolName}"的usd_per_call必须是非负数` };
+                    }
+                    if (quota_per_call !== undefined && (typeof quota_per_call !== 'number' || quota_per_call < 0)) {
+                        return { valid: false, error: `模型"${modelName}"的工具"${toolName}"的quota_per_call必须是非负数` };
+                    }
+                    if (usd_per_call === undefined && quota_per_call === undefined) {
+                        return { valid: false, error: `模型"${modelName}"的工具"${toolName}"必须设置usd_per_call或quota_per_call` };
+                    }
+                }
+            }
+
             // Check if at least one meaningful field is provided
-            if (config.ratio === undefined && config.completion_ratio === undefined && config.max_tokens === undefined) {
-                return { valid: false, error: `模型"${modelName}"必须至少有一个配置字段（ratio、completion_ratio或max_tokens）` };
+            const hasPricingField = config.ratio !== undefined || config.completion_ratio !== undefined || config.max_tokens !== undefined;
+            const hasToolField = (Array.isArray(config.tool_whitelist) && config.tool_whitelist.length > 0) ||
+                (config.tool_pricing && Object.keys(config.tool_pricing).length > 0);
+            if (!hasPricingField && !hasToolField) {
+                return { valid: false, error: `模型"${modelName}"必须包含价格配置或工具配置` };
             }
         }
 

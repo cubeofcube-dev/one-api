@@ -74,3 +74,8 @@ func (a *Adaptor) GetModelList() []string {
 func (a *Adaptor) GetChannelName() string {
 	return "aiproxy"
 }
+
+// DefaultToolingConfig mirrors OpenAI's defaults because AIProxy relays OpenAI tool calls.
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return AIProxyToolingDefaults
+}

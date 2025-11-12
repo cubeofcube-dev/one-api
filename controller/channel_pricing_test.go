@@ -126,7 +126,7 @@ func TestGetChannelPricing_UnifiedFormat(t *testing.T) {
 				Name:         "test-channel",
 				ModelConfigs: stringPtr(`{"gpt-3.5-turbo": {"ratio": 0.0015, "completion_ratio": 2.0, "max_tokens": 65536}}`),
 			},
-			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs"},
+			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs", "tooling"},
 		},
 		{
 			name: "channel with old format",
@@ -136,7 +136,7 @@ func TestGetChannelPricing_UnifiedFormat(t *testing.T) {
 				ModelRatio:      stringPtr(`{"gpt-3.5-turbo": 0.0015}`),
 				CompletionRatio: stringPtr(`{"gpt-3.5-turbo": 2.0}`),
 			},
-			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs"},
+			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs", "tooling"},
 		},
 		{
 			name: "channel with no pricing data",
@@ -144,7 +144,7 @@ func TestGetChannelPricing_UnifiedFormat(t *testing.T) {
 				Id:   1,
 				Name: "test-channel",
 			},
-			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs"},
+			expectedFields: []string{"model_ratio", "completion_ratio", "model_configs", "tooling"},
 		},
 	}
 

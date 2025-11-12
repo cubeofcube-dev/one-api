@@ -476,3 +476,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Use default fallback from DefaultPricingMethods
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
+
+// DefaultToolingConfig returns xAI tooling defaults (web, X, code execution, and related fees).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return XAIToolingDefaults
+}

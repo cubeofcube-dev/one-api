@@ -25,3 +25,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// DoubaoToolingDefaults documents that Bytedance's Doubao cloud pricing does not list per-tool fees publicly (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://www.volcengine.com/docs/82379/1099320
+var DoubaoToolingDefaults = adaptor.ChannelToolConfig{}

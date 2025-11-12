@@ -150,3 +150,8 @@ func (a *Adaptor) GetModelList() []string {
 func (a *Adaptor) GetChannelName() string {
 	return "ollama"
 }
+
+// DefaultToolingConfig returns Ollama tooling defaults (no per-call pricing documented as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return OllamaToolingDefaults
+}

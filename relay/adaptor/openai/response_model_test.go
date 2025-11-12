@@ -4,15 +4,12 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
-	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/relay/channeltype"
 	"github.com/songquanpeng/one-api/relay/meta"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -2475,160 +2472,6 @@ func TestResponseAPIUsageWithFallback(t *testing.T) {
 	}
 }
 
-func TestApplyWebSearchToolCostForCallCount(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set(ctxkey.WebSearchCallCount, 3)
-	metaInfo := &meta.Meta{ActualModelName: "gpt-5"}
-	var usage *model.Usage
-
-	if err := applyWebSearchToolCost(c, &usage, metaInfo); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if usage == nil {
-		t.Fatal("expected usage to be allocated")
-	}
-
-	perCall := webSearchCallQuotaPerInvocation(metaInfo.ActualModelName)
-	expected := int64(3) * perCall
-	if usage.ToolsCost != expected {
-		t.Fatalf("expected tools cost %d, got %d", expected, usage.ToolsCost)
-	}
-}
-
-func TestApplyWebSearchToolCostForSearchPreview(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set(ctxkey.WebSearchCallCount, 1)
-	metaInfo := &meta.Meta{ActualModelName: "gpt-4o-search-preview"}
-	usage := &model.Usage{}
-
-	if err := applyWebSearchToolCost(c, &usage, metaInfo); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	perCall := webSearchCallQuotaPerInvocation(metaInfo.ActualModelName)
-	if perCall <= 0 {
-		t.Fatalf("expected positive per-call quota for preview model, got %d", perCall)
-	}
-	if usage.ToolsCost != perCall {
-		t.Fatalf("expected tools cost %d, got %d", perCall, usage.ToolsCost)
-	}
-}
-
-func TestEnforceWebSearchTokenPolicyPreviewFreeTokens(t *testing.T) {
-	usage := &model.Usage{
-		PromptTokens:     12000,
-		CompletionTokens: 500,
-		TotalTokens:      0,
-		PromptTokensDetails: &model.UsagePromptTokensDetails{
-			TextTokens: 12000,
-		},
-	}
-
-	enforceWebSearchTokenPolicy(usage, "gpt-4o-search-preview", 2)
-
-	if usage.PromptTokens != 12000 {
-		t.Fatalf("expected prompt tokens unchanged at 12000, got %d", usage.PromptTokens)
-	}
-	if usage.TotalTokens != 12500 {
-		t.Fatalf("expected total tokens recomputed to 12500, got %d", usage.TotalTokens)
-	}
-}
-
-func TestEnforceWebSearchTokenPolicyMiniFixedBlockIncrease(t *testing.T) {
-	usage := &model.Usage{
-		PromptTokens:     5000,
-		CompletionTokens: 1000,
-		TotalTokens:      0,
-		PromptTokensDetails: &model.UsagePromptTokensDetails{
-			TextTokens: 5000,
-		},
-	}
-
-	enforceWebSearchTokenPolicy(usage, "gpt-4o-mini-search-preview", 2)
-
-	if usage.PromptTokens != 5000 {
-		t.Fatalf("expected prompt tokens unchanged at 5000, got %d", usage.PromptTokens)
-	}
-	if usage.TotalTokens != 6000 {
-		t.Fatalf("expected total tokens recomputed to 6000, got %d", usage.TotalTokens)
-	}
-	if usage.PromptTokensDetails.TextTokens != 5000 {
-		t.Fatalf("expected text tokens unchanged at 5000, got %d", usage.PromptTokensDetails.TextTokens)
-	}
-}
-
-func TestEnforceWebSearchTokenPolicyMiniFixedBlockDecrease(t *testing.T) {
-	usage := &model.Usage{
-		PromptTokens:     20000,
-		CompletionTokens: 1000,
-		TotalTokens:      0,
-		PromptTokensDetails: &model.UsagePromptTokensDetails{
-			TextTokens: 20000,
-		},
-	}
-
-	enforceWebSearchTokenPolicy(usage, "gpt-4.1-mini-search-preview", 1)
-
-	if usage.PromptTokens != 20000 {
-		t.Fatalf("expected prompt tokens unchanged at 20000, got %d", usage.PromptTokens)
-	}
-	if usage.TotalTokens != 21000 {
-		t.Fatalf("expected total tokens recomputed to 21000, got %d", usage.TotalTokens)
-	}
-	if usage.PromptTokensDetails.TextTokens != 20000 {
-		t.Fatalf("expected text tokens unchanged at 20000, got %d", usage.PromptTokensDetails.TextTokens)
-	}
-}
-
-func TestWebSearchCallUSDPerThousandPreviewTiers(t *testing.T) {
-	cases := []struct {
-		model string
-		usd   float64
-	}{
-		{"gpt-4o-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview-2025-01-01", 25.0},
-		{"gpt-5-search-preview", 10.0},
-		{"o1-preview-search", 10.0},
-		{"o3-deep-research", 10.0},
-		{"gpt-4o-web-search", 10.0},
-	}
-
-	for _, tc := range cases {
-		got := webSearchCallUSDPerThousand(tc.model)
-		if got != tc.usd {
-			t.Fatalf("model %s: expected USD %.2f, got %.2f", tc.model, tc.usd, got)
-		}
-	}
-}
-
-func TestWebSearchCallUSDPerThousandTiering(t *testing.T) {
-	cases := []struct {
-		model string
-		usd   float64
-	}{
-		{"gpt-4o-search-preview", 25.0},
-		{"gpt-4o-mini-search-preview-2025-01-01", 25.0},
-		{"gpt-4.1-mini-search-preview", 25.0},
-		{"gpt-5-search", 10.0},
-		{"o1-preview-search", 10.0},
-		{"gpt-4o-search", 10.0},
-		{"o3-deep-research", 10.0},
-	}
-
-	for _, tc := range cases {
-		got := webSearchCallUSDPerThousand(tc.model)
-		if got != tc.usd {
-			t.Fatalf("model %s: expected USD %.2f, got %.2f", tc.model, tc.usd, got)
-		}
-	}
-}
-
 func TestResponseAPIUsageToModelMatchesRealLog(t *testing.T) {
 	payload := []byte(`{"input_tokens":8555,"input_tokens_details":{"cached_tokens":4224},"output_tokens":889,"output_tokens_details":{"reasoning_tokens":640},"total_tokens":9444}`)
 	var usage ResponseAPIUsage
@@ -2703,6 +2546,30 @@ func TestResponseAPIUsageRoundTripPreservesKnownDetails(t *testing.T) {
 	}
 	if _, exists := inputMap["web_search_content_tokens"]; exists {
 		t.Fatal("did not expect web_search_content_tokens to be present in marshalled usage")
+	}
+}
+
+func TestResponseAPIInputTokensDetailsWebSearchInvocationCount(t *testing.T) {
+	details := &ResponseAPIInputTokensDetails{
+		WebSearch: map[string]any{"requests": float64(4)},
+	}
+	if count := details.WebSearchInvocationCount(); count != 4 {
+		t.Fatalf("expected 4 requests, got %d", count)
+	}
+
+	details.WebSearch = map[string]any{"requests": []any{map[string]any{}, map[string]any{}, map[string]any{}}}
+	if count := details.WebSearchInvocationCount(); count != 3 {
+		t.Fatalf("expected 3 requests from slice, got %d", count)
+	}
+
+	details.WebSearch = " 2 "
+	if count := details.WebSearchInvocationCount(); count != 2 {
+		t.Fatalf("expected string count 2, got %d", count)
+	}
+
+	details.WebSearch = nil
+	if count := details.WebSearchInvocationCount(); count != 0 {
+		t.Fatalf("expected zero count for nil, got %d", count)
 	}
 }
 
@@ -2938,25 +2805,5 @@ func TestDeepResearchConversionIncludesWebSearchTool(t *testing.T) {
 
 	if !found {
 		t.Fatal("web_search tool not found in converted Response API request")
-	}
-}
-
-func TestApplyWebSearchToolCostForDeepResearch(t *testing.T) {
-	gin.SetMode(gin.TestMode)
-	w := httptest.NewRecorder()
-	c, _ := gin.CreateTestContext(w)
-	c.Set(ctxkey.WebSearchCallCount, 2)
-
-	metaInfo := &meta.Meta{ActualModelName: "o3-deep-research"}
-	usage := &model.Usage{}
-
-	if err := applyWebSearchToolCost(c, &usage, metaInfo); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	perCall := webSearchCallQuotaPerInvocation(metaInfo.ActualModelName)
-	expected := int64(2) * perCall
-	if usage.ToolsCost != expected {
-		t.Fatalf("expected tools cost %d, got %d", expected, usage.ToolsCost)
 	}
 }

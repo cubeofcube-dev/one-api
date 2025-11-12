@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"math"
 	"strconv"
 	"strings"
 
@@ -1574,6 +1575,17 @@ func (d ResponseAPIInputTokensDetails) MarshalJSON() ([]byte, error) {
 	return json.Marshal(raw)
 }
 
+// WebSearchInvocationCount extracts the number of billable web search invocations recorded in the
+// input token details payload returned by the Responses API. The upstream schema is still evolving,
+// so this helper defensively inspects several possible representations (numeric counters, strings,
+// or nested structures containing request entries).
+func (d *ResponseAPIInputTokensDetails) WebSearchInvocationCount() int {
+	if d == nil || d.WebSearch == nil {
+		return 0
+	}
+	return extractWebSearchInvocationCount(d.WebSearch)
+}
+
 func (d *ResponseAPIOutputTokensDetails) UnmarshalJSON(data []byte) error {
 	var raw map[string]any
 	if err := json.Unmarshal(data, &raw); err != nil {
@@ -1639,6 +1651,80 @@ func (d ResponseAPIOutputTokensDetails) MarshalJSON() ([]byte, error) {
 	}
 
 	return json.Marshal(raw)
+}
+
+// extractWebSearchInvocationCount normalizes disparate web search metadata structures into a
+// concrete invocation count. OpenAI has experimented with multiple shapes (numeric counters,
+// nested maps, or arrays), so we need to support all forms without failing hard on unknown data.
+func extractWebSearchInvocationCount(raw any) int {
+	switch v := raw.(type) {
+	case nil:
+		return 0
+	case int:
+		if v > 0 {
+			return v
+		}
+	case int32:
+		if v > 0 {
+			return int(v)
+		}
+	case int64:
+		if v > 0 {
+			return int(v)
+		}
+	case float32:
+		if v > 0 {
+			return int(math.Round(float64(v)))
+		}
+	case float64:
+		if v > 0 {
+			return int(math.Round(v))
+		}
+	case json.Number:
+		if f, err := v.Float64(); err == nil {
+			return extractWebSearchInvocationCount(f)
+		}
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return 0
+		}
+		if f, err := strconv.ParseFloat(trimmed, 64); err == nil {
+			return extractWebSearchInvocationCount(f)
+		}
+	case []any:
+		total := 0
+		for _, item := range v {
+			if count := extractWebSearchInvocationCount(item); count > 0 {
+				total += count
+			}
+		}
+		if total > 0 {
+			return total
+		}
+		if len(v) > 0 {
+			return len(v)
+		}
+	case map[string]any:
+		// Prefer well-known counter keys first to avoid double counting.
+		candidates := []string{"requests", "request_count", "count", "total_requests", "queries", "query_count", "calls", "invocations"}
+		for _, key := range candidates {
+			for actualKey, value := range v {
+				if strings.EqualFold(actualKey, key) {
+					if count := extractWebSearchInvocationCount(value); count > 0 {
+						return count
+					}
+				}
+			}
+		}
+		// As a defensive fallback, inspect remaining values and return the first positive count.
+		for _, value := range v {
+			if count := extractWebSearchInvocationCount(value); count > 0 {
+				return count
+			}
+		}
+	}
+	return 0
 }
 
 func (d *ResponseAPIInputTokensDetails) toModel() *model.UsagePromptTokensDetails {

@@ -49,3 +49,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// BaiduV2ToolingDefaults records that the updated Wenxin billing docs require authentication for tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Blfmc9do2 (restricted access)
+var BaiduV2ToolingDefaults = adaptor.ChannelToolConfig{}

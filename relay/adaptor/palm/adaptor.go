@@ -138,3 +138,8 @@ func (a *Adaptor) GetModelList() []string {
 func (a *Adaptor) GetChannelName() string {
 	return "google palm"
 }
+
+// DefaultToolingConfig returns PaLM tooling defaults (tool pricing not published as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return PalmToolingDefaults
+}

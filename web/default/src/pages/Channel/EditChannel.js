@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button, Card, Form, Input, Message, Popup, Icon } from 'semantic-ui-react';
+import { Button, Card, Form, Input, Message, Popup, Icon, Label, Dropdown } from 'semantic-ui-react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { API, copy, getChannelModels, showError, showInfo, showSuccess, verifyJSON, } from '../../helpers';
+import { API, copy, showError, showInfo, showSuccess, verifyJSON } from '../../helpers';
 import { CHANNEL_OPTIONS, COZE_AUTH_OPTIONS } from '../../constants';
 import { renderChannelTip } from '../../helpers/render';
 import ChannelDebugPanel from '../../components/ChannelDebugPanel';
@@ -15,14 +15,18 @@ const MODEL_MAPPING_EXAMPLE = {
 
 const MODEL_CONFIGS_EXAMPLE = {
   'gpt-3.5-turbo-0301': {
-    'ratio': 0.0015,
-    'completion_ratio': 2.0,
-    'max_tokens': 65536,
+    ratio: 0.0015,
+    completion_ratio: 2.0,
+    max_tokens: 65536,
   },
   'gpt-4': {
-    'ratio': 0.03,
-    'completion_ratio': 2.0,
-    'max_tokens': 128000,
+    ratio: 0.03,
+    completion_ratio: 2.0,
+    max_tokens: 128000,
+    tool_whitelist: ['web_search'],
+    tool_pricing: {
+      web_search: { usd_per_call: 0.002 }
+    },
   }
 };
 
@@ -48,30 +52,92 @@ const validateModelConfigs = (configStr) => {
         return { valid: false, error: `Configuration for model "${modelName}" must be an object` };
       }
 
+      const configObj = config;
+
       // Validate ratio
-      if (config.ratio !== undefined) {
-        if (typeof config.ratio !== 'number' || config.ratio < 0) {
+      if (configObj.ratio !== undefined) {
+        if (typeof configObj.ratio !== 'number' || configObj.ratio < 0) {
           return { valid: false, error: `Invalid ratio for model "${modelName}": must be a non-negative number` };
         }
       }
 
       // Validate completion_ratio
-      if (config.completion_ratio !== undefined) {
-        if (typeof config.completion_ratio !== 'number' || config.completion_ratio < 0) {
+      if (configObj.completion_ratio !== undefined) {
+        if (typeof configObj.completion_ratio !== 'number' || configObj.completion_ratio < 0) {
           return { valid: false, error: `Invalid completion_ratio for model "${modelName}": must be a non-negative number` };
         }
       }
 
       // Validate max_tokens
-      if (config.max_tokens !== undefined) {
-        if (!Number.isInteger(config.max_tokens) || config.max_tokens < 0) {
+      if (configObj.max_tokens !== undefined) {
+        if (!Number.isInteger(configObj.max_tokens) || configObj.max_tokens < 0) {
           return { valid: false, error: `Invalid max_tokens for model "${modelName}": must be a non-negative integer` };
         }
       }
 
+      // Validate tool whitelist
+      let hasToolWhitelist = false;
+      const whitelistSet = new Set();
+      if (configObj.tool_whitelist !== undefined) {
+        if (!Array.isArray(configObj.tool_whitelist)) {
+          return { valid: false, error: `tool_whitelist for model "${modelName}" must be an array of strings` };
+        }
+        for (const entry of configObj.tool_whitelist) {
+          if (typeof entry !== 'string') {
+            return { valid: false, error: `tool_whitelist for model "${modelName}" contains a non-string entry` };
+          }
+          const trimmed = entry.trim();
+          if (trimmed === '') {
+            return { valid: false, error: `tool_whitelist for model "${modelName}" contains an empty entry` };
+          }
+          hasToolWhitelist = true;
+          whitelistSet.add(trimmed.toLowerCase());
+        }
+      }
+
+      // Validate tool pricing
+      let hasToolPricing = false;
+      if (configObj.tool_pricing !== undefined) {
+        if (typeof configObj.tool_pricing !== 'object' || configObj.tool_pricing === null || Array.isArray(configObj.tool_pricing)) {
+          return { valid: false, error: `tool_pricing for model "${modelName}" must be an object` };
+        }
+        const pricingEntries = Object.entries(configObj.tool_pricing);
+        if (pricingEntries.length === 0) {
+          return { valid: false, error: `tool_pricing for model "${modelName}" cannot be empty` };
+        }
+        for (const [toolNameRaw, pricing] of pricingEntries) {
+          if (typeof toolNameRaw !== 'string') {
+            return { valid: false, error: `tool_pricing for model "${modelName}" has a non-string tool name` };
+          }
+          const toolName = toolNameRaw.trim();
+          if (toolName === '') {
+            return { valid: false, error: `tool_pricing for model "${modelName}" has an empty tool name` };
+          }
+          if (typeof pricing !== 'object' || pricing === null || Array.isArray(pricing)) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" must be an object` };
+          }
+          const { usd_per_call, quota_per_call } = pricing;
+          if (usd_per_call !== undefined && (typeof usd_per_call !== 'number' || usd_per_call < 0)) {
+            return { valid: false, error: `usd_per_call for tool "${toolName}" on model "${modelName}" must be a non-negative number` };
+          }
+          if (quota_per_call !== undefined && (!Number.isInteger(quota_per_call) || quota_per_call < 0)) {
+            return { valid: false, error: `quota_per_call for tool "${toolName}" on model "${modelName}" must be a non-negative integer` };
+          }
+          if (usd_per_call === undefined && quota_per_call === undefined) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" must specify usd_per_call or quota_per_call` };
+          }
+          if (whitelistSet.size > 0 && !whitelistSet.has(toolName.toLowerCase())) {
+            return { valid: false, error: `tool_pricing for tool "${toolName}" on model "${modelName}" is missing from tool_whitelist` };
+          }
+          hasToolPricing = true;
+        }
+      }
+
       // Check if at least one meaningful field is provided
-      if (config.ratio === undefined && config.completion_ratio === undefined && config.max_tokens === undefined) {
-        return { valid: false, error: `Model "${modelName}" must have at least one configuration field (ratio, completion_ratio, or max_tokens)` };
+      const hasPricingField = configObj.ratio !== undefined || configObj.completion_ratio !== undefined || configObj.max_tokens !== undefined;
+      const hasToolField = hasToolWhitelist || hasToolPricing;
+      if (!hasPricingField && !hasToolField) {
+        return { valid: false, error: `Model "${modelName}" must include pricing or tool configuration` };
       }
     }
 
@@ -175,52 +241,221 @@ const EditChannel = () => {
   const [defaultPricing, setDefaultPricing] = useState({
     model_configs: '',
   });
+  const [selectedToolModel, setSelectedToolModel] = useState('');
+  const [customTool, setCustomTool] = useState('');
+  const [selectedDefaultTool, setSelectedDefaultTool] = useState('');
+
+  const parsedModelConfigs = useMemo(() => {
+    if (!inputs.model_configs || inputs.model_configs.trim() === '') {
+      return {};
+    }
+    try {
+      const parsed = JSON.parse(inputs.model_configs);
+      if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+        return {};
+      }
+      return parsed;
+    } catch (e) {
+      return null;
+    }
+  }, [inputs.model_configs]);
+
+  const modelNames = useMemo(() => {
+    if (!parsedModelConfigs || typeof parsedModelConfigs !== 'object') {
+      return [];
+    }
+    return Object.keys(parsedModelConfigs);
+  }, [parsedModelConfigs]);
+
+  useEffect(() => {
+    if (!parsedModelConfigs || modelNames.length === 0) {
+      setSelectedToolModel('');
+      return;
+    }
+    setSelectedToolModel((prev) => (prev && modelNames.includes(prev) ? prev : modelNames[0]));
+  }, [parsedModelConfigs, modelNames]);
+
+  const currentToolWhitelist = useMemo(() => {
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return [];
+    }
+    const entry = parsedModelConfigs[selectedToolModel];
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+    const list = entry.tool_whitelist;
+    return Array.isArray(list) ? list : [];
+  }, [parsedModelConfigs, selectedToolModel]);
+
+  const pricedToolSet = useMemo(() => {
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return new Set();
+    }
+    const entry = parsedModelConfigs[selectedToolModel];
+    if (!entry || typeof entry !== 'object') {
+      return new Set();
+    }
+    const pricing = entry.tool_pricing;
+    const result = new Set();
+    if (pricing && typeof pricing === 'object') {
+      Object.keys(pricing).forEach((name) => {
+        if (typeof name === 'string') {
+          result.add(name.trim().toLowerCase());
+        }
+      });
+    }
+    return result;
+  }, [parsedModelConfigs, selectedToolModel]);
+
+  const availableDefaultTools = useMemo(() => {
+    if (!parsedModelConfigs || !selectedToolModel) {
+      return [];
+    }
+    const entry = parsedModelConfigs[selectedToolModel];
+    if (!entry || typeof entry !== 'object') {
+      return [];
+    }
+    const defaults = new Set();
+    const list = entry.tool_whitelist;
+    if (Array.isArray(list)) {
+      list.forEach((tool) => defaults.add(tool));
+    }
+    const pricing = entry.tool_pricing;
+    if (pricing && typeof pricing === 'object') {
+      Object.keys(pricing).forEach((tool) => defaults.add(tool));
+    }
+    return Array.from(defaults).sort((a, b) => a.localeCompare(b));
+  }, [parsedModelConfigs, selectedToolModel]);
+
+  const defaultToolOptions = useMemo(() => {
+    if (!availableDefaultTools || availableDefaultTools.length === 0) {
+      return [];
+    }
+    const existing = new Set(currentToolWhitelist.map((tool) => tool.toLowerCase()));
+    return availableDefaultTools.map((tool) => {
+      const disabled = existing.has(tool.toLowerCase());
+      return {
+        key: tool,
+        text: disabled ? `${tool} (${t('channel.edit.tool_whitelist_added', 'added')})` : tool,
+        value: tool,
+        disabled,
+      };
+    });
+  }, [availableDefaultTools, currentToolWhitelist, t]);
+
+  const updateToolWhitelist = (transform) => {
+    if (!selectedToolModel) {
+      return;
+    }
+    setInputs((prev) => {
+      let configs;
+      try {
+        configs = prev.model_configs ? JSON.parse(prev.model_configs) : {};
+      } catch (e) {
+        showError('Failed to parse model configurations. Please fix JSON before editing tools.');
+        return prev;
+      }
+      if (typeof configs !== 'object' || configs === null || Array.isArray(configs)) {
+        configs = {};
+      } else {
+        configs = { ...configs };
+      }
+      const rawEntry = configs[selectedToolModel];
+      const entry = rawEntry && typeof rawEntry === 'object' && !Array.isArray(rawEntry) ? { ...rawEntry } : {};
+      const currentList = Array.isArray(entry.tool_whitelist) ? [...entry.tool_whitelist] : [];
+      const nextList = transform(currentList);
+      if (!nextList) {
+        return prev;
+      }
+      if (nextList.length > 0) {
+        entry.tool_whitelist = nextList;
+      } else {
+        delete entry.tool_whitelist;
+      }
+      configs[selectedToolModel] = entry;
+      return {
+        ...prev,
+        model_configs: JSON.stringify(configs, null, 2),
+      };
+    });
+  };
+
+  const addToolToWhitelist = (toolName) => {
+    if (!toolName || !selectedToolModel || parsedModelConfigs === null) {
+      return;
+    }
+    const trimmed = toolName.trim();
+    if (!trimmed) {
+      return;
+    }
+    updateToolWhitelist((list) => {
+      if (list.some((item) => item.toLowerCase() === trimmed.toLowerCase())) {
+        return null;
+      }
+      const next = [...list, trimmed];
+      return next;
+    });
+    setCustomTool('');
+    setSelectedDefaultTool('');
+  };
+
+  const removeToolFromWhitelist = (toolName) => {
+    if (!toolName || !selectedToolModel || parsedModelConfigs === null) {
+      return;
+    }
+    const canonical = toolName.toLowerCase();
+    updateToolWhitelist((list) => {
+      const filtered = list.filter((item) => item.toLowerCase() !== canonical);
+      if (filtered.length === list.length) {
+        return null;
+      }
+      return filtered;
+    });
+  };
+
+  const toolEditorDisabled = parsedModelConfigs === null || !selectedToolModel;
 
   const loadDefaultPricing = async (channelType) => {
     try {
       const res = await API.get(`/api/channel/default-pricing?type=${channelType}`);
-      if (res.data.success) {
-        // Convert old format to new unified format if needed
-        let defaultModelConfigs = '';
+      if (!res.data.success) {
+        return;
+      }
 
-        if (res.data.data.model_configs) {
-          // Already in new format, but ensure it's properly formatted
-          try {
-            const parsed = JSON.parse(res.data.data.model_configs);
-            defaultModelConfigs = JSON.stringify(parsed, null, 2);
-          } catch (e) {
-            // If parsing fails, use as-is
-            defaultModelConfigs = res.data.data.model_configs;
+      let defaultModelConfigs = '';
+      const data = res.data.data || {};
+
+      if (data.model_configs) {
+        try {
+          const parsed = JSON.parse(data.model_configs);
+          defaultModelConfigs = JSON.stringify(parsed, null, 2);
+        } catch (e) {
+          defaultModelConfigs = data.model_configs;
+        }
+      } else if (data.model_ratio || data.completion_ratio) {
+        const modelRatio = data.model_ratio ? JSON.parse(data.model_ratio) : {};
+        const completionRatio = data.completion_ratio ? JSON.parse(data.completion_ratio) : {};
+
+        const unifiedConfigs = {};
+        const allModels = new Set([...Object.keys(modelRatio), ...Object.keys(completionRatio)]);
+
+        for (const modelName of allModels) {
+          const cfg = {};
+          if (modelRatio[modelName] !== undefined) {
+            cfg.ratio = modelRatio[modelName];
           }
-        } else if (res.data.data.model_ratio || res.data.data.completion_ratio) {
-          // Convert from old format to new format
-          const modelRatio = res.data.data.model_ratio ? JSON.parse(res.data.data.model_ratio) : {};
-          const completionRatio = res.data.data.completion_ratio ? JSON.parse(res.data.data.completion_ratio) : {};
-
-          const unifiedConfigs = {};
-          const allModels = new Set([...Object.keys(modelRatio), ...Object.keys(completionRatio)]);
-
-          for (const modelName of allModels) {
-            unifiedConfigs[modelName] = {};
-            if (modelRatio[modelName]) {
-              unifiedConfigs[modelName].ratio = modelRatio[modelName];
-            }
-            if (completionRatio[modelName]) {
-              unifiedConfigs[modelName].completion_ratio = completionRatio[modelName];
-            }
+          if (completionRatio[modelName] !== undefined) {
+            cfg.completion_ratio = completionRatio[modelName];
           }
-
-          defaultModelConfigs = JSON.stringify(unifiedConfigs, null, 2);
+          unifiedConfigs[modelName] = cfg;
         }
 
-
-
-        setDefaultPricing({
-          model_configs: defaultModelConfigs,
-        });
+        defaultModelConfigs = JSON.stringify(unifiedConfigs, null, 2);
       }
+
+      setDefaultPricing({ model_configs: defaultModelConfigs });
     } catch (error) {
-      console.error('Failed to load default pricing:', error);
+      console.error('Failed to load default pricing', error);
     }
   };
 
@@ -446,6 +681,7 @@ const EditChannel = () => {
     }
     fetchModels().then();
     fetchGroups().then();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const submit = async () => {
@@ -673,6 +909,7 @@ const EditChannel = () => {
                     with your deployment name (dots in the model name will be removed).
                     <a
                       target='_blank'
+                      rel='noreferrer'
                       href='https://github.com/songquanpeng/one-api/issues/133?notification_referrer_id=NT_kwDOAmJSYrM2NjIwMzI3NDgyOjM5OTk4MDUw#issuecomment-1571602271'
                     >
                       Image Demo
@@ -776,6 +1013,7 @@ const EditChannel = () => {
                   {t('channel.edit.douban_notice')}
                   <a
                     target='_blank'
+                    rel='noreferrer'
                     href='https://console.volcengine.com/ark/region:ark+cn-beijing/endpoint'
                   >
                     {t('channel.edit.douban_notice_link')}
@@ -983,6 +1221,117 @@ const EditChannel = () => {
                       }}
                       autoComplete='new-password'
                     />
+                    {parsedModelConfigs === null && inputs.model_configs && inputs.model_configs.trim() !== '' && (
+                      <Message warning size='tiny' style={{ marginTop: '8px' }}>
+                        {t('channel.edit.tool_whitelist_parse_error', 'Unable to edit the tool whitelist until model_configs contains valid JSON.')}
+                      </Message>
+                    )}
+                    {parsedModelConfigs !== null && modelNames.length > 0 && (
+                      <div style={{
+                        marginTop: '12px',
+                        padding: '12px',
+                        border: '1px solid var(--border-color, #e1e5e9)',
+                        borderRadius: '6px',
+                        backgroundColor: 'var(--card-bg, #f9fafb)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <span style={{ fontWeight: 600 }}>{t('channel.edit.tool_whitelist', 'Built-in Tool Whitelist')}</span>
+                          <span style={{ fontSize: '12px', color: 'var(--text-secondary, #666)' }}>
+                            {t('channel.edit.tool_whitelist_tip', 'Click a label to remove it. Tools not listed here must define tool_pricing to remain usable.')}
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                          <Dropdown
+                            selection
+                            search
+                            options={modelNames.map((name) => ({ key: name, text: name, value: name }))}
+                            value={selectedToolModel || modelNames[0]}
+                            onChange={(e, { value }) => {
+                              if (typeof value === 'string') {
+                                setSelectedToolModel(value);
+                              }
+                            }}
+                            placeholder={t('channel.edit.tool_whitelist_model_placeholder', 'Select model to edit')}
+                            style={{ minWidth: '220px' }}
+                          />
+                          {defaultToolOptions.length > 0 && (
+                            <Dropdown
+                              selection
+                              clearable
+                              options={defaultToolOptions}
+                              placeholder={t('channel.edit.tool_whitelist_defaults', 'Add from known tools')}
+                              value={selectedDefaultTool || null}
+                              onChange={(e, { value }) => {
+                                if (typeof value === 'string' && value) {
+                                  addToolToWhitelist(value);
+                                }
+                                setSelectedDefaultTool('');
+                              }}
+                              disabled={toolEditorDisabled || defaultToolOptions.length === 0}
+                              style={{ minWidth: '220px' }}
+                            />
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', minHeight: '34px', marginBottom: '10px' }}>
+                          {currentToolWhitelist.length === 0 ? (
+                            <span style={{ fontSize: '12px', color: 'var(--text-secondary, #666)' }}>
+                              {t('channel.edit.tool_whitelist_empty', 'No tools pinned. All tools remain permitted unless tool_pricing restricts them.')}
+                            </span>
+                          ) : (
+                            currentToolWhitelist.map((tool) => {
+                              const canonical = tool.toLowerCase();
+                              const priced = pricedToolSet.has(canonical);
+                              const label = (
+                                <Label
+                                  key={tool}
+                                  as='a'
+                                  color={priced ? 'blue' : 'red'}
+                                  basic={priced}
+                                  onClick={() => removeToolFromWhitelist(tool)}
+                                  style={{ cursor: 'pointer' }}
+                                >
+                                  {tool}
+                                  <Icon name='close' style={{ marginLeft: '6px' }} />
+                                </Label>
+                              );
+                              if (priced) {
+                                return label;
+                              }
+                              return (
+                                <Popup
+                                  key={tool}
+                                  content={t('channel.edit.tool_pricing_missing', { tool, defaultValue: `Pricing not set for "${tool}". Define tool_pricing to avoid request rejection.` })}
+                                  position='top center'
+                                  trigger={label}
+                                />
+                              );
+                            })
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                          <Input
+                            placeholder={t('channel.edit.tool_whitelist_add_placeholder', 'Custom tool name')}
+                            value={customTool}
+                            onChange={(e, { value }) => setCustomTool(value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                addToolToWhitelist(customTool);
+                              }
+                            }}
+                            disabled={toolEditorDisabled}
+                            style={{ minWidth: '220px' }}
+                          />
+                          <Button
+                            type='button'
+                            onClick={() => addToolToWhitelist(customTool)}
+                            disabled={toolEditorDisabled || !customTool.trim()}
+                          >
+                            {t('channel.edit.tool_whitelist_add', 'Add Tool')}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                     <div style={{ fontSize: '12px', marginTop: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ color: 'var(--text-secondary)' }}>
                         {t('channel.edit.model_configs_help')}
