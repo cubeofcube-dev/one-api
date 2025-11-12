@@ -36,3 +36,16 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// XAIToolingDefaults captures xAI's published tool invocation fees (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://docs.x.ai/docs/models
+var XAIToolingDefaults = adaptor.ChannelToolConfig{
+	Pricing: map[string]adaptor.ToolPricingConfig{
+		"web_search":         {UsdPerCall: 0.01},
+		"x_search":           {UsdPerCall: 0.01},
+		"code_execution":     {UsdPerCall: 0.01},
+		"document_search":    {UsdPerCall: 0.01},
+		"collections_search": {UsdPerCall: 0.0025},
+		"live_search_source": {UsdPerCall: 0.025},
+	},
+}

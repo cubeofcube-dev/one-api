@@ -51,3 +51,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// MoonshotToolingDefaults notes that Moonshot's pricing page lists model fees only; no tool metering is published (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://platform.moonshot.cn/docs/pricing
+var MoonshotToolingDefaults = adaptor.ChannelToolConfig{}

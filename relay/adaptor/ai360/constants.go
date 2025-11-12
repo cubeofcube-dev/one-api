@@ -17,3 +17,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// AI360ToolingDefaults documents that AI360 does not publish built-in tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://ai.360.com/platform (login wall, no public tool catalog)
+var AI360ToolingDefaults = adaptor.ChannelToolConfig{}

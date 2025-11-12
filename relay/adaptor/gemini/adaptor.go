@@ -645,6 +645,12 @@ func (a *Adaptor) GetChannelName() string {
 	return "google gemini"
 }
 
+// DefaultToolingConfig exposes Google's default grounded web search tooling
+// metadata so channel policy builders can merge in provider pricing.
+func (a *Adaptor) DefaultToolingConfig() channelhelper.ChannelToolConfig {
+	return GeminiToolingDefaults
+}
+
 func mapGeminiFinishReason(reason string) string {
 	switch reason {
 	case "MAX_TOKENS":

@@ -360,3 +360,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Replicate
 	return 1.0
 }
+
+// DefaultToolingConfig returns Replicate tooling defaults (no separate tooling fees documented).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return ReplicateToolingDefaults
+}

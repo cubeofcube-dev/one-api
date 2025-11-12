@@ -20,3 +20,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 		CompletionRatio:  0.42 / 0.28,
 	},
 }
+
+// DeepseekToolingDefaults documents that DeepSeek does not publish built-in tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://api-docs.deepseek.com/quick_start/pricing
+var DeepseekToolingDefaults = adaptor.ChannelToolConfig{}

@@ -447,7 +447,7 @@ func IncreaseUserQuota(id int, quota int64) (err error) {
 }
 
 func increaseUserQuota(id int, quota int64) (err error) {
-	err = runWithSQLiteBusyRetry(nil, func() error {
+	err = runWithSQLiteBusyRetry(context.TODO(), func() error {
 		return DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
 	})
 	if err != nil {

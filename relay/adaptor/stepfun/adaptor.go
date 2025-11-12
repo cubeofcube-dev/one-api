@@ -113,3 +113,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Use default fallback from DefaultPricingMethods
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
+
+// DefaultToolingConfig returns StepFun tooling defaults (no per-call pricing published as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return StepFunToolingDefaults
+}

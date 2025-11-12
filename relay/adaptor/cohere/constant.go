@@ -33,3 +33,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"rerank-english-v3.0":      {Ratio: (2.0 / 1000.0) * ratio.QuotaPerUsd},
 	"rerank-multilingual-v3.0": {Ratio: (2.0 / 1000.0) * ratio.QuotaPerUsd},
 }
+
+// CohereToolingDefaults captures that Cohere publishes model and internet add-on pricing without per-tool fees (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://docs.cohere.com/docs/models
+var CohereToolingDefaults = adaptor.ChannelToolConfig{}

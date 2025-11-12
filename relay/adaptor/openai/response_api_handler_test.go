@@ -117,3 +117,27 @@ func TestResponseAPIDirectHandlerRewritesHeaders(t *testing.T) {
 	}
 	require.JSONEq(t, string(raw), recorder.Body.String())
 }
+
+func TestResponseAPIDirectHandlerWebSearchUsageFallback(t *testing.T) {
+	ctx, recorder := newGinTestContext(t)
+
+	raw := []byte(`{"id":"resp_ws","object":"response","created_at":1,"status":"completed","model":"gpt-5-mini","output":[{"type":"message","role":"assistant","status":"completed","content":[{"type":"output_text","text":"done"}]}],"usage":{"input_tokens":4,"output_tokens":2,"total_tokens":6,"input_tokens_details":{"web_search":{"requests":2}}}}`)
+
+	upstream := &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       io.NopCloser(bytes.NewReader(raw)),
+	}
+	upstream.Header.Set("Content-Type", "application/json")
+
+	errResp, usage := ResponseAPIDirectHandler(ctx, upstream, 2, "gpt-5-mini")
+	require.Nil(t, errResp)
+	require.NotNil(t, usage)
+
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.JSONEq(t, string(raw), recorder.Body.String())
+
+	countRaw, exists := ctx.Get(ctxkey.WebSearchCallCount)
+	require.True(t, exists)
+	require.Equal(t, 2, countRaw.(int))
+}

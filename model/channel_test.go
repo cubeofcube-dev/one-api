@@ -462,6 +462,14 @@ func TestChannel_SetModelPriceConfigs(t *testing.T) {
 
 	// Test setting valid configs
 	configs := map[string]ModelConfigLocal{
+		" gpt-3.5-turbo ": {
+			Ratio:           0.0015,
+			CompletionRatio: 2.0,
+			MaxTokens:       65536,
+		},
+	}
+
+	expected := map[string]ModelConfigLocal{
 		"gpt-3.5-turbo": {
 			Ratio:           0.0015,
 			CompletionRatio: 2.0,
@@ -477,7 +485,7 @@ func TestChannel_SetModelPriceConfigs(t *testing.T) {
 	var result map[string]ModelConfigLocal
 	err = json.Unmarshal([]byte(*channel.ModelConfigs), &result)
 	assert.NoError(t, err)
-	assert.Equal(t, configs, result)
+	assert.Equal(t, expected, result)
 
 	// Test setting nil configs
 	err = channel.SetModelPriceConfigs(nil)

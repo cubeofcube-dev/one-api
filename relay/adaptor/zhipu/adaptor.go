@@ -320,3 +320,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	}
 	return 1.0 // Default completion ratio for Zhipu
 }
+
+// DefaultToolingConfig returns Zhipu tooling defaults (search tool tiers and rates).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return ZhipuToolingDefaults
+}

@@ -162,3 +162,15 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// OpenAIToolingDefaults enumerates OpenAI's built-in tool whitelist and pricing (retrieved 2025-11-11).
+// Source: https://r.jina.ai/https://platform.openai.com/docs/pricing#built-in-tools
+var OpenAIToolingDefaults = adaptor.ChannelToolConfig{
+	Pricing: map[string]adaptor.ToolPricingConfig{
+		"code_interpreter":                 {UsdPerCall: 0.03},   // $0.03 per container session
+		"file_search":                      {UsdPerCall: 0.0025}, // $2.50 per 1K tool calls
+		"web_search":                       {UsdPerCall: 0.01},   // $10 per 1K tool calls
+		"web_search_preview_reasoning":     {UsdPerCall: 0.01},   // Preview tier for reasoning models, $10 per 1K tool calls
+		"web_search_preview_non_reasoning": {UsdPerCall: 0.025},  // Preview tier for non-reasoning models, $25 per 1K tool calls
+	},
+}

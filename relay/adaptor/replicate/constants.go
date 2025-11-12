@@ -73,3 +73,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// ReplicateToolingDefaults notes that Replicate bills per model runtime without separate tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://replicate.com/pricing
+var ReplicateToolingDefaults = adaptor.ChannelToolConfig{}

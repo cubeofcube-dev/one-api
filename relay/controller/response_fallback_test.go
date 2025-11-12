@@ -229,6 +229,69 @@ func TestRelayResponseAPIHelper_FallbackAzure(t *testing.T) {
 	}
 }
 
+func TestRelayResponseAPIHelper_FallbackBlocksDisallowedWebSearch(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	ensureResponseFallbackFixtures(t)
+
+	prevRedis := common.IsRedisEnabled()
+	common.SetRedisEnabled(false)
+	t.Cleanup(func() { common.SetRedisEnabled(prevRedis) })
+
+	prevLogConsume := config.IsLogConsumeEnabled()
+	config.SetLogConsumeEnabled(false)
+	t.Cleanup(func() { config.SetLogConsumeEnabled(prevLogConsume) })
+
+	recorder := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(recorder)
+
+	requestPayload := `{"model":"gpt-4o-mini","input":[{"role":"user","content":[{"type":"input_text","text":"hello"}]}],"tools":[{"type":"web_search"}]}`
+	req := httptest.NewRequest(http.MethodPost, "/v1/responses", strings.NewReader(requestPayload))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer azure-key")
+	c.Request = req
+
+	gmw.SetLogger(c, logger.Logger)
+
+	channel := &model.Channel{Id: fallbackChannelID, Type: channeltype.Azure, Name: "azure-fallback", Status: model.ChannelStatusEnabled}
+	if err := channel.SetToolingConfig(&model.ChannelToolingConfig{
+		Whitelist: []string{"code_interpreter"},
+		Pricing: map[string]model.ToolPricingLocal{
+			"code_interpreter": {UsdPerCall: 0.03},
+		},
+	}); err != nil {
+		t.Fatalf("failed to set channel tooling: %v", err)
+	}
+
+	c.Set(ctxkey.Channel, channeltype.Azure)
+	c.Set(ctxkey.ChannelId, fallbackChannelID)
+	c.Set(ctxkey.ChannelModel, channel)
+	c.Set(ctxkey.TokenId, fallbackTokenID)
+	c.Set(ctxkey.TokenName, "fallback-token")
+	c.Set(ctxkey.Id, fallbackUserID)
+	c.Set(ctxkey.Group, "default")
+	c.Set(ctxkey.ModelMapping, map[string]string{})
+	c.Set(ctxkey.ChannelRatio, 1.0)
+	c.Set(ctxkey.RequestModel, "gpt-4o-mini")
+	c.Set(ctxkey.BaseURL, "https://example.azure.com")
+	c.Set(ctxkey.ContentType, "application/json")
+	c.Set(ctxkey.TokenQuotaUnlimited, true)
+	c.Set(ctxkey.TokenQuota, int64(0))
+	c.Set(ctxkey.Username, "response-fallback")
+	c.Set(ctxkey.UserQuota, int64(1_000_000))
+	c.Set(ctxkey.Config, model.ChannelConfig{})
+
+	err := RelayResponseAPIHelper(c)
+	if err == nil {
+		t.Fatalf("expected error when web_search tool is not whitelisted")
+	}
+	if err.StatusCode != http.StatusBadRequest {
+		t.Fatalf("expected status 400, got %d", err.StatusCode)
+	}
+	if !strings.Contains(err.Message, "web_search") {
+		t.Fatalf("expected error mentioning web_search, got %q", err.Message)
+	}
+}
+
 func TestRelayResponseAPIHelper_FallbackStreaming(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	ensureResponseFallbackFixtures(t)

@@ -33,6 +33,11 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 	return ModelRatios
 }
 
+// DefaultToolingConfig returns the published connector whitelist and pricing for Mistral's Agents API.
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return MistralToolingDefaults
+}
+
 func (a *Adaptor) GetModelRatio(modelName string) float64 {
 	pricing := a.GetDefaultModelPricing()
 	if price, exists := pricing[modelName]; exists {

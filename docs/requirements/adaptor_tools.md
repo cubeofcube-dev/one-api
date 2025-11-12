@@ -2,7 +2,7 @@
 
 ## User Story
 
-Each LLM provider now supplies its own built‑in tools, typically billed per invocation (see <https://platform.openai.com/docs/guides/tools>). One‑API currently charges only for token usage when forwarding requests, which can cause users to bypass tool‑related fees.
+A lot of LLM providers now supply their own built‑in tools, typically billed per invocation (see <https://platform.openai.com/docs/guides/tools>). One‑API currently charges only for token usage when forwarding requests, which can cause users to bypass tool‑related fees.
 
 As a system administrator, I want to specify which LLM tools are permitted and define their usage pricing at the channel/adaptor level, so that my platform accurately enforces usage policies and bills my end-users in alignment with upstream provider requirements.”
 

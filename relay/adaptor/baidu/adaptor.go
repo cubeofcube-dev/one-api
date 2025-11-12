@@ -314,3 +314,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Baidu
 	return 1.0
 }
+
+// DefaultToolingConfig returns Baidu's tooling defaults (none publicly documented as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return BaiduToolingDefaults
+}

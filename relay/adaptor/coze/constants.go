@@ -16,6 +16,10 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 
+// CozeToolingDefaults notes that Coze's public pricing page lists subscription tiers but no per-tool metering (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://www.coze.com/premium
+var CozeToolingDefaults = adaptor.ChannelToolConfig{}
+
 const (
 	PersonalAccessToken = "personal_access_token"
 	OAuthJWT            = "oauth_jwt"

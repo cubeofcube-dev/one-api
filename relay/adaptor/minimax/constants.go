@@ -21,3 +21,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// MinimaxToolingDefaults notes that MiniMax's pricing reference lists model rates only (no tool pricing) as of 2025-11-12.
+// Source: https://r.jina.ai/https://api.minimax.chat/document/price
+var MinimaxToolingDefaults = adaptor.ChannelToolConfig{}

@@ -49,6 +49,11 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
 
+// DefaultToolingConfig returns Moonshot tooling defaults (none published as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return MoonshotToolingDefaults
+}
+
 // Implement required adaptor interface methods (Moonshot uses OpenAI-compatible API)
 func (a *Adaptor) Init(meta *meta.Meta) {}
 

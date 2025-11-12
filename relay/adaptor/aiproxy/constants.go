@@ -10,3 +10,6 @@ var ModelRatios = openai.ModelRatios
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// AIProxyToolingDefaults mirrors OpenAI's built-in tooling defaults since AIProxy forwards to OpenAI.
+var AIProxyToolingDefaults = openai.OpenAIToolingDefaults

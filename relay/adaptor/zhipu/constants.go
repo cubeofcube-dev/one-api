@@ -92,3 +92,14 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"embedding-3": {Ratio: 0.0005 * ratio.MilliTokensRmb, CompletionRatio: 1},
 	"embedding-2": {Ratio: 0.0005 * ratio.MilliTokensRmb, CompletionRatio: 1},
 }
+
+// ZhipuToolingDefaults captures Open BigModel's published search-tool pricing tiers (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://open.bigmodel.cn/pricing
+var ZhipuToolingDefaults = adaptor.ChannelToolConfig{
+	Pricing: map[string]adaptor.ToolPricingConfig{
+		"search_std":       {UsdPerCall: 0.01},
+		"search_pro":       {UsdPerCall: 0.03},
+		"search_pro_sogou": {UsdPerCall: 0.05},
+		"search_pro_quark": {UsdPerCall: 0.05},
+	},
+}

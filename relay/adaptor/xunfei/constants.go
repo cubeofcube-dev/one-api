@@ -23,3 +23,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// Spark 4.0 Ultra Models
 	"Spark-4.0-Ultra": {Ratio: 5.6 * ratio.MilliTokensRmb, CompletionRatio: 1},
 }
+
+// XunfeiToolingDefaults notes that public Spark pricing omits tool-specific charges (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://www.xfyun.cn/doc/spark/Web.html
+var XunfeiToolingDefaults = adaptor.ChannelToolConfig{}

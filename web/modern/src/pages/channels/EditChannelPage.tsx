@@ -1,24 +1,22 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useForm, Controller } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useNotifications } from '@/components/ui/notifications'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Badge } from '@/components/ui/badge'
-import { Label } from '@/components/ui/label'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { Separator } from '@/components/ui/separator'
-import { AlertCircle, Info } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { api } from '@/lib/api'
 import { logEditPageLayout } from '@/dev/layout-debug'
-import { useNotifications } from '@/components/ui/notifications'
+import { api } from '@/lib/api'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { AlertCircle, Info } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Controller, useForm } from 'react-hook-form'
+import { useNavigate, useParams } from 'react-router-dom'
+import * as z from 'zod'
 
 // Enhanced channel schema with comprehensive validation
 const channelSchema = z.object({
@@ -32,6 +30,7 @@ const channelSchema = z.object({
   models: z.array(z.string()).default([]),
   model_mapping: z.string().optional(),
   model_configs: z.string().optional(),
+  tooling: z.string().optional(),
   system_prompt: z.string().optional(),
   groups: z.array(z.string()).default(['default']),
   // Coerce because inputs emit strings; enforce integers for these numeric fields
@@ -165,15 +164,105 @@ const MODEL_MAPPING_EXAMPLE = {
 
 const MODEL_CONFIGS_EXAMPLE = {
   'gpt-3.5-turbo-0301': {
-    'ratio': 0.0015,
-    'completion_ratio': 2.0,
-    'max_tokens': 65536,
+    ratio: 0.0015,
+    completion_ratio: 2.0,
+    max_tokens: 65536,
   },
   'gpt-4': {
-    'ratio': 0.03,
-    'completion_ratio': 2.0,
-    'max_tokens': 128000,
+    ratio: 0.03,
+    completion_ratio: 2.0,
+    max_tokens: 128000,
+  },
+} satisfies Record<string, Record<string, unknown>>
+
+const TOOLING_CONFIG_EXAMPLE = {
+  whitelist: ['web_search'],
+  pricing: {
+    web_search: {
+      usd_per_call: 0.025,
+    },
+  },
+} satisfies Record<string, unknown>
+
+type ToolPricingEntry = {
+  usd_per_call?: number
+  quota_per_call?: number
+}
+
+type ParsedToolingConfig = {
+  whitelist?: string[]
+  pricing?: Record<string, ToolPricingEntry>
+}
+
+type NormalizedToolingConfig = ParsedToolingConfig & { whitelist: string[] }
+
+const normalizeToolingConfigShape = (value: unknown): NormalizedToolingConfig => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return { whitelist: [] }
   }
+
+  const record = value as Record<string, unknown>
+  const normalized: Record<string, unknown> = { ...record }
+  const whitelistValue = (record as any).whitelist
+
+  normalized.whitelist = Array.isArray(whitelistValue) ? whitelistValue : []
+
+  return normalized as NormalizedToolingConfig
+}
+
+const stringifyToolingConfig = (value: unknown): string => JSON.stringify(normalizeToolingConfigShape(value), null, 2)
+
+const clonePricingMap = (pricing?: Record<string, ToolPricingEntry>): Record<string, ToolPricingEntry> => {
+  if (!pricing) {
+    return {}
+  }
+  const entries = Object.entries(pricing).map(([key, entry]) => [key, { ...(entry ?? {}) } as ToolPricingEntry])
+  return Object.fromEntries(entries)
+}
+
+const cloneNormalizedToolingConfig = (config: NormalizedToolingConfig): NormalizedToolingConfig => {
+  const cloned: NormalizedToolingConfig = {
+    ...config,
+    whitelist: [...config.whitelist],
+  }
+  if (config.pricing) {
+    cloned.pricing = clonePricingMap(config.pricing)
+  }
+  return cloned
+}
+
+const prepareToolingConfigForSet = (config: NormalizedToolingConfig): NormalizedToolingConfig => {
+  const cloned = cloneNormalizedToolingConfig(config)
+  if (cloned.pricing) {
+    const cleanedPricing = Object.fromEntries(
+      Object.entries(cloned.pricing).map(([key, entry]) => [key, { ...(entry ?? {}) } as ToolPricingEntry])
+    )
+    if (Object.keys(cleanedPricing).length > 0) {
+      cloned.pricing = cleanedPricing
+    } else {
+      delete (cloned as any).pricing
+    }
+  }
+  delete (cloned as any).model_overrides
+  return cloned
+}
+
+const findPricingEntryCaseInsensitive = (
+  pricing: Record<string, ToolPricingEntry> | undefined,
+  toolName: string,
+): { key: string | null; entry?: ToolPricingEntry } => {
+  if (!pricing) {
+    return { key: null, entry: undefined }
+  }
+  if (Object.prototype.hasOwnProperty.call(pricing, toolName)) {
+    return { key: toolName, entry: pricing[toolName] }
+  }
+  const canonical = toolName.toLowerCase()
+  const matchedKey = Object.keys(pricing).find((key) => key.toLowerCase() === canonical)
+  if (!matchedKey) {
+    return { key: null, entry: undefined }
+  }
+  return { key: matchedKey, entry: pricing[matchedKey] }
 }
 
 const OAUTH_JWT_CONFIG_EXAMPLE = {
@@ -250,10 +339,84 @@ const validateModelConfigs = (configStr: string) => {
         }
       }
 
-      // Check if at least one meaningful field is provided
-      if (configObj.ratio === undefined && configObj.completion_ratio === undefined && configObj.max_tokens === undefined) {
-        return { valid: false, error: `Model "${modelName}" must have at least one configuration field (ratio, completion_ratio, or max_tokens)` }
+      const hasPricingField = configObj.ratio !== undefined || configObj.completion_ratio !== undefined || configObj.max_tokens !== undefined
+      if (!hasPricingField) {
+        return { valid: false, error: `Model "${modelName}" must include pricing configuration` }
       }
+    }
+
+    return { valid: true }
+  } catch (error) {
+    return { valid: false, error: `Invalid JSON format: ${(error as Error).message}` }
+  }
+}
+
+const validateToolingConfig = (configStr: string) => {
+  if (!configStr || configStr.trim() === '') {
+    return { valid: true }
+  }
+
+  try {
+    const config = JSON.parse(configStr)
+    if (typeof config !== 'object' || config === null || Array.isArray(config)) {
+      return { valid: false, error: 'Tooling config must be a JSON object' }
+    }
+
+    const validateWhitelist = (value: any, scope: string) => {
+      if (value === undefined) {
+        return { valid: true }
+      }
+      if (!Array.isArray(value)) {
+        return { valid: false, error: `${scope} whitelist must be an array of strings` }
+      }
+      for (const entry of value) {
+        if (typeof entry !== 'string' || entry.trim() === '') {
+          return { valid: false, error: `${scope} whitelist contains an invalid entry` }
+        }
+      }
+      return { valid: true }
+    }
+
+    const validatePricing = (value: any, scope: string) => {
+      if (value === undefined) {
+        return { valid: true }
+      }
+      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+        return { valid: false, error: `${scope} pricing must be an object` }
+      }
+      for (const [toolName, entry] of Object.entries(value as Record<string, any>)) {
+        if (!toolName || toolName.trim() === '') {
+          return { valid: false, error: `${scope} pricing has an empty tool name` }
+        }
+        if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+          return { valid: false, error: `${scope} pricing for tool "${toolName}" must be an object` }
+        }
+        const { usd_per_call, quota_per_call } = entry as Record<string, any>
+        if (usd_per_call !== undefined && (typeof usd_per_call !== 'number' || usd_per_call < 0)) {
+          return { valid: false, error: `${scope} pricing usd_per_call for "${toolName}" must be a non-negative number` }
+        }
+        if (quota_per_call !== undefined && (typeof quota_per_call !== 'number' || quota_per_call < 0)) {
+          return { valid: false, error: `${scope} pricing quota_per_call for "${toolName}" must be a non-negative number` }
+        }
+        if (usd_per_call === undefined && quota_per_call === undefined) {
+          return { valid: false, error: `${scope} pricing for "${toolName}" must include usd_per_call or quota_per_call` }
+        }
+      }
+      return { valid: true }
+    }
+
+    const whitelistResult = validateWhitelist((config as any).whitelist, 'Default')
+    if (!whitelistResult.valid) {
+      return whitelistResult
+    }
+
+    const pricingResult = validatePricing((config as any).pricing, 'Default')
+    if (!pricingResult.valid) {
+      return pricingResult
+    }
+
+    if ((config as any).model_overrides !== undefined) {
+      return { valid: false, error: 'model_overrides is no longer supported. Configure tooling at the channel level.' }
     }
 
     return { valid: true }
@@ -291,11 +454,13 @@ export function EditChannelPage() {
   const [modelSearchTerm, setModelSearchTerm] = useState('')
   const [groups, setGroups] = useState<string[]>([])
   const [defaultPricing, setDefaultPricing] = useState<string>('')
+  const [defaultTooling, setDefaultTooling] = useState<string>('')
   const [defaultBaseURL, setDefaultBaseURL] = useState<string>('')
   const [batchMode, setBatchMode] = useState(false)
   const [customModel, setCustomModel] = useState('')
   const [formInitialized, setFormInitialized] = useState(!isEdit) // Track if form has been properly initialized
   const [loadedChannelType, setLoadedChannelType] = useState<number | null>(null) // Track the loaded channel type
+  const [customTool, setCustomTool] = useState('')
 
   const form = useForm<ChannelForm>({
     resolver: zodResolver(channelSchema),
@@ -310,6 +475,7 @@ export function EditChannelPage() {
       models: [],
       model_mapping: '',
       model_configs: '',
+      tooling: '',
       system_prompt: '',
       groups: ['default'],
       priority: 0,
@@ -331,6 +497,8 @@ export function EditChannelPage() {
 
   const watchType = form.watch('type')
   const watchConfig = form.watch('config')
+  const watchModelConfigs = form.watch('model_configs') ?? ''
+  const watchTooling = form.watch('tooling') ?? ''
 
   const normalizedChannelType = useMemo(() => normalizeChannelType(watchType), [watchType])
 
@@ -344,6 +512,210 @@ export function EditChannelPage() {
   const availableModels = useMemo<Model[]>(() => {
     return currentCatalogModels.map((model) => ({ id: model, name: model }))
   }, [currentCatalogModels])
+
+  const parsedToolingConfig = useMemo<NormalizedToolingConfig | null>(() => {
+    const raw = (watchTooling ?? '').trim()
+    if (raw === '') {
+      return normalizeToolingConfigShape({})
+    }
+    try {
+      const parsed = JSON.parse(raw)
+      return normalizeToolingConfigShape(parsed)
+    } catch (error) {
+      return null
+    }
+  }, [watchTooling])
+
+  const parsedDefaultTooling = useMemo<NormalizedToolingConfig | null>(() => {
+    if (!defaultTooling || defaultTooling.trim() === '') {
+      return null
+    }
+    try {
+      const parsed = JSON.parse(defaultTooling)
+      return normalizeToolingConfigShape(parsed)
+    } catch (error) {
+      return null
+    }
+  }, [defaultTooling])
+
+  const currentToolWhitelist = useMemo(() => {
+    return parsedToolingConfig?.whitelist ?? []
+  }, [parsedToolingConfig])
+
+  const pricedToolSet = useMemo(() => {
+    const result = new Set<string>()
+    const collectPricing = (pricing?: Record<string, ToolPricingEntry>) => {
+      if (!pricing || typeof pricing !== 'object') {
+        return
+      }
+      Object.keys(pricing).forEach((tool) => {
+        const canonical = tool.trim().toLowerCase()
+        if (canonical) {
+          result.add(canonical)
+        }
+      })
+    }
+
+    if (parsedToolingConfig) {
+      collectPricing(parsedToolingConfig.pricing)
+    }
+    if (parsedDefaultTooling) {
+      collectPricing(parsedDefaultTooling.pricing)
+    }
+
+    return result
+  }, [parsedDefaultTooling, parsedToolingConfig])
+
+  const availableDefaultTools = useMemo(() => {
+    const defaults = new Set<string>()
+    const collectWhitelist = (list?: string[]) => {
+      if (!Array.isArray(list)) {
+        return
+      }
+      list.forEach((tool) => {
+        const trimmed = tool.trim()
+        if (trimmed) {
+          defaults.add(trimmed)
+        }
+      })
+    }
+    const collectPricingKeys = (pricing?: Record<string, ToolPricingEntry>) => {
+      if (!pricing || typeof pricing !== 'object') {
+        return
+      }
+      Object.keys(pricing).forEach((tool) => {
+        const trimmed = tool.trim()
+        if (trimmed) {
+          defaults.add(trimmed)
+        }
+      })
+    }
+
+    if (parsedDefaultTooling) {
+      collectWhitelist(parsedDefaultTooling.whitelist)
+      collectPricingKeys(parsedDefaultTooling.pricing)
+    }
+    if (parsedToolingConfig && parsedToolingConfig !== null) {
+      collectWhitelist(parsedToolingConfig.whitelist)
+      collectPricingKeys(parsedToolingConfig.pricing)
+    }
+
+    return Array.from(defaults).sort((a, b) => a.localeCompare(b))
+  }, [parsedDefaultTooling, parsedToolingConfig])
+
+  const toolEditorDisabled = parsedToolingConfig === null
+
+  const mutateToolWhitelist = useCallback((transform: (config: NormalizedToolingConfig) => NormalizedToolingConfig | null) => {
+    if (parsedToolingConfig === null) {
+      notify({ type: 'error', title: 'Invalid JSON', message: 'Fix tooling JSON before editing the whitelist.' })
+      return
+    }
+    const raw = watchTooling ?? ''
+    let configs: NormalizedToolingConfig
+    try {
+      if (!raw || raw.trim() === '') {
+        configs = normalizeToolingConfigShape({})
+      } else {
+        const parsed = JSON.parse(raw)
+        configs = normalizeToolingConfigShape(parsed)
+      }
+    } catch (error) {
+      notify({ type: 'error', title: 'Invalid JSON', message: 'Fix tooling JSON before editing the whitelist.' })
+      return
+    }
+
+    const workingConfig = cloneNormalizedToolingConfig(configs)
+    const updatedConfig = transform(workingConfig)
+    if (!updatedConfig) {
+      return
+    }
+
+    const normalizedResult = normalizeToolingConfigShape(updatedConfig)
+    const prepared = prepareToolingConfigForSet(normalizedResult)
+
+    form.setValue('tooling', stringifyToolingConfig(prepared), { shouldDirty: true, shouldValidate: true })
+  }, [form, notify, parsedToolingConfig, watchTooling])
+
+  const addToolToWhitelist = useCallback((toolName: string, options?: { isCustom?: boolean }) => {
+    if (!toolName || parsedToolingConfig === null) {
+      return
+    }
+    const trimmed = toolName.trim()
+    if (!trimmed) {
+      return
+    }
+    const canonical = trimmed.toLowerCase()
+    const isCustomTool = options?.isCustom ?? false
+
+    mutateToolWhitelist((config) => {
+      if (config.whitelist.some((item) => item.toLowerCase() === canonical)) {
+        return null
+      }
+
+      const updatedWhitelist = [...config.whitelist, trimmed]
+      const nextPricing = clonePricingMap(config.pricing)
+
+      // Remove any entries using a different casing for the same tool
+      Object.keys(nextPricing).forEach((key) => {
+        if (key.toLowerCase() === canonical && key !== trimmed) {
+          nextPricing[trimmed] = { ...nextPricing[key] }
+          delete nextPricing[key]
+        }
+      })
+
+      if (!Object.prototype.hasOwnProperty.call(nextPricing, trimmed)) {
+        const { entry: existingEntry } = findPricingEntryCaseInsensitive(config.pricing, trimmed)
+        const { entry: defaultEntry } = findPricingEntryCaseInsensitive(parsedDefaultTooling?.pricing, trimmed)
+        const pricingEntry = existingEntry
+          ? { ...existingEntry }
+          : defaultEntry
+            ? { ...defaultEntry }
+            : { usd_per_call: 0.1 }
+
+        // Ensure custom tools always have a sensible default even without prior pricing
+        nextPricing[trimmed] = isCustomTool && !existingEntry && !defaultEntry
+          ? { usd_per_call: 0.1 }
+          : pricingEntry
+      }
+
+      const hasPricingEntries = Object.keys(nextPricing).length > 0
+
+      return {
+        ...config,
+        whitelist: updatedWhitelist,
+        ...(hasPricingEntries ? { pricing: nextPricing } : {}),
+      }
+    })
+    setCustomTool('')
+  }, [mutateToolWhitelist, parsedDefaultTooling, parsedToolingConfig])
+
+  const removeToolFromWhitelist = useCallback((toolName: string) => {
+    if (!toolName || parsedToolingConfig === null) {
+      return
+    }
+    const canonical = toolName.toLowerCase()
+    mutateToolWhitelist((config) => {
+      const filtered = config.whitelist.filter((item) => item.toLowerCase() !== canonical)
+      if (filtered.length === config.whitelist.length) {
+        return null
+      }
+
+      const nextPricing = clonePricingMap(config.pricing)
+      Object.keys(nextPricing).forEach((key) => {
+        if (key.toLowerCase() === canonical) {
+          delete nextPricing[key]
+        }
+      })
+
+      const hasPricingEntries = Object.keys(nextPricing).length > 0
+
+      return {
+        ...config,
+        whitelist: filtered,
+        ...(hasPricingEntries ? { pricing: nextPricing } : {}),
+      }
+    })
+  }, [mutateToolWhitelist, parsedToolingConfig])
 
   const selectedChannelType = CHANNEL_TYPES.find(t => t.value === normalizedChannelType)
   const hasSelectedType = normalizedChannelType !== null && !!selectedChannelType
@@ -470,6 +842,16 @@ export function EditChannelPage() {
 
         console.log(`[CHANNEL_TYPE_DEBUG] processed channelType=${String(channelType)}`)
 
+        let toolingField = ''
+        if (data.tooling && typeof data.tooling === 'string' && data.tooling.trim() !== '') {
+          try {
+            const parsedTooling = JSON.parse(data.tooling)
+            toolingField = stringifyToolingConfig(parsedTooling)
+          } catch (e) {
+            toolingField = data.tooling
+          }
+        }
+
         const formData: ChannelForm = {
           name: data.name || '',
           type: channelType,
@@ -479,6 +861,7 @@ export function EditChannelPage() {
           models,
           model_mapping: formatJsonField(data.model_mapping),
           model_configs: formatJsonField(data.model_configs),
+          tooling: toolingField,
           system_prompt: data.system_prompt || '',
           groups,
           priority: toInt(data.priority, 0),
@@ -557,16 +940,33 @@ export function EditChannelPage() {
 
   const loadDefaultPricing = async (channelType: number) => {
     try {
+      setDefaultPricing('')
+      setDefaultTooling('')
       // Unified API call - complete URL with /api prefix
       const response = await api.get(`/api/channel/default-pricing?type=${channelType}`)
       const { success, data } = response.data
-      if (success && data?.model_configs) {
-        try {
-          const parsed = JSON.parse(data.model_configs)
-          const formatted = JSON.stringify(parsed, null, 2)
-          setDefaultPricing(formatted)
-        } catch (e) {
-          setDefaultPricing(data.model_configs)
+      if (success) {
+        if (data?.model_configs) {
+          try {
+            const parsed = JSON.parse(data.model_configs)
+            const formatted = JSON.stringify(parsed, null, 2)
+            setDefaultPricing(formatted)
+          } catch (e) {
+            setDefaultPricing(data.model_configs)
+          }
+        } else {
+          setDefaultPricing('')
+        }
+
+        if (typeof data?.tooling === 'string' && data.tooling.trim() !== '') {
+          try {
+            const parsedTooling = JSON.parse(data.tooling)
+            setDefaultTooling(stringifyToolingConfig(parsedTooling))
+          } catch (e) {
+            setDefaultTooling(data.tooling)
+          }
+        } else {
+          setDefaultTooling(stringifyToolingConfig({ whitelist: [], pricing: {} }))
         }
       }
     } catch (error) {
@@ -905,12 +1305,6 @@ export function EditChannelPage() {
     form.setValue('model_mapping', formatted)
   }
 
-  const formatModelConfigs = () => {
-    const current = form.getValues('model_configs')
-    const formatted = formatJSON(current)
-    form.setValue('model_configs', formatted)
-  }
-
   const formatOtherConfig = () => {
     const current = form.getValues('other')
     const formatted = formatJSON(current)
@@ -926,6 +1320,54 @@ export function EditChannelPage() {
   const loadDefaultModelConfigs = () => {
     if (defaultPricing) {
       form.setValue('model_configs', defaultPricing)
+    }
+  }
+
+  const formatModelConfigs = () => {
+    const value = form.getValues('model_configs')
+    if (!value) {
+      form.setValue('model_configs', JSON.stringify(MODEL_CONFIGS_EXAMPLE, null, 2), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      return
+    }
+    try {
+      const parsed = JSON.parse(value)
+      form.setValue('model_configs', JSON.stringify(parsed, null, 2), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    } catch (error) {
+      notify({
+        type: 'error',
+        title: 'Invalid JSON',
+        message: `Unable to format model_configs: ${(error as Error).message}`,
+      })
+    }
+  }
+
+  const formatToolingConfig = () => {
+    const value = form.getValues('tooling')
+    if (!value || value.trim() === '') {
+      form.setValue('tooling', stringifyToolingConfig({ whitelist: [], pricing: {} }), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+      return
+    }
+    try {
+      const parsed = JSON.parse(value)
+      form.setValue('tooling', stringifyToolingConfig(parsed), {
+        shouldDirty: true,
+        shouldValidate: true,
+      })
+    } catch (error) {
+      notify({
+        type: 'error',
+        title: 'Invalid JSON',
+        message: `Unable to format tooling config: ${(error as Error).message}`,
+      })
     }
   }
 
@@ -1917,6 +2359,205 @@ export function EditChannelPage() {
                     )}
                   />
                 )}
+                <FormField
+                  control={form.control}
+                  name="tooling"
+                  render={({ field }) => {
+                    const rawValue = typeof field.value === 'string' ? field.value : ''
+                    const trimmed = rawValue.trim()
+                    const jsonValid = trimmed === '' ? true : isValidJSON(rawValue)
+                    const toolingValidation = trimmed === '' ? { valid: true } : validateToolingConfig(rawValue)
+                    const toolingValid = jsonValid && toolingValidation.valid
+
+                    return (
+                      <FormItem>
+                        <div className="flex items-center gap-2">
+                          <LabelWithHelp
+                            label="Tooling Config (JSON)"
+                            help={'Define channel-wide built-in tool policy. Configure the whitelist and per-call pricing for provider built-in tools.'}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={formatToolingConfig}
+                          >
+                            Format JSON
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              if (!defaultTooling) {
+                                form.setValue('tooling', stringifyToolingConfig({ whitelist: [], pricing: {} }), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                                return
+                              }
+                              try {
+                                const parsed = JSON.parse(defaultTooling)
+                                form.setValue('tooling', stringifyToolingConfig(parsed), {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              } catch (error) {
+                                form.setValue('tooling', defaultTooling, {
+                                  shouldDirty: true,
+                                  shouldValidate: true,
+                                })
+                              }
+                            }}
+                            disabled={!defaultTooling}
+                          >
+                            Load Defaults
+                          </Button>
+                        </div>
+                        <FormControl>
+                          <Textarea
+                            placeholder={`Tooling configuration in JSON format:\n${JSON.stringify(TOOLING_CONFIG_EXAMPLE, null, 2)}`}
+                            className={`font-mono text-sm min-h-[120px] ${errorClass('tooling')}`}
+                            {...field}
+                            onBlur={() => {
+                              try {
+                                field.onBlur()
+                                if (!trimmed) {
+                                  form.clearErrors('tooling')
+                                  return
+                                }
+                                if (!isValidJSON(field.value ?? '')) {
+                                  form.setError('tooling', { message: 'Invalid JSON format' })
+                                  return
+                                }
+                                const validation = validateToolingConfig(String(field.value ?? ''))
+                                if (!validation.valid) {
+                                  form.setError('tooling', { message: validation.error || 'Invalid tooling config format' })
+                                } else {
+                                  form.clearErrors('tooling')
+                                }
+                              } catch {
+                                // no-op
+                              }
+                            }}
+                          />
+                        </FormControl>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            Configure built-in tool allowlists and per-call pricing (optional)
+                          </span>
+                          {trimmed !== '' && (
+                            <span className={`font-bold text-xs ${toolingValid ? 'text-green-600' : 'text-red-600'}`}>
+                              {toolingValid ? '✓ Valid Config' : '✗ Invalid Config'}
+                            </span>
+                          )}
+                        </div>
+                        {!toolingValid && toolingValidation.error && (
+                          <div className="mt-2 text-xs text-destructive">
+                            {toolingValidation.error}
+                          </div>
+                        )}
+                        {parsedToolingConfig === null && trimmed !== '' ? (
+                          <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
+                            Fix the tooling JSON above to manage the built-in tool whitelist.
+                          </div>
+                        ) : (
+                          <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-sm font-medium">Built-in Tool Whitelist</span>
+                              <span className="text-xs text-muted-foreground">
+                                Empty whitelist keeps all provider tools available.
+                              </span>
+                            </div>
+                            {availableDefaultTools.length > 0 && (
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-medium text-muted-foreground">Known tools:</span>
+                                {availableDefaultTools.map((tool) => {
+                                  const exists = currentToolWhitelist.some((item) => item.toLowerCase() === tool.toLowerCase())
+                                  return (
+                                    <button
+                                      type="button"
+                                      key={`${tool}-suggest`}
+                                      onClick={() => addToolToWhitelist(tool)}
+                                      disabled={exists || toolEditorDisabled}
+                                      className={`rounded-md border border-dashed border-border/60 px-2 py-1 text-xs transition ${exists ? 'cursor-not-allowed text-muted-foreground/60' : 'text-muted-foreground hover:bg-muted'}`}
+                                    >
+                                      {tool}
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                            <div className="flex min-h-[2.5rem] flex-wrap gap-2">
+                              {currentToolWhitelist.length === 0 ? (
+                                <span className="text-xs text-muted-foreground">
+                                  No tools pinned. All built-in tools remain available.
+                                </span>
+                              ) : (
+                                currentToolWhitelist.map((tool) => {
+                                  const canonical = tool.toLowerCase()
+                                  const priced = pricedToolSet.has(canonical)
+                                  if (priced) {
+                                    return (
+                                      <Badge
+                                        key={tool}
+                                        variant="secondary"
+                                        className="cursor-pointer hover:bg-secondary/80"
+                                        onClick={() => removeToolFromWhitelist(tool)}
+                                      >
+                                        {tool} ×
+                                      </Badge>
+                                    )
+                                  }
+                                  return (
+                                    <Tooltip key={tool}>
+                                      <TooltipTrigger asChild>
+                                        <Badge
+                                          variant="outline"
+                                          className="cursor-pointer border-destructive bg-transparent text-destructive hover:bg-transparent hover:text-destructive"
+                                          onClick={() => removeToolFromWhitelist(tool)}
+                                        >
+                                          {tool} ×
+                                        </Badge>
+                                      </TooltipTrigger>
+                                      <TooltipContent>
+                                        Set pricing to unblock “{tool}”. Requests remain blocked until pricing is configured.
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  )
+                                })
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Input
+                                value={customTool}
+                                onChange={(event) => setCustomTool(event.target.value)}
+                                onKeyDown={(event) => {
+                                  if (event.key === 'Enter') {
+                                    event.preventDefault()
+                                    addToolToWhitelist(customTool, { isCustom: true })
+                                  }
+                                }}
+                                placeholder="Custom tool name"
+                                disabled={toolEditorDisabled}
+                                className="w-56"
+                              />
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => addToolToWhitelist(customTool, { isCustom: true })}
+                                disabled={toolEditorDisabled || customTool.trim() === ''}
+                              >
+                                Add tool
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
                 <FormField
                   control={form.control}
                   name="system_prompt"

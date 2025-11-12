@@ -78,6 +78,7 @@ The original author stopped maintaining the project, leaving critical PRs and ne
   - [Contributors](#contributors)
   - [New Features](#new-features)
     - [Universal Features](#universal-features)
+      - [Support channel's built-in tooling configuration](#support-channels-built-in-tooling-configuration)
       - [Support update user's remained quota](#support-update-users-remained-quota)
       - [Get request's cost](#get-requests-cost)
       - [Support Tracing info in logs](#support-tracing-info-in-logs)
@@ -291,6 +292,12 @@ The Kubernetes deployment guide has been moved into a dedicated document:
 ## New Features
 
 ### Universal Features
+
+#### Support channel's built-in tooling configuration
+
+Configure the price and whitelist for a channel’s built‑in tools.
+
+![tooling-config](https://s3.laisky.com/uploads/2025/11/oneapi-channel-tools.png)
 
 #### Support update user's remained quota
 

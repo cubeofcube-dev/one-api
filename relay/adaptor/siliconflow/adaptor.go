@@ -101,3 +101,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Use default fallback from DefaultPricingMethods
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
+
+// DefaultToolingConfig returns SiliconFlow tooling defaults (no published per-call pricing as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return SiliconFlowToolingDefaults
+}

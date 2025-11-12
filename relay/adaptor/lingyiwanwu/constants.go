@@ -16,3 +16,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// LingyiWanwuToolingDefaults notes that LingYi WanWu's pricing docs list model rates only (no tool metering) as of 2025-11-12.
+// Source: https://r.jina.ai/https://platform.lingyiwanwu.com/docs#%E6%A8%A1%E5%9E%8B%E4%B8%8E%E8%AE%A1%E8%B4%B9
+var LingyiWanwuToolingDefaults = adaptor.ChannelToolConfig{}

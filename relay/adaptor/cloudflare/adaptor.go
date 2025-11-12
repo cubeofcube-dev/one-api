@@ -272,3 +272,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Cloudflare
 	return 1.0
 }
+
+// DefaultToolingConfig returns Cloudflare tooling defaults (no published server-side tool fees as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return CloudflareToolingDefaults
+}

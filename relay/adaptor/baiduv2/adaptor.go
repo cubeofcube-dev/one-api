@@ -72,3 +72,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Use default fallback from DefaultPricingMethods
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
+
+// DefaultToolingConfig returns Baidu v2 tooling defaults (none documented publicly as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return BaiduV2ToolingDefaults
+}

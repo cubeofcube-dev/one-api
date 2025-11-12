@@ -80,3 +80,8 @@ func (a *Adaptor) GetModelList() []string {
 func (a *Adaptor) GetChannelName() string {
 	return "deepl"
 }
+
+// DefaultToolingConfig returns DeepL tooling defaults (translation API has no separate tool metering).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return DeepLToolingDefaults
+}
