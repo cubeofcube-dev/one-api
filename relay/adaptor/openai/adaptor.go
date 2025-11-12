@@ -850,7 +850,7 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 // DefaultToolingConfig returns OpenAI's upstream tooling defaults so channel
 // policy resolution can merge in provider pricing and allowlists.
 func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
-	return openAIToolingDefaults
+	return OpenAIToolingDefaults
 }
 
 // convertToClaudeResponse converts OpenAI response format to Claude Messages format

@@ -1,8 +1,6 @@
 package openai
 
 import (
-	"strings"
-
 	"github.com/songquanpeng/one-api/relay/adaptor"
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 )
@@ -165,36 +163,21 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 
-var openAIToolingDefaults = buildOpenAIToolingDefaults()
-
-// buildOpenAIToolingDefaults constructs the baseline tooling configuration for
-// OpenAI channels with a channel-level web search pricing recommendation.
-func buildOpenAIToolingDefaults() adaptor.ChannelToolConfig {
-	maxPerCall := 0.0
-	for modelName := range ModelRatios {
-		if perCallUSD := openAIWebSearchPerCallUSD(modelName); perCallUSD > maxPerCall {
-			maxPerCall = perCallUSD
-		}
-	}
-	if maxPerCall <= 0 {
-		return adaptor.ChannelToolConfig{}
-	}
-	return adaptor.ChannelToolConfig{
-		Pricing: map[string]adaptor.ToolPricingConfig{
-			"web_search": {UsdPerCall: maxPerCall},
-		},
-	}
-}
-
-// openAIWebSearchPerCallUSD returns the per-call USD cost for the upstream web search tool.
-// Non-preview tools cost $10 per 1K calls (0.01 per invocation); preview variants cost $25 per 1K.
-func openAIWebSearchPerCallUSD(modelName string) float64 {
-	name := strings.ToLower(strings.TrimSpace(modelName))
-	if name == "" {
-		return 0
-	}
-	if isWebSearchPreviewModel(name) {
-		return 0.025
-	}
-	return 0.01
+// OpenAIToolingDefaults enumerates OpenAI's built-in tool whitelist and pricing (retrieved 2025-11-11).
+// Source: https://r.jina.ai/https://platform.openai.com/docs/pricing#built-in-tools
+var OpenAIToolingDefaults = adaptor.ChannelToolConfig{
+	Whitelist: []string{
+		"code_interpreter",
+		"file_search",
+		"web_search",
+		"web_search_preview_reasoning",
+		"web_search_preview_non_reasoning",
+	},
+	Pricing: map[string]adaptor.ToolPricingConfig{
+		"code_interpreter":                 {UsdPerCall: 0.03},   // $0.03 per container session
+		"file_search":                      {UsdPerCall: 0.0025}, // $2.50 per 1K tool calls
+		"web_search":                       {UsdPerCall: 0.01},   // $10 per 1K tool calls
+		"web_search_preview_reasoning":     {UsdPerCall: 0.01},   // Preview tier for reasoning models, $10 per 1K tool calls
+		"web_search_preview_non_reasoning": {UsdPerCall: 0.025},  // Preview tier for non-reasoning models, $25 per 1K tool calls
+	},
 }

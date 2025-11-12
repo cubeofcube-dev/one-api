@@ -41,3 +41,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// TAO Models
 	"tao-8k": {Ratio: 0.8 * ratio.MilliTokensRmb, CompletionRatio: 1},
 }
+
+// BaiduToolingDefaults notes that Wenxin ModelBuilder documentation does not disclose per-tool billing publicly (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://cloud.baidu.com/doc/WENXINWORKSHOP/s/Blfmc9dlf
+var BaiduToolingDefaults = adaptor.ChannelToolConfig{}

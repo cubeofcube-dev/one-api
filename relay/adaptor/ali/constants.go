@@ -155,3 +155,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"ali-stable-diffusion-v1.5": {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
 	"wanx-v1":                   {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
 }
+
+// AliToolingDefaults notes that Alibaba Model Studio does not expose public built-in tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://help.aliyun.com/en/model-studio/developer-reference/tools-reference (requires authentication)
+var AliToolingDefaults = adaptor.ChannelToolConfig{}

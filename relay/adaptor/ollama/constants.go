@@ -21,3 +21,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// OllamaToolingDefaults notes that Ollama runs locally and publishes no tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://ollama.com/
+var OllamaToolingDefaults = adaptor.ChannelToolConfig{}

@@ -275,3 +275,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Tencent
 	return 1.0
 }
+
+// DefaultToolingConfig returns Tencent tooling defaults (no published per-call pricing as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return TencentToolingDefaults
+}

@@ -14,14 +14,15 @@ func TestDallE3HasPerImagePricing(t *testing.T) {
 }
 
 func TestOpenAIToolingDefaultsWebSearchPricing(t *testing.T) {
-	pricing, ok := openAIToolingDefaults.Pricing["web_search"]
+	defaults := OpenAIToolingDefaults
+	pricing, ok := defaults.Pricing["web_search"]
 	require.True(t, ok, "web search pricing missing for OpenAI defaults")
-	require.InDelta(t, 0.025, pricing.UsdPerCall, 1e-9, "expected highest published price for web search")
-	require.Empty(t, openAIToolingDefaults.Whitelist, "OpenAI defaults should not restrict tool whitelist")
-}
-
-func TestOpenAIWebSearchPerCallUSDVariants(t *testing.T) {
-	require.InDelta(t, 0.01, openAIWebSearchPerCallUSD("gpt-4o"), 1e-9)
-	require.InDelta(t, 0.025, openAIWebSearchPerCallUSD("gpt-4o-mini-search-preview"), 1e-9)
-	require.InDelta(t, 0.01, openAIWebSearchPerCallUSD("o3-deep-research"), 1e-9)
+	require.InDelta(t, 0.01, pricing.UsdPerCall, 1e-9, "expected base web search pricing")
+	require.ElementsMatch(t, []string{
+		"code_interpreter",
+		"file_search",
+		"web_search",
+		"web_search_preview_reasoning",
+		"web_search_preview_non_reasoning",
+	}, defaults.Whitelist, "unexpected OpenAI tool whitelist")
 }

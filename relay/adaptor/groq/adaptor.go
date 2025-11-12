@@ -52,6 +52,11 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
 
+// DefaultToolingConfig returns Groq's built-in tool pricing defaults.
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return GroqToolingDefaults
+}
+
 // Implement required adaptor interface methods (Groq uses OpenAI-compatible API)
 func (a *Adaptor) Init(meta *meta.Meta) {}
 

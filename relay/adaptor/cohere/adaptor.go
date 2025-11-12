@@ -250,3 +250,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Cohere
 	return 3.0
 }
+
+// DefaultToolingConfig returns Cohere tooling defaults (no separate tool pricing published as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return CohereToolingDefaults
+}

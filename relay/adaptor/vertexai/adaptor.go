@@ -292,6 +292,11 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	return 3.0
 }
 
+// DefaultToolingConfig returns Vertex AI tooling defaults (grounding, enterprise search, and Claude web search fees).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return VertexAIToolingDefaults
+}
+
 // ModelEndpointType represents different endpoint types for VertexAI models
 type ModelEndpointType int
 

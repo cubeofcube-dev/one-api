@@ -15,3 +15,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// PalmToolingDefaults notes that legacy PaLM APIs no longer publish built-in tool pricing (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://cloud.google.com/palm
+var PalmToolingDefaults = adaptor.ChannelToolConfig{}

@@ -135,7 +135,7 @@ func (a *Adaptor) GetChannelName() string {
 // DefaultToolingConfig returns Anthropic's default built-in tooling policy
 // including per-model pricing overrides for upstream web search.
 func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
-	return anthropicToolingDefaults
+	return AnthropicToolingDefaults
 }
 
 // Pricing methods - Anthropic adapter manages its own model pricing

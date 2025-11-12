@@ -259,3 +259,8 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	// Default completion ratio for Xunfei
 	return 1.0
 }
+
+// DefaultToolingConfig returns Xunfei tooling defaults (no published tool billing as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return XunfeiToolingDefaults
+}

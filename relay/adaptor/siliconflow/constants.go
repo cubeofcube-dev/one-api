@@ -34,3 +34,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// SiliconFlowToolingDefaults notes that SiliconFlow public docs focus on model usage; no separate tool fees are published (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://docs.siliconflow.com/en/api-reference/chat-completions/chat-completions
+var SiliconFlowToolingDefaults = adaptor.ChannelToolConfig{}

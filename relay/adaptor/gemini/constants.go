@@ -13,6 +13,9 @@ var ModelRatios = geminiOpenaiCompatible.ModelRatios
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
 
+// GeminiToolingDefaults reuses the Gemini OpenAI-compatible tooling defaults sourced from Google pricing (retrieved 2025-11-12).
+var GeminiToolingDefaults = geminiOpenaiCompatible.GeminiToolingDefaults()
+
 // ModelsSupportSystemInstruction is the list of models that support system instruction.
 //
 // https://cloud.google.com/vertex-ai/generative-ai/docs/learn/prompts/system-instructions

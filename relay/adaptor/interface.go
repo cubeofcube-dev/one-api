@@ -128,6 +128,11 @@ func (d *DefaultPricingMethods) GetCompletionRatio(modelName string) float64 {
 	return 1.0 // Default completion ratio
 }
 
+// DefaultToolingConfig returns an empty tooling configuration so channels opt-in explicitly.
+func (d *DefaultPricingMethods) DefaultToolingConfig() ChannelToolConfig {
+	return ChannelToolConfig{}
+}
+
 func (d *DefaultPricingMethods) ConvertClaudeRequest(c *gin.Context, request *model.ClaudeRequest) (any, error) {
 	// Default implementation: not supported
 	return nil, errors.New("Claude Messages API not supported by this adaptor")

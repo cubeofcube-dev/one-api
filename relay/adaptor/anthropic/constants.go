@@ -53,35 +53,11 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 const anthropicWebSearchUsdPerCall = 10.0 / 1000.0
 
-// anthropicWebSearchModels enumerates Claude models with published web search pricing.
-// Source: https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool
-// (content retrieved via https://r.jina.ai/https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool)
-var anthropicWebSearchModels = map[string]struct{}{
-	"claude-opus-4-0":            {},
-	"claude-opus-4-20250514":     {},
-	"claude-opus-4-1":            {},
-	"claude-opus-4-1-20250805":   {},
-	"claude-sonnet-4-0":          {},
-	"claude-sonnet-4-20250514":   {},
-	"claude-sonnet-4-5":          {},
-	"claude-sonnet-4-5-20250929": {},
-	"claude-3-7-sonnet-20250219": {},
-	"claude-haiku-4-5":           {},
-	"claude-haiku-4-5-20251001":  {},
-	"claude-3-5-haiku-latest":    {},
-}
-
-var anthropicToolingDefaults = buildAnthropicToolingDefaults()
-
-// buildAnthropicToolingDefaults assembles the provider's default tooling policy
-// using channel-level pricing metadata.
-func buildAnthropicToolingDefaults() adaptor.ChannelToolConfig {
-	if len(anthropicWebSearchModels) == 0 {
-		return adaptor.ChannelToolConfig{}
-	}
-	return adaptor.ChannelToolConfig{
-		Pricing: map[string]adaptor.ToolPricingConfig{
-			"web_search": {UsdPerCall: anthropicWebSearchUsdPerCall},
-		},
-	}
+// AnthropicToolingDefaults represents Anthropic's published built-in tool pricing (2025-11-11).
+// Source: https://r.jina.ai/https://docs.claude.com/en/docs/build-with-claude/tool-use/web-search-tool
+var AnthropicToolingDefaults = adaptor.ChannelToolConfig{
+	Whitelist: []string{"web_search"},
+	Pricing: map[string]adaptor.ToolPricingConfig{
+		"web_search": {UsdPerCall: anthropicWebSearchUsdPerCall},
+	},
 }

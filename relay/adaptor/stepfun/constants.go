@@ -23,3 +23,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// StepFunToolingDefaults notes that StepFun publishes model pricing only; no tool-specific fees are documented (retrieved 2025-11-12).
+// Source: https://r.jina.ai/https://stepfun.ai/
+var StepFunToolingDefaults = adaptor.ChannelToolConfig{}

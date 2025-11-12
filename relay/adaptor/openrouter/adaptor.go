@@ -283,6 +283,11 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }
 
+// DefaultToolingConfig returns OpenRouter's web tooling pricing defaults.
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return OpenRouterToolingDefaults
+}
+
 func requiresStructuredDowngrade(modelName string) bool {
 	lower := strings.ToLower(strings.TrimSpace(modelName))
 	if lower == "" {

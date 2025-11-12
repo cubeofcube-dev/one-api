@@ -57,3 +57,7 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 
 // ModelList derived from ModelRatios for backward compatibility
 var ModelList = adaptor.GetModelListFromPricing(ModelRatios)
+
+// CloudflareToolingDefaults notes Workers AI publishes only neuron-based model pricing (no server-side tool billing as of 2025-11-12).
+// Source: https://r.jina.ai/https://developers.cloudflare.com/workers-ai/platform/pricing/
+var CloudflareToolingDefaults = adaptor.ChannelToolConfig{}

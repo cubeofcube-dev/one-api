@@ -264,7 +264,9 @@ func (a *Adaptor) GetModelRatio(modelName string) float64 {
 		return price.Ratio
 	}
 	for _, price := range pricing {
-		return price.Ratio
+		if price.Ratio > 0 {
+			return price.Ratio
+		}
 	}
 	var defaultPricing adaptor.DefaultPricingMethods
 	return defaultPricing.GetModelRatio(modelName)
@@ -282,4 +284,9 @@ func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
 	}
 	var defaultPricing adaptor.DefaultPricingMethods
 	return defaultPricing.GetCompletionRatio(modelName)
+}
+
+// DefaultToolingConfig returns Alibaba's tool policy defaults (none documented publicly as of 2025-11-12).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return AliToolingDefaults
 }

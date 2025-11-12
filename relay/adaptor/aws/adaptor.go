@@ -48,6 +48,11 @@ func (a *Adaptor) Init(meta *meta.Meta) {
 	a.AwsClient = bedrockruntime.NewFromConfig(defaultConfig)
 }
 
+// DefaultToolingConfig returns Bedrock AgentCore tooling defaults (search, tool invocation, identity, memory fees).
+func (a *Adaptor) DefaultToolingConfig() adaptor.ChannelToolConfig {
+	return AWSToolingDefaults
+}
+
 func (a *Adaptor) ConvertRequest(c *gin.Context, relayMode int, request *model.GeneralOpenAIRequest) (any, error) {
 	if request == nil {
 		return nil, errors.New("request is nil")
