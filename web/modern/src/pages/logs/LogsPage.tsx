@@ -13,7 +13,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { formatTimestamp, fromDateTimeLocal, toDateTimeLocal, renderQuota, cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/stores/auth'
 import { RefreshCw, Eye, EyeOff, Copy, FileDown, Filter } from 'lucide-react'
-import { TracingModal } from '@/components/TracingModal'
 import { LogDetailsModal } from '@/components/LogDetailsModal'
 import { LOG_TYPES, LOG_TYPE_OPTIONS, getLogTypeLabel } from '@/lib/constants/logs'
 import type { LogEntry, LogMetadata } from '@/types/log'
@@ -114,9 +113,6 @@ export function LogsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
   // Tracing modal
-  const [tracingModalOpen, setTracingModalOpen] = useState(false)
-  const [selectedLogId, setSelectedLogId] = useState<number | null>(null)
-  const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<LogRow | null>(null)
 
@@ -463,27 +459,8 @@ export function LogsPage() {
   }
 
   const handleRowClick = (log: LogRow) => {
-    const hasTrace = Boolean(log.trace_id && log.trace_id.trim() !== '')
-
-    if (log.type === LOG_TYPES.CONSUME && hasTrace) {
-      setSelectedLogId(log.id)
-      setSelectedTraceId(log.trace_id || null)
-      setTracingModalOpen(true)
-      return
-    }
-
-    setSelectedLogId(null)
-    setSelectedTraceId(null)
     setSelectedLog(log)
     setDetailsModalOpen(true)
-  }
-
-  const handleTracingModalChange = (open: boolean) => {
-    setTracingModalOpen(open)
-    if (!open) {
-      setSelectedLogId(null)
-      setSelectedTraceId(null)
-    }
   }
 
   const handleDetailsModalChange = (open: boolean) => {
@@ -684,12 +661,6 @@ export function LogsPage() {
         </CardContent>
       </Card>
 
-      <TracingModal
-        open={tracingModalOpen}
-        onOpenChange={handleTracingModalChange}
-        logId={selectedLogId}
-        traceId={selectedTraceId}
-      />
       <LogDetailsModal
         open={detailsModalOpen}
         onOpenChange={handleDetailsModalChange}
