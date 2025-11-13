@@ -39,6 +39,15 @@ func TestImageTierTablesParity(t *testing.T) {
 		{"gpt-image-1", "1024x1024", "low", 1},
 		{"gpt-image-1", "1024x1536", "low", 16.0 / 11},
 		{"gpt-image-1", "1536x1024", "low", 16.0 / 11},
+		{"gpt-image-1-mini", "1024x1024", "high", 36.0 / 5.0},
+		{"gpt-image-1-mini", "1024x1536", "high", 52.0 / 5.0},
+		{"gpt-image-1-mini", "1536x1024", "high", 52.0 / 5.0},
+		{"gpt-image-1-mini", "1024x1024", "medium", 11.0 / 5.0},
+		{"gpt-image-1-mini", "1024x1536", "medium", 15.0 / 5.0},
+		{"gpt-image-1-mini", "1536x1024", "medium", 15.0 / 5.0},
+		{"gpt-image-1-mini", "1024x1024", "low", 1},
+		{"gpt-image-1-mini", "1024x1536", "low", 6.0 / 5.0},
+		{"gpt-image-1-mini", "1536x1024", "low", 6.0 / 5.0},
 	}
 
 	for _, tc := range cases {

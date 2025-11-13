@@ -55,6 +55,29 @@ func TestGetImageRequest_DefaultQuality_GPTImage1(t *testing.T) {
 	}
 }
 
+func TestGetImageRequest_DefaultQuality_GPTImage1Mini(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+
+	body := []byte(`{
+        "model": "gpt-image-1-mini",
+        "prompt": "test prompt",
+        "size": "1024x1024"
+    }`)
+	req := httptest.NewRequest("POST", "/v1/images/generations", bytes.NewReader(body))
+	req.Header.Set("Content-Type", "application/json")
+	c.Request = req
+
+	ir, err := getImageRequest(c, 0)
+	if err != nil {
+		t.Fatalf("getImageRequest error: %v", err)
+	}
+	if ir.Quality != "high" {
+		t.Fatalf("expected default quality 'high' for gpt-image-1-mini, got %q", ir.Quality)
+	}
+}
+
 func TestGetImageRequest_DefaultQuality_DALLE2(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

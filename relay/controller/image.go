@@ -12,10 +12,9 @@ import (
 	"time"
 
 	"github.com/Laisky/errors/v2"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
-
-	gmw "github.com/Laisky/gin-middlewares/v7"
 
 	"github.com/songquanpeng/one-api/common"
 	"github.com/songquanpeng/one-api/common/ctxkey"
@@ -48,7 +47,7 @@ func getImageRequest(c *gin.Context, _ int) (*relaymodel.ImageRequest, error) {
 		switch imageRequest.Model {
 		case "dall-e-2", "dall-e-3":
 			imageRequest.Size = "1024x1024"
-		case "gpt-image-1":
+		case "gpt-image-1", "gpt-image-1-mini":
 			imageRequest.Size = "1024x1536"
 		case "grok-2-image", "grok-2-image-1212":
 			imageRequest.Size = "1024x1024" // Default size for Grok-2 image generation
@@ -65,13 +64,13 @@ func getImageRequest(c *gin.Context, _ int) (*relaymodel.ImageRequest, error) {
 		case "dall-e-3":
 			// OpenAI only supports 'standard' and 'hd' for DALL·E 3; 'auto' is invalid
 			imageRequest.Quality = "standard"
-		case "gpt-image-1":
+		case "gpt-image-1", "gpt-image-1-mini":
 			imageRequest.Quality = "high"
 		case "grok-2-image", "grok-2-image-1212":
 			imageRequest.Quality = "standard" // Default quality for Grok-2 image generation
 		}
 	}
-	if imageRequest.Model == "gpt-image-1" {
+	if strings.HasPrefix(imageRequest.Model, "gpt-image-") {
 		imageRequest.ResponseFormat = nil
 	}
 
@@ -162,9 +161,9 @@ func getImageCostRatio(imageRequest *relaymodel.ImageRequest) (float64, error) {
 				}
 			}
 		}
-		// When model has tier table but size not found, treat as invalid only for models with strict sizes (gpt-image-1)
-		if imageRequest.Model == "gpt-image-1" {
-			return 0, errors.New("invalid size for gpt-image-1, should be 1024x1024/1024x1536/1536x1024")
+		// When model has tier table but size not found, treat as invalid only for models with strict sizes (gpt-image-1 family)
+		if strings.HasPrefix(imageRequest.Model, "gpt-image-") {
+			return 0, errors.New("invalid size for gpt-image family, should be 1024x1024/1024x1536/1536x1024")
 		}
 		// Else, fall through to legacy map's permissive default
 	}
@@ -488,7 +487,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 				}
 			} else {
 				switch meta.ActualModelName {
-				case "gpt-image-1":
+				case "gpt-image-1", "gpt-image-1-mini":
 					if usage.PromptTokensDetails != nil {
 						textQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.TextTokens) * 5 * billingratio.MilliTokensUsd))
 						imageQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.ImageTokens) * 10 * billingratio.MilliTokensUsd))
@@ -513,7 +512,7 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		} else {
 			// Legacy token-based path for models without per-image pricing configured
 			switch meta.ActualModelName {
-			case "gpt-image-1":
+			case "gpt-image-1", "gpt-image-1-mini":
 				if usage.PromptTokensDetails != nil {
 					textQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.TextTokens) * 5 * billingratio.MilliTokensUsd))
 					imageQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.ImageTokens) * 10 * billingratio.MilliTokensUsd))
@@ -526,14 +525,46 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	return nil
 }
 
-// computeGptImage1TokenQuota calculates quota for gpt-image-1 across five buckets:
-// 1) input text, 2) cached input text, 3) input image, 4) cached input image, 5) output image tokens.
-// Prices are in USD per 1M tokens: 5.0, 1.25, 10.0, 2.5, 40.0 respectively.
-// Returns the quota (not USD). Applies groupRatio as a final multiplier.
-func computeGptImage1TokenQuota(usage *relaymodel.Usage, groupRatio float64) float64 {
+// gptImageTokenBucketPricing stores USD per 1M token prices for GPT Image models.
+type gptImageTokenBucketPricing struct {
+	inputTextUSD        float64
+	cachedInputTextUSD  float64
+	inputImageUSD       float64
+	cachedInputImageUSD float64
+	outputImageUSD      float64
+}
+
+var gptImageTokenBucketPrices = map[string]gptImageTokenBucketPricing{
+	// https://platform.openai.com/docs/models/gpt-image-1
+	"gpt-image-1": {
+		inputTextUSD:        5.0,
+		cachedInputTextUSD:  1.25,
+		inputImageUSD:       10.0,
+		cachedInputImageUSD: 2.5,
+		outputImageUSD:      40.0,
+	},
+	// https://platform.openai.com/docs/models/gpt-image-1-mini
+	"gpt-image-1-mini": {
+		inputTextUSD:        2.0,
+		cachedInputTextUSD:  0.20,
+		inputImageUSD:       2.5,
+		cachedInputImageUSD: 0.25,
+		outputImageUSD:      8.0,
+	},
+}
+
+// computeGptImageTokenQuota calculates quota for gpt-image-1 family models using five billing buckets:
+// input text, cached input text, input image, cached input image, and output image tokens.
+// Prices are expressed in USD per 1M tokens and multiplied by the groupRatio (quota multiplier) before returning quota units.
+func computeGptImageTokenQuota(modelName string, usage *relaymodel.Usage, groupRatio float64) float64 {
 	if usage == nil {
 		return 0
 	}
+	pricing, ok := gptImageTokenBucketPrices[modelName]
+	if !ok {
+		return 0
+	}
+
 	var textIn, imageIn, cachedIn int
 	if usage.PromptTokensDetails != nil {
 		textIn = usage.PromptTokensDetails.TextTokens
@@ -563,21 +594,12 @@ func computeGptImage1TokenQuota(usage *relaymodel.Usage, groupRatio float64) flo
 	normalImage := max(imageIn-cachedImage, 0)
 	outTokens := max(usage.CompletionTokens, 0)
 
-	// USD per 1M tokens
-	const (
-		inTextUSD        = 5.0
-		inTextCachedUSD  = 1.25
-		inImageUSD       = 10.0
-		inImageCachedUSD = 2.5
-		outImageUSD      = 40.0
-	)
-
 	quota := 0.0
-	quota += float64(normalText) * inTextUSD * billingratio.MilliTokensUsd
-	quota += float64(cachedText) * inTextCachedUSD * billingratio.MilliTokensUsd
-	quota += float64(normalImage) * inImageUSD * billingratio.MilliTokensUsd
-	quota += float64(cachedImage) * inImageCachedUSD * billingratio.MilliTokensUsd
-	quota += float64(outTokens) * outImageUSD * billingratio.MilliTokensUsd
+	quota += float64(normalText) * pricing.inputTextUSD * billingratio.MilliTokensUsd
+	quota += float64(cachedText) * pricing.cachedInputTextUSD * billingratio.MilliTokensUsd
+	quota += float64(normalImage) * pricing.inputImageUSD * billingratio.MilliTokensUsd
+	quota += float64(cachedImage) * pricing.cachedInputImageUSD * billingratio.MilliTokensUsd
+	quota += float64(outTokens) * pricing.outputImageUSD * billingratio.MilliTokensUsd
 
 	if groupRatio > 0 {
 		quota *= groupRatio
@@ -596,8 +618,8 @@ func computeImageUsageQuota(modelName string, usage *relaymodel.Usage, groupRati
 		return 0
 	}
 	switch modelName {
-	case "gpt-image-1":
-		return computeGptImage1TokenQuota(usage, groupRatio)
+	case "gpt-image-1", "gpt-image-1-mini":
+		return computeGptImageTokenQuota(modelName, usage, groupRatio)
 	default:
 		// Add more models here as they publish token pricing for image buckets
 		return 0

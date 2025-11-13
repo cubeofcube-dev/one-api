@@ -16,3 +16,16 @@ func TestGptImage1HasPerImagePricing(t *testing.T) {
 		t.Fatalf("expected ImagePriceUsd > 0 for gpt-image-1, got %v", cfg.ImagePriceUsd)
 	}
 }
+
+func TestGptImage1MiniHasPerImagePricing(t *testing.T) {
+	cfg, ok := ModelRatios["gpt-image-1-mini"]
+	if !ok {
+		t.Fatalf("gpt-image-1-mini not found in ModelRatios")
+	}
+	if cfg.Ratio != 0 {
+		t.Fatalf("expected Ratio=0 for per-image model, got %v", cfg.Ratio)
+	}
+	if cfg.ImagePriceUsd <= 0 {
+		t.Fatalf("expected ImagePriceUsd > 0 for gpt-image-1-mini, got %v", cfg.ImagePriceUsd)
+	}
+}

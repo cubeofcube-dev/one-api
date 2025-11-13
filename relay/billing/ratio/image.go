@@ -1,5 +1,7 @@
 package ratio
 
+// ImageSizeRatios defines base multipliers for image generation models by size.
+// These ratios are used to adjust pricing based on the requested image dimensions.
 var ImageSizeRatios = map[string]map[string]float64{
 	"dall-e-2": {
 		"256x256":   1,
@@ -15,6 +17,11 @@ var ImageSizeRatios = map[string]map[string]float64{
 		"1024x1024": 1,
 		"1024x1536": 16.0 / 11,
 		"1536x1024": 16.0 / 11,
+	},
+	"gpt-image-1-mini": {
+		"1024x1024": 1,
+		"1024x1536": 0.006 / 0.005,
+		"1536x1024": 0.006 / 0.005,
 	},
 	"ali-stable-diffusion-xl": {
 		"512x1024":  1,
@@ -55,6 +62,7 @@ var ImageGenerationAmounts = map[string][2]int{
 	"dall-e-2":                  {1, 10},
 	"dall-e-3":                  {1, 1}, // OpenAI allows n=1 currently.
 	"gpt-image-1":               {1, 1},
+	"gpt-image-1-mini":          {1, 1},
 	"ali-stable-diffusion-xl":   {1, 4}, // Ali
 	"ali-stable-diffusion-v1.5": {1, 4}, // Ali
 	"wanx-v1":                   {1, 4}, // Ali
@@ -68,6 +76,7 @@ var ImagePromptLengthLimitations = map[string]int{
 	"dall-e-2":                  1000,
 	"dall-e-3":                  4000,
 	"gpt-image-1":               4000,
+	"gpt-image-1-mini":          4000,
 	"ali-stable-diffusion-xl":   4000,
 	"ali-stable-diffusion-v1.5": 4000,
 	"wanx-v1":                   4000,
@@ -137,6 +146,33 @@ var ImageTierTables = map[string]map[string]map[string]float64{
 			"1024x1024": 167.0 / 11,
 			"1024x1536": 250.0 / 11,
 			"1536x1024": 250.0 / 11,
+		},
+	},
+	"gpt-image-1-mini": {
+		"default": {
+			"1024x1024": 1,
+			"1024x1536": 0.006 / 0.005,
+			"1536x1024": 0.006 / 0.005,
+		},
+		"low": {
+			"1024x1024": 1,
+			"1024x1536": 0.006 / 0.005,
+			"1536x1024": 0.006 / 0.005,
+		},
+		"medium": {
+			"1024x1024": 0.011 / 0.005,
+			"1024x1536": 0.015 / 0.005,
+			"1536x1024": 0.015 / 0.005,
+		},
+		"high": {
+			"1024x1024": 0.036 / 0.005,
+			"1024x1536": 0.052 / 0.005,
+			"1536x1024": 0.052 / 0.005,
+		},
+		"auto": { // same as high
+			"1024x1024": 0.036 / 0.005,
+			"1024x1536": 0.052 / 0.005,
+			"1536x1024": 0.052 / 0.005,
 		},
 	},
 	// Ali SD variants and others: copy defaults from ImageSizeRatios

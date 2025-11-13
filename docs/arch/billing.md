@@ -613,7 +613,7 @@ Controllers:
 - Text/Chat (`relay/controller/text.go`)
 - Response API (`relay/controller/response.go`)
 - Claude Messages (`relay/controller/claude_messages.go`)
-- Images (`relay/controller/image.go`) — per-image pre-consume + usage override (e.g., `gpt-image-1`)
+- Images (`relay/controller/image.go`) — per-image pre-consume + usage override (e.g., `gpt-image-1` / `gpt-image-1-mini`)
 - Audio (`relay/controller/audio.go`)
 
 Helper:
@@ -676,26 +676,27 @@ quota = audio_duration_seconds * audio_tokens_per_second * model_ratio * group_r
 
 ### Universal Two-Step Image Billing (2025-08)
 
-The billing system now implements a universal, robust two-step billing process for all image-centric models (e.g., DALL·E 2/3, gpt-image-1):
+The billing system now implements a universal, robust two-step billing process for all image-centric models (e.g., DALL·E 2/3, GPT Image 1 family):
 
 **1. Pre-consume:**
 
 - Before sending the request, the system pre-consumes quota based on a fixed per-image price (`ImagePriceUsd`), multiplied by the appropriate size/quality tier and group ratio.
 - This ensures quota is reserved up front, even if usage data is missing later.
-- Example: For gpt-image-1, the base price for 1024x1024/low is $0.011; higher qualities and sizes use tier multipliers (see `ratio.ImageTierTables`).
+- For gpt-image-1, the base price for 1024x1024/low is $0.011; higher qualities and sizes use tier multipliers (see `ratio.ImageTierTables`).
+- gpt-image-1-mini uses the same tier table with a $0.005 base price for 1024x1024/low.
 
 **2. Post-consume (Reconciliation):**
 
 - After the request, if the provider returns detailed usage metrics (token buckets), the system recomputes the quota using the most accurate, token-based formula for that model.
 - For gpt-image-1, the formula is:
-
-  - Input text tokens: $5 per 1M tokens
-  - Cached input text tokens: $1.25 per 1M tokens
-  - Input image tokens: $10 per 1M tokens
-  - Cached input image tokens: $2.5 per 1M tokens
-  - Output image tokens: $40 per 1M tokens
-  - Cached tokens are apportioned between text/image proportionally.
-  - The group ratio is applied as a final multiplier.
+    - Input text tokens: $5 per 1M tokens
+    - Cached input text tokens: $1.25 per 1M tokens
+    - Input image tokens: $10 per 1M tokens
+    - Cached input image tokens: $2.5 per 1M tokens
+    - Output image tokens: $40 per 1M tokens
+- gpt-image-1-mini reuses the same bucket logic with prices of $2.00, $0.20, $2.50, $0.25, and $8.00 per 1M tokens respectively.
+- Cached tokens are apportioned between text/image proportionally.
+- The group ratio is applied as a final multiplier.
 
 - If usage data is missing or unreliable, the system falls back to the pre-consumed per-image price.
 
@@ -712,14 +713,14 @@ The billing system now implements a universal, robust two-step billing process f
 
 - All quota operations (pre-consume, post-consume, refund) are logged with clear context, and quota is always refunded if the request fails.
 
-**6. Example (gpt-image-1):**
+**6. Example (gpt-image-1 / gpt-image-1-mini):**
 
-- Pre-consume: For a 1024x1024/high image, pre-consume $0.167 × group ratio × quota-per-USD.
-- Post-consume: If usage is returned, recompute using the five-bucket formula above and override the pre-charge.
+- Pre-consume: For a 1024x1024/high image, pre-consume the respective tier price ($0.167 for gpt-image-1, $0.036 for gpt-image-1-mini) × group ratio × quota-per-USD.
+- Post-consume: If usage is returned, recompute using the matching five-bucket formula above and override the pre-charge.
 
 **7. Implementation References:**
 
-- Controller logic: `relay/controller/image.go` (see `RelayImageHelper`, `computeImageUsageQuota`, `computeGptImage1TokenQuota`)
+- Controller logic: `relay/controller/image.go` (see `RelayImageHelper`, `computeImageUsageQuota`, `computeGptImageTokenQuota`)
 - Pricing constants: `relay/adaptor/openai/constants.go`, `relay/billing/ratio/image.go`
 - Tier tables: `ratio.ImageTierTables`
 

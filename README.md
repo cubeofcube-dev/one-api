@@ -89,12 +89,12 @@ The original author stopped maintaining the project, leaving critical PRs and ne
         - [Reasoning Format - reasoning](#reasoning-format---reasoning)
         - [Reasoning Format - thinking](#reasoning-format---thinking)
     - [OpenAI Features](#openai-features)
-      - [(Merged) Support gpt-vision](#merged-support-gpt-vision)
+      - [Support whisper](#support-whisper)
       - [Support openai images edits](#support-openai-images-edits)
       - [Support OpenAI o1/o1-mini/o1-preview](#support-openai-o1o1-minio1-preview)
       - [Support gpt-4o-audio](#support-gpt-4o-audio)
       - [Support OpenAI web search models](#support-openai-web-search-models)
-      - [Support gpt-image-1's image generation \& edits](#support-gpt-image-1s-image-generation--edits)
+    - [Support gpt-image-1 & gpt-image-1-mini image generation \& edits](#support-gpt-image-1--gpt-image-1-mini-image-generation--edits)
       - [Support o3-mini \& o3 \& o4-mini \& gpt-4.1 \& o3-pro \& reasoning content](#support-o3-mini--o3--o4-mini--gpt-41--o3-pro--reasoning-content)
       - [Support OpenAI Response API](#support-openai-response-api)
       - [Support gpt-5 family](#support-gpt-5-family)
@@ -536,7 +536,55 @@ Response:
 
 ### OpenAI Features
 
-#### (Merged) Support gpt-vision
+#### Support whisper
+
+```sh
+curl --location 'https://oneapi.laisky.com/v1/audio/transcriptions' \
+  --header 'Authorization: Bearer laisky-xxxxxxx' \
+  --form 'file=@"postman-cloud:///1efcd71f-7206-4a70-94d1-7727d79d124b"' \
+  --form 'model="whisper-1"' \
+  --form 'response_format="verbose_json"'
+```
+
+Response:
+
+```json
+{
+    "task": "transcribe",
+    "language": "english",
+    "duration": 3.869999885559082,
+    "text": "Hello everyone, nice to see you today",
+    "segments": [
+        {
+            "id": 0,
+            "seek": 0,
+            "start": 0.0,
+            "end": 3.680000066757202,
+            "text": " Hello everyone, nice to see you today",
+            "tokens": [
+                50364,
+                2425,
+                1518,
+                11,
+                1481,
+                281,
+                536,
+                291,
+                965,
+                50548
+            ],
+            "temperature": 0.0,
+            "avg_logprob": -0.44038617610931396,
+            "compression_ratio": 0.8604651093482971,
+            "no_speech_prob": 0.002639062935486436
+        }
+    ],
+    "usage": {
+        "type": "duration",
+        "seconds": 4
+    }
+}
+```
 
 #### Support openai images edits
 
@@ -770,7 +818,9 @@ Response:
 }
 ```
 
-#### Support gpt-image-1's image generation & edits
+#### Support gpt-image-1 & gpt-image-1-mini image generation & edits
+
+The mini variant accepts the same request schema as `gpt-image-1` while using lower per-image pricing. Swap the `model` field to `gpt-image-1-mini` when you prefer the cheaper tier.
 
 ![](https://s3.laisky.com/uploads/2025/04/gpt-image-1-2.png)
 
