@@ -79,34 +79,3 @@ func TestGetAudioTokens(t *testing.T) {
 		require.Error(t, err)
 	})
 }
-
-// func TestGetAudioTokensFallbackWhenFFProbeUnavailable(t *testing.T) {
-// 	dir := t.TempDir()
-
-// 	fake := filepath.Join(dir, "ffprobe")
-// 	require.NoError(t, os.WriteFile(fake, []byte("#!/bin/sh\nexit 127\n"), 0o755))
-
-// 	originalPath := os.Getenv("PATH")
-// 	require.NoError(t, os.Setenv("PATH", dir))
-// 	defer func() {
-// 		_ = os.Setenv("PATH", originalPath)
-// 	}()
-
-// 	// Reset cached probe resolution before and after the test to avoid cross-test leakage.
-// 	resetFFProbeCache := func() {
-// 		ffprobeOnce = sync.Once{}
-// 		ffprobePath = ""
-// 		ffprobeErr = nil
-// 	}
-// 	resetFFProbeCache()
-// 	defer resetFFProbeCache()
-
-// 	size := int(fallbackAudioBytesPerSecond * 2)
-// 	audio := bytes.Repeat([]byte{0x01}, size)
-
-// 	tokens, err := GetAudioTokens(context.Background(), bytes.NewReader(audio), 50)
-// 	require.NoError(t, err)
-
-// 	expected := float64(size) / fallbackAudioBytesPerSecond * 50
-// 	require.InEpsilon(t, expected, tokens, 1e-6)
-// }

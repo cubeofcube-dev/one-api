@@ -10,6 +10,8 @@ import (
 	"sync"
 
 	"github.com/Laisky/errors/v2"
+	gmw "github.com/Laisky/gin-middlewares/v7"
+	"github.com/Laisky/zap"
 )
 
 var (
@@ -17,8 +19,6 @@ var (
 	ffprobeOnce sync.Once
 	ffprobeErr  error
 )
-
-// const fallbackAudioBytesPerSecond = 8000.0
 
 // ErrFFProbeUnavailable is returned when ffprobe/avprobe cannot be executed.
 var ErrFFProbeUnavailable = errors.New("ffprobe unavailable")
@@ -76,26 +76,6 @@ func GetAudioTokens(ctx context.Context, audio io.Reader, tokensPerSecond float6
 
 	duration, err := GetAudioDuration(ctx, filename)
 	if err != nil {
-		// if IsFFProbeUnavailable(err) {
-		// 	fileInfo, statErr := os.Stat(filename)
-		// 	if statErr != nil {
-		// 		return 0, errors.Wrap(statErr, "failed to stat audio file for duration fallback")
-		// 	}
-
-		// 	fallbackDuration := estimateAudioDurationBySize(fileInfo.Size())
-		// 	if fallbackDuration <= 0 {
-		// 		return 0, errors.Wrap(err, "failed to get audio tokens")
-		// 	}
-
-		// 	logger := gmw.GetLogger(ctx)
-		// 	logger.Debug("ffprobe unavailable, using size-based audio duration estimate",
-		// 		zap.Float64("duration_sec", fallbackDuration),
-		// 		zap.Int64("audio_bytes", fileInfo.Size()),
-		// 		zap.String("extension", strings.ToLower(filepath.Ext(filename))))
-
-		// 	return fallbackDuration * tokensPerSecond, nil
-		// }
-
 		return 0, errors.Wrap(err, "failed to get audio tokens")
 	}
 
@@ -106,12 +86,18 @@ func GetAudioTokens(ctx context.Context, audio io.Reader, tokensPerSecond float6
 func GetAudioDuration(ctx context.Context, filename string) (float64, error) {
 	path, err := lookupFFProbe()
 	if err != nil {
+		gmw.GetLogger(ctx).Debug("ffprobe unavailable", zap.Error(err))
 		return 0, errors.Wrap(err, "failed to get audio duration")
 	}
 	// ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {{input}}
 	c := exec.CommandContext(ctx, path, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename)
 	output, err := c.CombinedOutput()
 	if err != nil {
+		gmw.GetLogger(ctx).Debug("ffprobe execution failed",
+			zap.String("ffprobe_path", path),
+			zap.String("filename", filename),
+			zap.String("stderr", strings.TrimSpace(string(output))),
+			zap.Error(err))
 		wrapped := wrapFFProbeError(err, output)
 		return 0, errors.Wrap(wrapped, "failed to get audio duration")
 	}
@@ -145,11 +131,3 @@ func wrapFFProbeError(err error, output []byte) error {
 
 	return err
 }
-
-// // func estimateAudioDurationBySize(size int64) float64 {
-// // 	if size <= 0 {
-// // 		return 0
-// // 	}
-
-// 	return float64(size) / fallbackAudioBytesPerSecond
-// // }
