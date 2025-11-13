@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/Laisky/errors/v2"
+	gmw "github.com/Laisky/gin-middlewares/v7"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/ctxkey"
+	"github.com/songquanpeng/one-api/common/helper"
+	dbmodel "github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay/model"
 )
 
@@ -78,6 +83,45 @@ func TestShouldRetry(t *testing.T) {
 	}
 }
 
+func TestIsInternalInfraError(t *testing.T) {
+	t.Run("returns true for ffprobe unavailable", func(t *testing.T) {
+		err := errors.Wrap(helper.ErrFFProbeUnavailable, "ffprobe missing")
+		require.True(t, isInternalInfraError(errors.Wrap(err, "count audio tokens failed")))
+	})
+
+	t.Run("returns false for other errors", func(t *testing.T) {
+		require.False(t, isInternalInfraError(errors.New("some other error")))
+	})
+}
+
+func TestProcessChannelRelayError_InternalInfraFailureDoesNotSuspend(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	ctx := gmw.Ctx(c)
+
+	wrappedErr := errors.Wrap(helper.ErrFFProbeUnavailable, "ffprobe exited with 127")
+	innerErr := errors.Wrap(wrappedErr, "failed to get audio duration")
+	outerErr := errors.Wrap(innerErr, "failed to get audio tokens")
+
+	originalDB := dbmodel.DB
+	dbmodel.DB = nil
+	defer func() { dbmodel.DB = originalDB }()
+
+	relayErr := model.ErrorWithStatusCode{
+		StatusCode: http.StatusInternalServerError,
+		Error: model.Error{
+			Message:  "internal ffprobe missing",
+			Type:     "internal_error",
+			Code:     "count_audio_tokens_failed",
+			RawError: outerErr,
+		},
+	}
+
+	require.NotPanics(t, func() {
+		processChannelRelayError(ctx, 1, 2, "test-channel", "default", "whisper-1", relayErr)
+	})
+}
 func TestProcessChannelRelayError_StatusTooManyRequests(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 

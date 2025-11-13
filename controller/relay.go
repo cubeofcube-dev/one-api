@@ -352,6 +352,16 @@ func isClientContextCancel(statusCode int, rawErr error) bool {
 	return false
 }
 
+func isInternalInfraError(rawErr error) bool {
+	if rawErr == nil {
+		return false
+	}
+	if helper.IsFFProbeUnavailable(rawErr) {
+		return true
+	}
+	return false
+}
+
 // classifyAuthLike returns true if error appears to be auth/permission/quota related
 func classifyAuthLike(e *model.ErrorWithStatusCode) bool {
 	if e == nil {
@@ -465,6 +475,16 @@ func processChannelRelayError(ctx context.Context, userId int, channelId int, ch
 			zap.String("group", group),
 			zap.String("model", originalModel),
 			zap.Error(err.RawError))
+	}
+
+	if isInternalInfraError(err.RawError) {
+		lg.Debug("internal infrastructure failure detected, skipping channel suspension",
+			zap.Int("channel_id", channelId),
+			zap.String("channel_name", channelName),
+			zap.String("group", group),
+			zap.String("model", originalModel))
+		monitor.Emit(channelId, false)
+		return
 	}
 
 	// Handle 400 errors differently - they are client request issues, not channel problems
