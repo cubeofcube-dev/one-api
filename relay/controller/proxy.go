@@ -49,27 +49,34 @@ func RelayProxyHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	requestId := c.GetString(ctxkey.RequestId)
 	// Capture trace ID before launching goroutine
 	traceId := tracing.GetTraceID(c)
+	promptTokens, completionTokens := proxyTokenSummary(c, meta, usage)
+	userId := meta.UserId
+	channelId := meta.ChannelId
+	tokenName := meta.TokenName
+	isStream := meta.IsStream
+	modelName := "proxy"
+	elapsed := helper.CalcElapsedTime(meta.StartTime)
 	go func() {
 		ctx, cancel := context.WithTimeout(gmw.BackgroundCtx(c), 30*time.Second)
 		defer cancel()
 
 		// Log the proxy request with zero quota
 		model.RecordConsumeLog(ctx, &model.Log{
-			UserId:           meta.UserId,
-			ChannelId:        meta.ChannelId,
-			PromptTokens:     usage.PromptTokens,
-			CompletionTokens: usage.CompletionTokens,
-			ModelName:        "proxy",
-			TokenName:        meta.TokenName,
+			UserId:           userId,
+			ChannelId:        channelId,
+			PromptTokens:     promptTokens,
+			CompletionTokens: completionTokens,
+			ModelName:        modelName,
+			TokenName:        tokenName,
 			Quota:            0,
 			Content:          "proxy request, no quota consumption",
-			IsStream:         meta.IsStream,
-			ElapsedTime:      helper.CalcElapsedTime(meta.StartTime),
+			IsStream:         isStream,
+			ElapsedTime:      elapsed,
 			TraceId:          traceId,
 			RequestId:        requestId,
 		})
-		model.UpdateUserUsedQuotaAndRequestCount(meta.UserId, 0)
-		model.UpdateChannelUsedQuota(meta.ChannelId, 0)
+		model.UpdateUserUsedQuotaAndRequestCount(userId, 0)
+		model.UpdateChannelUsedQuota(channelId, 0)
 
 		// Reconcile user request cost (proxy does not consume quota)
 		if err := model.UpdateUserRequestCostQuotaByRequestID(quotaId, requestId, 0); err != nil {
@@ -78,4 +85,17 @@ func RelayProxyHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	}()
 
 	return nil
+}
+
+func proxyTokenSummary(c *gin.Context, meta *metalib.Meta, usage *relaymodel.Usage) (promptTokens int, completionTokens int) {
+	if usage == nil {
+		if lg := gmw.GetLogger(c); lg != nil {
+			lg.Debug("proxy adaptor returned no usage payload; defaulting to zero tokens",
+				zap.String("method", c.Request.Method),
+				zap.String("path", c.Request.URL.Path),
+				zap.Int("channel_id", meta.ChannelId))
+		}
+		return 0, 0
+	}
+	return usage.PromptTokens, usage.CompletionTokens
 }

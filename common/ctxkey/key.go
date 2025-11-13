@@ -153,6 +153,11 @@ const (
 	// Read in: controllers (e.g., response/claude_messages) for debugging/logging.
 	KeyRequestBody = gin.BodyBytesKey
 
+	// AsyncTaskRequestMetadata stores a sanitized snapshot of asynchronous task request parameters (e.g., /v1/videos POST payload).
+	// Set in: RelayVideoHelper after parsing the incoming request.
+	// Read in: async task persistence to capture request context for later diagnostics.
+	AsyncTaskRequestMetadata = "async_task_request_metadata"
+
 	// SystemPrompt is a forced/extra system prompt configured on the channel.
 	// Set in: middleware/distributor if channel.SystemPrompt is non-empty.
 	// Read in: text controller to inject as system prompt when present.

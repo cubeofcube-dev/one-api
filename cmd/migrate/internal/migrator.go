@@ -248,6 +248,9 @@ func (m *Migrator) runAutoMigration() error {
 	if err := model.DB.AutoMigrate(&model.Trace{}); err != nil {
 		return errors.Wrapf(err, "failed to migrate Trace")
 	}
+	if err := model.DB.AutoMigrate(&model.AsyncTaskBinding{}); err != nil {
+		return errors.Wrapf(err, "failed to migrate AsyncTaskBinding")
+	}
 
 	logger.Logger.Info("GORM auto-migration completed successfully")
 	return nil

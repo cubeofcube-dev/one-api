@@ -196,8 +196,8 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// GPT Image 1 image generations are billed per image by size and fidelity tiers; tokens billed elsewhere do not apply to /images endpoints.
 	"dall-e-2":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.016},
 	"dall-e-3":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
-	"gpt-image-1":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
-	"gpt-image-1-mini": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
+	"gpt-image-1":      {Ratio: 0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
+	"gpt-image-1-mini": {Ratio: 0, CachedInputRatio: 0.2 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
 
 	// Video Generation Models
 	// -------------------------------------

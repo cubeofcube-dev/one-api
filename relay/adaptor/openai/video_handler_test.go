@@ -2,6 +2,7 @@ package openai
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -9,6 +10,13 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+
+	"github.com/songquanpeng/one-api/common/ctxkey"
+	dbmodel "github.com/songquanpeng/one-api/model"
+	metalib "github.com/songquanpeng/one-api/relay/meta"
 )
 
 // TestVideoHandlerPassThroughJSON ensures JSON metadata is forwarded unchanged.
@@ -130,4 +138,52 @@ func TestVideoHandlerBinary(t *testing.T) {
 	if !bytes.Equal(w.Body.Bytes(), binaryBody) {
 		t.Fatalf("binary body mutated: %#v", w.Body.Bytes())
 	}
+}
+
+func TestVideoHandlerPersistsAsyncTask(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	req := httptest.NewRequest(http.MethodPost, "/v1/videos", nil).WithContext(context.Background())
+	c.Request = req
+
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	originalDB := dbmodel.DB
+	dbmodel.DB = db
+	defer func() { dbmodel.DB = originalDB }()
+	require.NoError(t, db.AutoMigrate(&dbmodel.AsyncTaskBinding{}))
+
+	meta := &metalib.Meta{
+		ChannelId:       9,
+		ChannelType:     1,
+		UserId:          77,
+		TokenId:         88,
+		OriginModelName: "sora-2",
+		ActualModelName: "sora-2",
+	}
+	metalib.Set2Context(c, meta)
+	c.Set(ctxkey.AsyncTaskRequestMetadata, map[string]any{"model": "sora-2", "prompt": "hi"})
+
+	body, err := json.Marshal(map[string]any{
+		"id":     "video_binding",
+		"object": "video",
+	})
+	require.NoError(t, err)
+
+	upstream := &http.Response{
+		StatusCode: http.StatusOK,
+		Body:       io.NopCloser(bytes.NewReader(body)),
+		Header:     http.Header{"Content-Type": []string{"application/json"}},
+	}
+
+	errResp, usage := VideoHandler(c, upstream)
+	require.Nil(t, errResp)
+	require.Nil(t, usage)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	fetched, err := dbmodel.GetAsyncTaskBindingByTaskID(context.Background(), "video_binding")
+	require.NoError(t, err)
+	require.Equal(t, 9, fetched.ChannelID)
+	require.Equal(t, "sora-2", fetched.ActualModel)
 }

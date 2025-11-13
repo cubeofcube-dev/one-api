@@ -154,6 +154,15 @@ var (
 		return v
 	}()
 
+	// AsyncTaskRetentionDays controls how long asynchronous task bindings are retained before cleanup (0 disables cleanup).
+	AsyncTaskRetentionDays = func() int {
+		v := env.Int("ASYNC_TASK_RETENTION_DAYS", 7)
+		if v < 0 {
+			return 0
+		}
+		return v
+	}()
+
 	// LogPushAPI defines the webhook endpoint for escalated log alerts.
 	LogPushAPI = env.String("LOG_PUSH_API", "")
 	// LogPushType labels outbound log alerts so downstream processors can route them.

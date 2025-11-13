@@ -227,6 +227,9 @@ func migrateDB() error {
 	if err = DB.AutoMigrate(&Trace{}); err != nil {
 		return errors.Wrapf(err, "failed to migrate Trace")
 	}
+	if err = DB.AutoMigrate(&AsyncTaskBinding{}); err != nil {
+		return errors.Wrapf(err, "failed to migrate AsyncTaskBinding")
+	}
 	return nil
 }
 

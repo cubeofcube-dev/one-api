@@ -31,6 +31,7 @@ func SetRelayRouter(router *gin.Engine) {
 		// Track in-flight requests for graceful shutdown/drain
 		func(c *gin.Context) { done := graceful.BeginRequest(); defer done(); c.Next() },
 		middleware.RelayPanicRecover(), middleware.TokenAuth(),
+		middleware.BindAsyncTaskChannel(),
 		middleware.Distribute(),
 		middleware.GlobalRelayRateLimit(),
 		middleware.ChannelRateLimit(),

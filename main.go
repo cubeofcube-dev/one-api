@@ -67,6 +67,7 @@ func main() {
 	model.InitDB()
 	model.InitLogDB()
 	model.StartTraceRetentionCleaner(ctx, config.TraceRetentionDays)
+	model.StartAsyncTaskRetentionCleaner(ctx, config.AsyncTaskRetentionDays)
 
 	var err error
 	err = model.CreateRootAccountIfNeed()

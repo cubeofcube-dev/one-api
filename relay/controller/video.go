@@ -49,13 +49,45 @@ func RelayVideoHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		return openai.ErrorWrapper(errors.Wrap(err, "parse video request"), "invalid_video_request", http.StatusBadRequest)
 	}
 
-	if strings.TrimSpace(videoRequest.Model) == "" {
-		if raw := c.GetString(ctxkey.RequestModel); strings.TrimSpace(raw) != "" {
+	originalRequestedModel := strings.TrimSpace(videoRequest.Model)
+	if originalRequestedModel == "" {
+		if raw := strings.TrimSpace(c.GetString(ctxkey.RequestModel)); raw != "" {
 			videoRequest.Model = raw
+			lg.Debug("video request missing model, reusing context model",
+				zap.String("resolved_model", videoRequest.Model))
 		} else {
 			videoRequest.Model = "sora-2"
+			lg.Debug("video request missing model, using default",
+				zap.String("resolved_model", videoRequest.Model))
 		}
+		originalRequestedModel = videoRequest.Model
 	}
+
+	requestSnapshot := map[string]any{
+		"model": originalRequestedModel,
+	}
+	if trimmedPrompt := strings.TrimSpace(videoRequest.Prompt); trimmedPrompt != "" {
+		runes := []rune(trimmedPrompt)
+		if len(runes) > 512 {
+			trimmedPrompt = string(runes[:512])
+		}
+		requestSnapshot["prompt"] = trimmedPrompt
+	}
+	if seconds := videoRequest.RequestedDurationSeconds(); seconds > 0 {
+		requestSnapshot["duration_seconds"] = seconds
+	}
+	if resolution := videoRequest.RequestedResolution(); resolution != "" {
+		requestSnapshot["resolution"] = resolution
+	}
+	if remix := strings.TrimSpace(videoRequest.RemixID); remix != "" {
+		requestSnapshot["remix_id"] = remix
+	}
+	if reference := strings.TrimSpace(videoRequest.ReferenceID); reference != "" {
+		requestSnapshot["reference_id"] = reference
+	}
+	requestSnapshot["method"] = c.Request.Method
+	requestSnapshot["path"] = c.Request.URL.Path
+	c.Set(ctxkey.AsyncTaskRequestMetadata, requestSnapshot)
 
 	meta.OriginModelName = videoRequest.Model
 	meta.ActualModelName = metalib.GetMappedModelName(videoRequest.Model, meta.ModelMapping)
