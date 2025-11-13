@@ -83,12 +83,12 @@ func TestConvertRequest(t *testing.T) {
 		{
 			name: "Remove reasoning_effort",
 			inputRequest: &model.GeneralOpenAIRequest{
-				Model:           "grok-beta",
+				Model:           "grok-3",
 				ReasoningEffort: stringPtr("high"),
 				Messages:        []model.Message{{Role: "user", Content: "hello"}},
 			},
 			expectedRequest: &model.GeneralOpenAIRequest{
-				Model:    "grok-beta",
+				Model:    "grok-3",
 				Messages: []model.Message{{Role: "user", Content: "hello"}},
 			},
 		},
@@ -134,13 +134,13 @@ func TestConvertRequest(t *testing.T) {
 		{
 			name: "Keep penalty parameters for other models",
 			inputRequest: &model.GeneralOpenAIRequest{
-				Model:            "grok-2-1212",
+				Model:            "grok-code-fast-1",
 				PresencePenalty:  float64Ptr(0.5),
 				FrequencyPenalty: float64Ptr(0.3),
 				Messages:         []model.Message{{Role: "user", Content: "hello"}},
 			},
 			expectedRequest: &model.GeneralOpenAIRequest{
-				Model:            "grok-2-1212",
+				Model:            "grok-code-fast-1",
 				PresencePenalty:  float64Ptr(0.5),
 				FrequencyPenalty: float64Ptr(0.3),
 				Messages:         []model.Message{{Role: "user", Content: "hello"}},
@@ -281,7 +281,7 @@ func TestDoResponse(t *testing.T) {
 			"id": "chatcmpl-test",
 			"object": "chat.completion",
 			"created": 1234567890,
-			"model": "grok-beta",
+			"model": "grok-3",
 			"choices": [{
 				"index": 0,
 				"message": {
@@ -426,7 +426,7 @@ func TestGetModelList(t *testing.T) {
 	models := adaptor.GetModelList()
 	assert.NotEmpty(t, models)
 	// Should include grok models from ModelRatios
-	assert.Contains(t, models, "grok-beta")
+	assert.Contains(t, models, "grok-code-fast-1")
 }
 
 func TestGetDefaultModelPricing(t *testing.T) {
@@ -440,7 +440,7 @@ func TestGetModelRatio(t *testing.T) {
 	adaptor := &Adaptor{}
 
 	// Test known model
-	ratio := adaptor.GetModelRatio("grok-beta")
+	ratio := adaptor.GetModelRatio("grok-3")
 	assert.Greater(t, ratio, 0.0)
 
 	// Test unknown model (should fall back to default)
@@ -452,7 +452,7 @@ func TestGetCompletionRatio(t *testing.T) {
 	adaptor := &Adaptor{}
 
 	// Test known model
-	ratio := adaptor.GetCompletionRatio("grok-beta")
+	ratio := adaptor.GetCompletionRatio("grok-3")
 	assert.Greater(t, ratio, 0.0)
 
 	// Test unknown model (should fall back to default)

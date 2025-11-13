@@ -233,7 +233,7 @@ func getAllAdapterTestCases() []AdapterTestCase {
 			ChannelType:            channeltype.XAI,
 			SupportsChatCompletion: true,
 			SupportsClaudeMessages: true,
-			TestModel:              "grok-beta",
+			TestModel:              "grok-3",
 		},
 		{
 			Name:                   "TogetherAI",

@@ -26,7 +26,7 @@ func TestAdapterPricingImplementations(t *testing.T) {
 		{"Gemini", apitype.Gemini, "gemini-pro", false},
 		{"Xunfei", apitype.Xunfei, "Spark-Lite", false},
 		{"VertexAI", apitype.VertexAI, "gemini-pro", false},
-		{"xAI", apitype.XAI, "grok-beta", false}, // Prefer primary constant; model alias still tested
+		{"xAI", apitype.XAI, "grok-3", false},
 		{"AWS Bedrock/Mistral AI", apitype.AwsClaude, "mistral-pixtral-large-2502", false},
 		// Adapters that still use DefaultPricingMethods (expected to have empty pricing)
 		{"Ollama", apitype.Ollama, "llama2", true},
@@ -147,60 +147,63 @@ func TestSpecificAdapterPricing(t *testing.T) {
 			t.Fatal("xAI_Pricing not found")
 		}
 
-		// Use values directly from xai.ModelRatios for test expectations
-		testModels := map[string]struct {
-			expectedRatio           float64
-			expectedCompletionRatio float64
-			description             string
-		}{
-			"grok-4-0709":      {xai.ModelRatios["grok-4-0709"].Ratio, xai.ModelRatios["grok-4-0709"].CompletionRatio, "$3.00 input, $15.00 output"},
-			"grok-3":           {xai.ModelRatios["grok-3"].Ratio, xai.ModelRatios["grok-3"].CompletionRatio, "$3.00 input, $15.00 output"},
-			"grok-3-mini":      {xai.ModelRatios["grok-3-mini"].Ratio, xai.ModelRatios["grok-3-mini"].CompletionRatio, "$0.30 input, $0.50 output"},
-			"grok-3-fast":      {xai.ModelRatios["grok-3-fast"].Ratio, xai.ModelRatios["grok-3-fast"].CompletionRatio, "$5.00 input, $25.00 output"},
-			"grok-3-mini-fast": {xai.ModelRatios["grok-3-mini-fast"].Ratio, xai.ModelRatios["grok-3-mini-fast"].CompletionRatio, "$0.60 input, $4.00 output"},
-			"grok-2-1212":      {xai.ModelRatios["grok-2-1212"].Ratio, xai.ModelRatios["grok-2-1212"].CompletionRatio, "$2.00 input, $10.00 output"},
-			// Test legacy aliases
-			"grok-beta": {xai.ModelRatios["grok-beta"].Ratio, xai.ModelRatios["grok-beta"].CompletionRatio, "Legacy alias for grok-2-1212"},
+		testModels := map[string]string{
+			"grok-code-fast-1":          "$0.20 input, $0.02 cached input, $1.50 output",
+			"grok-4-0709":               "$3.00 input, $15.00 output",
+			"grok-4-fast-reasoning":     "$0.20 input, $0.05 cached input, $0.50 output",
+			"grok-4-fast":               "$0.20 input, $0.05 cached input, $0.50 output",
+			"grok-4-fast-non-reasoning": "$0.20 input, $0.05 cached input, $0.50 output",
+			"grok-3":                    "$3.00 input, $15.00 output",
+			"grok-3-mini":               "$0.30 input, $0.50 output",
+			"grok-2-vision-1212":        "$2.00 input, $10.00 output",
 		}
 
-		for model, expected := range testModels {
+		for model, description := range testModels {
+			expectedConfig, ok := xai.ModelRatios[model]
+			if !ok {
+				t.Fatalf("xAI model %s missing from ModelRatios", model)
+			}
+
 			ratio := adaptor.GetModelRatio(model)
 			completionRatio := adaptor.GetCompletionRatio(model)
 
-			if ratio != expected.expectedRatio {
+			if ratio != expectedConfig.Ratio {
 				t.Errorf("xAI %s: expected ratio %.6f, got %.6f (%s)",
-					model, expected.expectedRatio, ratio, expected.description)
+					model, expectedConfig.Ratio, ratio, description)
 			}
-			if completionRatio != expected.expectedCompletionRatio {
+			if completionRatio != expectedConfig.CompletionRatio {
 				t.Errorf("xAI %s: expected completion ratio %.2f, got %.2f (%s)",
-					model, expected.expectedCompletionRatio, completionRatio, expected.description)
+					model, expectedConfig.CompletionRatio, completionRatio, description)
 			}
 
 			t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - %s",
-				model, ratio, expected.expectedRatio, completionRatio, expected.expectedCompletionRatio,
-				expected.description)
+				model, ratio, expectedConfig.Ratio, completionRatio, expectedConfig.CompletionRatio,
+				description)
 		}
 
-		// Special test for image model which uses QuotaPerUsd (1000)
-		imageModel := "grok-2-image-1212"
-		expectedImageRatio := xai.ModelRatios[imageModel].Ratio // $0.07 per image
-		expectedImageCompletionRatio := xai.ModelRatios[imageModel].CompletionRatio
+		imageModels := []string{"grok-2-image-1212", "grok-2-image"}
+		for _, imageModel := range imageModels {
+			expectedImageConfig, ok := xai.ModelRatios[imageModel]
+			if !ok {
+				t.Fatalf("xAI image model %s missing from ModelRatios", imageModel)
+			}
 
-		imageModelRatio := adaptor.GetModelRatio(imageModel)
-		imageModelCompletionRatio := adaptor.GetCompletionRatio(imageModel)
+			imageModelRatio := adaptor.GetModelRatio(imageModel)
+			imageModelCompletionRatio := adaptor.GetCompletionRatio(imageModel)
 
-		if imageModelRatio != expectedImageRatio {
-			t.Errorf("xAI %s: expected ratio %.6f, got %.6f (Image model: $0.07 per image)",
-				imageModel, expectedImageRatio, imageModelRatio)
+			if imageModelRatio != expectedImageConfig.Ratio {
+				t.Errorf("xAI %s: expected ratio %.6f, got %.6f (Image model: $%.2f per image)",
+					imageModel, expectedImageConfig.Ratio, imageModelRatio, expectedImageConfig.ImagePriceUsd)
+			}
+			if imageModelCompletionRatio != expectedImageConfig.CompletionRatio {
+				t.Errorf("xAI %s: expected completion ratio %.2f, got %.2f",
+					imageModel, expectedImageConfig.CompletionRatio, imageModelCompletionRatio)
+			}
+
+			t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - $%.2f per image using QuotaPerUsd",
+				imageModel, imageModelRatio, expectedImageConfig.Ratio, imageModelCompletionRatio, expectedImageConfig.CompletionRatio,
+				expectedImageConfig.ImagePriceUsd)
 		}
-		if imageModelCompletionRatio != expectedImageCompletionRatio {
-			t.Errorf("xAI %s: expected completion ratio %.2f, got %.2f",
-				imageModel, expectedImageCompletionRatio, imageModelCompletionRatio)
-		}
-
-		t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - %s",
-			imageModel, imageModelRatio, expectedImageRatio, imageModelCompletionRatio, expectedImageCompletionRatio,
-			"$0.07 per image using QuotaPerUsd")
 	})
 
 	t.Run("Gemini_Pricing", func(t *testing.T) {
