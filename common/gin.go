@@ -41,7 +41,9 @@ func UnmarshalBodyReusable(c *gin.Context, v any) error {
 
 	logger := gmw.GetLogger(c)
 	if _, ok := c.Get(ctxkey.RequestModel); !ok {
-		logger.Debug("receive user request", zap.ByteString("request", requestBody))
+		logger.Debug("receive user request",
+			zap.String("method", c.Request.Method),
+			zap.ByteString("request", requestBody))
 	}
 
 	// check v should be a pointer

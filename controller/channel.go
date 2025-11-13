@@ -71,6 +71,25 @@ func parseToolingConfigPayload(raw json.RawMessage) (*model.ChannelToolingConfig
 	return &cfg, true, nil
 }
 
+func convertAdaptorVideoPricing(cfg *adaptor.VideoPricingConfig) *model.VideoPricingLocal {
+	if cfg == nil || !cfg.HasData() {
+		return nil
+	}
+	local := &model.VideoPricingLocal{
+		PerSecondUsd: cfg.PerSecondUsd,
+	}
+	if strings.TrimSpace(cfg.BaseResolution) != "" {
+		local.BaseResolution = cfg.BaseResolution
+	}
+	if len(cfg.ResolutionMultipliers) > 0 {
+		local.ResolutionMultipliers = make(map[string]float64, len(cfg.ResolutionMultipliers))
+		for key, value := range cfg.ResolutionMultipliers {
+			local.ResolutionMultipliers[key] = value
+		}
+	}
+	return local
+}
+
 func buildChannelResponsePayload(channel *model.Channel) any {
 	response := struct {
 		*model.Channel
@@ -624,6 +643,7 @@ func GetChannelDefaultPricing(c *gin.Context) {
 			Ratio:           price.Ratio,
 			CompletionRatio: price.CompletionRatio,
 			MaxTokens:       price.MaxTokens,
+			Video:           convertAdaptorVideoPricing(price.Video),
 		}
 	}
 

@@ -733,6 +733,40 @@ func TestChannel_validateModelPriceConfigs(t *testing.T) {
 			expectError:   true,
 			errorContains: "no meaningful configuration data",
 		},
+		{
+			name: "video pricing only",
+			configs: map[string]ModelConfigLocal{
+				"sora-2": {
+					Video: &VideoPricingLocal{PerSecondUsd: 0.1},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "video negative price",
+			configs: map[string]ModelConfigLocal{
+				"sora-2": {
+					Video: &VideoPricingLocal{PerSecondUsd: -0.1},
+				},
+			},
+			expectError:   true,
+			errorContains: "video per_second_usd cannot be negative",
+		},
+		{
+			name: "video negative multiplier",
+			configs: map[string]ModelConfigLocal{
+				"sora-2": {
+					Video: &VideoPricingLocal{
+						PerSecondUsd: 0.1,
+						ResolutionMultipliers: map[string]float64{
+							"1280x720": -1,
+						},
+					},
+				},
+			},
+			expectError:   true,
+			errorContains: "must be positive",
+		},
 	}
 
 	for _, tt := range tests {

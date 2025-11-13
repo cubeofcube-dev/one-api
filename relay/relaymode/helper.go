@@ -38,6 +38,8 @@ func GetByPath(path string) int {
 		return AudioTranslation
 	case strings.HasPrefix(path, "/v1/images/edits"):
 		return ImagesEdits
+	case strings.HasPrefix(path, "/v1/videos"):
+		return Videos
 	default:
 		return Unknown
 	}

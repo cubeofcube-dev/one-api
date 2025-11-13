@@ -356,6 +356,9 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), nil
 	}
 
+	// Log the upstream response before any transformation so troubleshooting retains full context
+	logger.Debug("receive upstream response", zap.ByteString("body", responseBody))
+
 	// Parse the response JSON
 	var textResponse SlimTextResponse
 	if err = json.Unmarshal(responseBody, &textResponse); err != nil {
@@ -368,6 +371,29 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			Error:      *textResponse.Error,
 			StatusCode: resp.StatusCode,
 		}, nil
+	}
+
+	// Forward responses that are not ChatCompletions when upstream omits choices without mutating the payload
+	if len(textResponse.Choices) == 0 {
+		logger.Debug("handler forwarding raw upstream response", zap.Int("status_code", resp.StatusCode))
+		resp.Body = io.NopCloser(bytes.NewBuffer(responseBody))
+
+		for k, values := range resp.Header {
+			for _, v := range values {
+				c.Writer.Header().Add(k, v)
+			}
+		}
+
+		c.Writer.WriteHeader(resp.StatusCode)
+		if _, err = io.Copy(c.Writer, resp.Body); err != nil {
+			return ErrorWrapper(err, "copy_response_body_failed", http.StatusInternalServerError), nil
+		}
+
+		if err = resp.Body.Close(); err != nil {
+			return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), nil
+		}
+
+		return nil, nil
 	}
 
 	// Process reasoning content in each choice
@@ -403,7 +429,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		responseBody = modifiedBody
 		resp.Body = io.NopCloser(bytes.NewBuffer(responseBody))
 	}
-	logger.Debug("handler response", zap.ByteString("body", responseBody))
+	logger.Debug("handler converted response", zap.ByteString("body", responseBody))
 
 	// Forward all response headers (not just first value of each)
 	for k, values := range resp.Header {

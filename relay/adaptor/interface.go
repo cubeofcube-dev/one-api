@@ -3,6 +3,8 @@ package adaptor
 import (
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/Laisky/errors/v2"
 	"github.com/gin-gonic/gin"
@@ -40,6 +42,100 @@ type ModelConfig struct {
 	// MaxTokens represents the maximum token limit for this model on this channel
 	// 0 means no limit (infinity)
 	MaxTokens int32 `json:"max_tokens,omitempty"`
+	// Video holds per-second pricing metadata for video generation models.
+	Video *VideoPricingConfig `json:"video,omitempty"`
+}
+
+// VideoPricingConfig captures pricing metadata for video generation requests.
+// Pricing is expressed as a per-second USD cost that can be adjusted via resolution
+// multipliers relative to the base resolution.
+type VideoPricingConfig struct {
+	// PerSecondUsd is the USD price per rendered second at the base resolution.
+	PerSecondUsd float64 `json:"per_second_usd,omitempty"`
+	// BaseResolution identifies the resolution treated as multiplier 1. Empty means unspecified.
+	BaseResolution string `json:"base_resolution,omitempty"`
+	// ResolutionMultipliers scales the base price for specific resolutions. Keys should be
+	// normalized via normalizeResolutionKey and values must be positive.
+	ResolutionMultipliers map[string]float64 `json:"resolution_multipliers,omitempty"`
+}
+
+// HasData reports whether the configuration contains any pricing information.
+func (cfg *VideoPricingConfig) HasData() bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.PerSecondUsd > 0 {
+		return true
+	}
+	return len(cfg.ResolutionMultipliers) > 0
+}
+
+// Clone returns a deep copy of the video pricing configuration.
+func (cfg *VideoPricingConfig) Clone() *VideoPricingConfig {
+	if cfg == nil {
+		return nil
+	}
+	clone := &VideoPricingConfig{
+		PerSecondUsd:   cfg.PerSecondUsd,
+		BaseResolution: cfg.BaseResolution,
+	}
+	if len(cfg.ResolutionMultipliers) > 0 {
+		clone.ResolutionMultipliers = make(map[string]float64, len(cfg.ResolutionMultipliers))
+		for k, v := range cfg.ResolutionMultipliers {
+			clone.ResolutionMultipliers[k] = v
+		}
+	}
+	return clone
+}
+
+// EffectiveMultiplier resolves the multiplier for the supplied resolution.
+// It first normalizes the key to handle orientation swaps (e.g., 720x1280 vs 1280x720)
+// and falls back to the raw trimmed key if no normalized match is present.
+func (cfg *VideoPricingConfig) EffectiveMultiplier(resolution string) float64 {
+	if cfg == nil {
+		return 1
+	}
+	normalized := normalizeResolutionKey(resolution)
+	if normalized != "" && len(cfg.ResolutionMultipliers) > 0 {
+		if multiplier, ok := cfg.ResolutionMultipliers[normalized]; ok && multiplier > 0 {
+			return multiplier
+		}
+	}
+	trimmed := strings.TrimSpace(strings.ToLower(resolution))
+	if trimmed != "" && len(cfg.ResolutionMultipliers) > 0 {
+		if multiplier, ok := cfg.ResolutionMultipliers[trimmed]; ok && multiplier > 0 {
+			return multiplier
+		}
+	}
+	if cfg.BaseResolution != "" {
+		base := normalizeResolutionKey(cfg.BaseResolution)
+		if base != "" && base == normalized {
+			return 1
+		}
+	}
+	return 1
+}
+
+func normalizeResolutionKey(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(trimmed, func(r rune) bool {
+		return r == 'x' || r == '*' || r == '×'
+	})
+	if len(parts) != 2 {
+		return trimmed
+	}
+	width, err1 := strconv.Atoi(parts[0])
+	height, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil || width <= 0 || height <= 0 {
+		return trimmed
+	}
+	if width < height {
+		width, height = height, width
+	}
+	return strconv.Itoa(width) + "x" + strconv.Itoa(height)
 }
 
 // ModelRatioTier describes pricing for a specific input token tier. It overrides

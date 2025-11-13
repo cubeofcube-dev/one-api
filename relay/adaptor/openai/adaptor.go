@@ -802,6 +802,8 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 			// For direct Response API requests, pass through the response directly
 			// without conversion back to ChatCompletion format
 			err, usage = ResponseAPIDirectHandler(c, resp, meta.PromptTokens, meta.ActualModelName)
+		case relaymode.Videos:
+			err, usage = VideoHandler(c, resp)
 		case relaymode.ChatCompletions:
 			if shouldConvertToClaude {
 				// Skip Handler to keep body intact for Claude conversion.

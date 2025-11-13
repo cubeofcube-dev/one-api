@@ -21,4 +21,6 @@ const (
 	ClaudeMessages
 	// Realtime is for OpenAI Realtime API websocket sessions
 	Realtime
+	// Videos handles OpenAI video generation endpoints (e.g., /v1/videos)
+	Videos
 )

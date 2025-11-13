@@ -90,6 +90,16 @@ func TestStructuredOutputCostCalculation(t *testing.T) {
 
 			// Create mock response
 			mockResponse := &SlimTextResponse{
+				Choices: []TextResponseChoice{
+					{
+						Index: 0,
+						Message: model.Message{
+							Role:    "assistant",
+							Content: "test",
+						},
+						FinishReason: "stop",
+					},
+				},
 				Usage: model.Usage{
 					PromptTokens:     100,
 					CompletionTokens: tt.completionTokens,
@@ -175,6 +185,16 @@ func TestStructuredOutputCostWithOriginalRequest(t *testing.T) {
 	// Create mock response
 	completionTokens := 500
 	mockResponse := &SlimTextResponse{
+		Choices: []TextResponseChoice{
+			{
+				Index: 0,
+				Message: model.Message{
+					Role:    "assistant",
+					Content: "test",
+				},
+				FinishReason: "stop",
+			},
+		},
 		Usage: model.Usage{
 			PromptTokens:     100,
 			CompletionTokens: completionTokens,

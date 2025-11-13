@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -85,9 +86,17 @@ type ModelConfig struct {
 // ModelConfigLocal represents the local definition of ModelConfig to avoid import cycles
 // This should match the structure in relay/adaptor/interface.go
 type ModelConfigLocal struct {
-	Ratio           float64 `json:"ratio"`
-	CompletionRatio float64 `json:"completion_ratio,omitempty"`
-	MaxTokens       int32   `json:"max_tokens,omitempty"`
+	Ratio           float64            `json:"ratio"`
+	CompletionRatio float64            `json:"completion_ratio,omitempty"`
+	MaxTokens       int32              `json:"max_tokens,omitempty"`
+	Video           *VideoPricingLocal `json:"video,omitempty"`
+}
+
+// VideoPricingLocal represents channel-scoped video pricing metadata stored alongside model configs.
+type VideoPricingLocal struct {
+	PerSecondUsd          float64            `json:"per_second_usd,omitempty"`
+	BaseResolution        string             `json:"base_resolution,omitempty"`
+	ResolutionMultipliers map[string]float64 `json:"resolution_multipliers,omitempty"`
 }
 
 // ToolPricingLocal is the channel-scoped representation of adaptor.ToolPricingConfig.
@@ -193,11 +202,20 @@ func cloneChannelToolingConfig(cfg *ChannelToolingConfig) *ChannelToolingConfig 
 
 // normalizeModelConfigLocal trims whitespace and validates numeric fields.
 func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
-	return ModelConfigLocal{
+	video, err := normalizeVideoPricingLocal(cfg.Video)
+	if err != nil {
+		return ModelConfigLocal{}, err
+	}
+
+	normalized := ModelConfigLocal{
 		Ratio:           cfg.Ratio,
 		CompletionRatio: cfg.CompletionRatio,
 		MaxTokens:       cfg.MaxTokens,
-	}, nil
+	}
+	if video != nil {
+		normalized.Video = video
+	}
+	return normalized, nil
 }
 
 // ChannelToolingConfig captures channel-scoped built-in tool policy and pricing.
@@ -629,13 +647,101 @@ func (channel *Channel) validateModelPriceConfigs(configs map[string]ModelConfig
 			return errors.Errorf("negative MaxTokens for model %s: %d", modelName, config.MaxTokens)
 		}
 
+		hasVideoData, err := validateVideoPricingLocal(config.Video, modelName)
+		if err != nil {
+			return err
+		}
+
 		// Validate that at least one field has meaningful data
-		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 {
+		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 && !hasVideoData {
 			return errors.Errorf("model %s has no meaningful configuration data", modelName)
 		}
 	}
 
 	return nil
+}
+
+func normalizeVideoPricingLocal(cfg *VideoPricingLocal) (*VideoPricingLocal, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+
+	if cfg.PerSecondUsd < 0 {
+		return nil, errors.New("video per_second_usd cannot be negative")
+	}
+
+	normalized := &VideoPricingLocal{
+		PerSecondUsd: cfg.PerSecondUsd,
+	}
+	if strings.TrimSpace(cfg.BaseResolution) != "" {
+		normalized.BaseResolution = normalizeVideoResolutionKey(cfg.BaseResolution)
+	}
+
+	if len(cfg.ResolutionMultipliers) > 0 {
+		normalized.ResolutionMultipliers = make(map[string]float64, len(cfg.ResolutionMultipliers))
+		for rawKey, value := range cfg.ResolutionMultipliers {
+			key := normalizeVideoResolutionKey(rawKey)
+			if key == "" {
+				return nil, errors.Errorf("video resolution multiplier key cannot be empty for '%s'", rawKey)
+			}
+			if value <= 0 {
+				return nil, errors.Errorf("video resolution multiplier for %s must be positive", rawKey)
+			}
+			normalized.ResolutionMultipliers[key] = value
+		}
+	}
+
+	return normalized, nil
+}
+
+func validateVideoPricingLocal(cfg *VideoPricingLocal, modelName string) (bool, error) {
+	if cfg == nil {
+		return false, nil
+	}
+	if cfg.PerSecondUsd < 0 {
+		return false, errors.Errorf("video per_second_usd cannot be negative for model %s", modelName)
+	}
+	for key, value := range cfg.ResolutionMultipliers {
+		if strings.TrimSpace(key) == "" {
+			return false, errors.Errorf("video resolution multiplier key cannot be empty for model %s", modelName)
+		}
+		if value <= 0 {
+			return false, errors.Errorf("video resolution multiplier for %s must be positive (model %s)", key, modelName)
+		}
+	}
+	return hasVideoPricingData(cfg), nil
+}
+
+func hasVideoPricingData(cfg *VideoPricingLocal) bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.PerSecondUsd > 0 {
+		return true
+	}
+	return len(cfg.ResolutionMultipliers) > 0
+}
+
+func normalizeVideoResolutionKey(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	if trimmed == "" {
+		return ""
+	}
+	parts := strings.FieldsFunc(trimmed, func(r rune) bool {
+		return r == 'x' || r == '*' || r == '×'
+	})
+	if len(parts) != 2 {
+		return trimmed
+	}
+	width, err1 := strconv.Atoi(parts[0])
+	height, err2 := strconv.Atoi(parts[1])
+	if err1 != nil || err2 != nil || width <= 0 || height <= 0 {
+		return trimmed
+	}
+	if width < height {
+		width, height = height, width
+	}
+	return strconv.Itoa(width) + "x" + strconv.Itoa(height)
 }
 
 // GetModelPriceConfigs returns the channel-specific model price configurations in the new unified format

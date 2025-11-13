@@ -198,6 +198,22 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"dall-e-3":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
 	"gpt-image-1":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
 	"gpt-image-1-mini": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
+
+	// Video Generation Models
+	// -------------------------------------
+	// Pricing sourced from OpenAI Sora preview documentation (USD per rendered second at 720p).
+	"sora-2": {
+		Video: &adaptor.VideoPricingConfig{
+			PerSecondUsd:   0.10,
+			BaseResolution: "1280x720",
+		},
+	},
+	"sora-2-pro": {
+		Video: &adaptor.VideoPricingConfig{
+			PerSecondUsd:   0.50,
+			BaseResolution: "1920x1080",
+		},
+	},
 }
 
 // ModelList derived from ModelRatios for backward compatibility

@@ -2,7 +2,6 @@ package pricing
 
 import (
 	"fmt"
-	"maps"
 	"sync"
 
 	"github.com/Laisky/zap"
@@ -176,7 +175,7 @@ func (gpm *GlobalPricingManager) mergeAdapterPricing(apiType int) bool {
 				modelName, existingPrice.Ratio, modelPrice.Ratio))
 			conflictCount++
 		} else {
-			gpm.globalModelPricing[modelName] = modelPrice
+			gpm.globalModelPricing[modelName] = cloneModelConfig(modelPrice)
 			mergedCount++
 		}
 	}
@@ -226,8 +225,10 @@ func GetGlobalModelPricing() map[string]adaptor.ModelConfig {
 	globalPricingManager.ensureInitialized()
 
 	// Return a copy to prevent external modification
-	result := make(map[string]adaptor.ModelConfig)
-	maps.Copy(result, globalPricingManager.globalModelPricing)
+	result := make(map[string]adaptor.ModelConfig, len(globalPricingManager.globalModelPricing))
+	for modelName, cfg := range globalPricingManager.globalModelPricing {
+		result[modelName] = cloneModelConfig(cfg)
+	}
 
 	return result
 }
@@ -324,6 +325,43 @@ func GetCompletionRatioWithThreeLayers(modelName string, channelOverrides map[st
 
 	// Layer 4: Final fallback - reasonable default
 	return 1.0 // Default completion ratio
+}
+
+// GetVideoPricingWithThreeLayers resolves video pricing metadata using the same precedence rules
+// as token pricing: channel overrides, adapter defaults, then global pricing.
+func GetVideoPricingWithThreeLayers(modelName string, channelOverride *adaptor.VideoPricingConfig, provider adaptor.Adaptor) *adaptor.VideoPricingConfig {
+	if channelOverride != nil && channelOverride.HasData() {
+		return channelOverride.Clone()
+	}
+
+	if provider != nil {
+		if cfg, exists := provider.GetDefaultModelPricing()[modelName]; exists {
+			if cfg.Video != nil && cfg.Video.HasData() {
+				return cfg.Video.Clone()
+			}
+		}
+	}
+
+	if global := GetGlobalModelPricing(); global != nil {
+		if cfg, exists := global[modelName]; exists {
+			if cfg.Video != nil && cfg.Video.HasData() {
+				return cfg.Video.Clone()
+			}
+		}
+	}
+
+	return nil
+}
+
+func cloneModelConfig(src adaptor.ModelConfig) adaptor.ModelConfig {
+	clone := src
+	if len(src.Tiers) > 0 {
+		clone.Tiers = append([]adaptor.ModelRatioTier(nil), src.Tiers...)
+	}
+	if src.Video != nil {
+		clone.Video = src.Video.Clone()
+	}
+	return clone
 }
 
 // EffectivePricing holds fully-resolved pricing numbers for the current request
