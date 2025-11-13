@@ -1,12 +1,12 @@
 package helper
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"os"
 	"os/exec"
 	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Laisky/errors/v2"
@@ -18,6 +18,17 @@ var (
 	ffprobeErr  error
 )
 
+// const fallbackAudioBytesPerSecond = 8000.0
+
+// ErrFFProbeUnavailable is returned when ffprobe/avprobe cannot be executed.
+var ErrFFProbeUnavailable = errors.New("ffprobe unavailable")
+
+// IsFFProbeUnavailable reports whether the given error indicates ffprobe is
+// unavailable on the host.
+func IsFFProbeUnavailable(err error) bool {
+	return errors.Is(err, ErrFFProbeUnavailable)
+}
+
 func lookupFFProbe() (string, error) {
 	ffprobeOnce.Do(func() {
 		path, err := exec.LookPath("ffprobe")
@@ -27,7 +38,7 @@ func lookupFFProbe() (string, error) {
 				ffprobeErr = nil
 				return
 			}
-			ffprobeErr = errors.Wrap(err, "ffprobe not found in PATH")
+			ffprobeErr = errors.Wrapf(ErrFFProbeUnavailable, "ffprobe not found in PATH: %v", err)
 			return
 		}
 		ffprobePath = path
@@ -65,6 +76,26 @@ func GetAudioTokens(ctx context.Context, audio io.Reader, tokensPerSecond float6
 
 	duration, err := GetAudioDuration(ctx, filename)
 	if err != nil {
+		// if IsFFProbeUnavailable(err) {
+		// 	fileInfo, statErr := os.Stat(filename)
+		// 	if statErr != nil {
+		// 		return 0, errors.Wrap(statErr, "failed to stat audio file for duration fallback")
+		// 	}
+
+		// 	fallbackDuration := estimateAudioDurationBySize(fileInfo.Size())
+		// 	if fallbackDuration <= 0 {
+		// 		return 0, errors.Wrap(err, "failed to get audio tokens")
+		// 	}
+
+		// 	logger := gmw.GetLogger(ctx)
+		// 	logger.Debug("ffprobe unavailable, using size-based audio duration estimate",
+		// 		zap.Float64("duration_sec", fallbackDuration),
+		// 		zap.Int64("audio_bytes", fileInfo.Size()),
+		// 		zap.String("extension", strings.ToLower(filepath.Ext(filename))))
+
+		// 	return fallbackDuration * tokensPerSecond, nil
+		// }
+
 		return 0, errors.Wrap(err, "failed to get audio tokens")
 	}
 
@@ -79,12 +110,46 @@ func GetAudioDuration(ctx context.Context, filename string) (float64, error) {
 	}
 	// ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 {{input}}
 	c := exec.CommandContext(ctx, path, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", filename)
-	output, err := c.Output()
+	output, err := c.CombinedOutput()
 	if err != nil {
-		return 0, errors.Wrap(err, "failed to get audio duration")
+		wrapped := wrapFFProbeError(err, output)
+		return 0, errors.Wrap(wrapped, "failed to get audio duration")
+	}
+
+	trimmed := strings.TrimSpace(string(output))
+	duration, err := strconv.ParseFloat(trimmed, 64)
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to parse ffprobe duration %q", trimmed)
 	}
 
 	// Actually gpt-4-audio calculates tokens with 0.1s precision,
 	// while whisper calculates tokens with 1s precision
-	return strconv.ParseFloat(string(bytes.TrimSpace(output)), 64)
+	return duration, nil
 }
+
+func wrapFFProbeError(err error, output []byte) error {
+	var exitErr *exec.ExitError
+	if errors.As(err, &exitErr) {
+		stderr := strings.TrimSpace(string(output))
+		if exitErr.ExitCode() == 127 {
+			if stderr == "" {
+				stderr = "exit status 127"
+			}
+			return errors.Wrapf(ErrFFProbeUnavailable, "ffprobe exited with 127: %s", stderr)
+		}
+
+		if stderr != "" {
+			return errors.Wrapf(err, "ffprobe stderr: %s", stderr)
+		}
+	}
+
+	return err
+}
+
+// // func estimateAudioDurationBySize(size int64) float64 {
+// // 	if size <= 0 {
+// // 		return 0
+// // 	}
+
+// 	return float64(size) / fallbackAudioBytesPerSecond
+// // }

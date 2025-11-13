@@ -35,6 +35,8 @@ func main() {
 		execErr = run(ctx, logger)
 	case "generate":
 		execErr = generate(ctx, logger)
+	case "audio":
+		execErr = audio(ctx, logger, os.Args[2:])
 	default:
 		fmt.Fprintf(os.Stderr, "unknown command %q\n", command)
 		os.Exit(1)

@@ -38,6 +38,18 @@ API_TOKEN=sk-... ONEAPI_TEST_MODELS="gpt-4o-mini,claude-3.5-haiku" go run ./cmd/
 
 `run` is also accepted explicitly (`go run ./cmd/test run`). The command exits **non-zero** when at least one request fails (excluding skips). Unsupported combinations still appear in the report but do not flip the exit code.
 
+### Probing FFmpeg availability
+
+Run `go run ./cmd/test audio` to verify the host can execute `ffprobe`/`ffmpeg`. The subcommand automatically downloads a short sample clip unless you provide a positional argument or `--source` flag pointing to a local file or HTTP(S) URL:
+
+```bash
+go run ./cmd/test audio
+go run ./cmd/test audio ./path/to/sample.m4a
+go run ./cmd/test audio --source https://example.com/sample.wav
+```
+
+The probe logs the measured duration and the token estimate, helping confirm that One-API audio helpers work inside the current environment.
+
 ### Capturing payload samples
 
 Use the `generate` subcommand to execute the configured variants and write request/response artefacts to `cmd/test/generated`:

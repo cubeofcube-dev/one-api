@@ -87,7 +87,8 @@ RUN set -e; \
 FROM --platform=$TARGETPLATFORM ${FFMPEG_IMAGE} AS ffmpeg
 
 FROM runtime AS final
-COPY --from=ffmpeg /usr/local/bin/ffmpeg /usr/local/bin/ffprobe /usr/local/bin/
+COPY --from=ffmpeg /usr/local/ /usr/local/
+RUN ldconfig
 COPY --from=go-builder /out/one-api /one-api
 
 EXPOSE 3000

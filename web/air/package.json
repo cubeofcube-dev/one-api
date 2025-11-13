@@ -30,7 +30,7 @@
     "start": "FAST_REFRESH=true react-scripts start",
     "dev": "FAST_REFRESH=true GENERATE_SOURCEMAP=true react-scripts start",
     "dev:backend": "FAST_REFRESH=true GENERATE_SOURCEMAP=true REACT_APP_VERSION=$(node -e 'process.stdout.write(Math.floor(Date.now()/1000).toString())') PORT=3002 react-scripts start",
-    "build": "react-scripts build && mv -f build ../build/air",
+    "build": "react-scripts build && rm -rf ../build/air && mv -f build ../build/air",
     "build:dev": "GENERATE_SOURCEMAP=true react-scripts build && rm -rf ../build/air && mv -f build ../build/air",
     "build:prod": "DISABLE_ESLINT_PLUGIN='true' REACT_APP_VERSION=$(node -e 'process.stdout.write(Math.floor(Date.now()/1000).toString())') react-scripts build && rm -rf ../build/air && mv -f build ../build/air",
     "test": "react-scripts test",
