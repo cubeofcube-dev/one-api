@@ -15,10 +15,9 @@ import (
 	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
 
-	"github.com/songquanpeng/one-api/common/image"
-
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/ctxkey"
+	"github.com/songquanpeng/one-api/common/image"
 	imgutil "github.com/songquanpeng/one-api/common/image"
 	"github.com/songquanpeng/one-api/relay/adaptor"
 	"github.com/songquanpeng/one-api/relay/adaptor/alibailian"
@@ -286,18 +285,39 @@ func isDeepResearchModel(modelName string) bool {
 	return strings.Contains(modelName, "deep-research")
 }
 
-func defaultReasoningEffortForModel(modelName string) string {
-	if isDeepResearchModel(modelName) {
-		return "medium"
+func isMediumOnlyReasoningModel(modelName string) bool {
+	lower := strings.ToLower(strings.TrimSpace(modelName))
+	if lower == "" {
+		return false
 	}
-	return "high"
+
+	if strings.Contains(lower, "gpt-5.1-chat") {
+		return true
+	}
+
+	if strings.HasPrefix(lower, "o") {
+		return true
+	}
+
+	return false
+}
+
+// defaultReasoningEffortForModel returns the default reasoning effort level for the given model.
+func defaultReasoningEffortForModel(modelName string) string {
+	switch {
+	case isDeepResearchModel(modelName),
+		isMediumOnlyReasoningModel(modelName):
+		return "medium"
+	default:
+		return "high"
+	}
 }
 
 func isReasoningEffortAllowedForModel(modelName, effort string) bool {
 	if effort == "" {
 		return false
 	}
-	if isDeepResearchModel(modelName) {
+	if isDeepResearchModel(modelName) || isMediumOnlyReasoningModel(modelName) {
 		return effort == "medium"
 	}
 	switch effort {

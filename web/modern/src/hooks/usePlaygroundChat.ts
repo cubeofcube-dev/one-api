@@ -160,7 +160,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNotifications } from '@/components/ui/notifications'
 import { Message, getMessageStringContent } from '@/lib/utils'
-import { getModelCapabilities } from '@/lib/model-capabilities'
+import { getModelCapabilities, isOpenAIMediumOnlyReasoningModel } from '@/lib/model-capabilities'
 import { ImageAttachment as ImageAttachmentType } from '@/components/chat/ImageAttachment'
 
 interface ResponseStreamSummary {
@@ -772,6 +772,9 @@ export function usePlaygroundChat({
 
       // Get model capabilities to determine which parameters to include
       const capabilities = getModelCapabilities(selectedModel)
+      const effectiveReasoningEffort = capabilities.supportsReasoningEffort && reasoningEffort !== "none"
+        ? (selectedModel && isOpenAIMediumOnlyReasoningModel(selectedModel) ? "medium" : reasoningEffort)
+        : undefined
 
       const response = await fetch('/v1/chat/completions', {
         method: 'POST',
@@ -814,7 +817,7 @@ export function usePlaygroundChat({
           // Only include stop sequences if model supports them and has values
           ...(capabilities.supportsStop && stopSequences && { stop: stopSequences.split(',').map(s => s.trim()).filter(s => s) }),
           // Only include reasoning efforts if model supports them and has values
-          ...(capabilities.supportsReasoningEffort && reasoningEffort !== "none" && { reasoning_effort: reasoningEffort }),
+          ...(effectiveReasoningEffort && { reasoning_effort: effectiveReasoningEffort }),
           // Only include thinking if model supports it and it's enabled
           ...(capabilities.supportsThinking && thinkingEnabled && {
             thinking: {
@@ -1067,6 +1070,9 @@ export function usePlaygroundChat({
 
       // Get model capabilities to determine which parameters to include
       const capabilities = getModelCapabilities(selectedModel)
+      const effectiveReasoningEffort = capabilities.supportsReasoningEffort && reasoningEffort && reasoningEffort !== "none"
+        ? (selectedModel && isOpenAIMediumOnlyReasoningModel(selectedModel) ? "medium" : reasoningEffort)
+        : undefined
 
       const response = await fetch('/v1/chat/completions', {
         method: 'POST',
@@ -1109,7 +1115,7 @@ export function usePlaygroundChat({
           // Only include stop sequences if model supports them and has values
           ...(capabilities.supportsStop && stopSequences && { stop: stopSequences.split(',').map(s => s.trim()).filter(s => s) }),
           // Only include reasoning efforts if model supports them and has values
-          ...(capabilities.supportsReasoningEffort && reasoningEffort && reasoningEffort !== "none" && { reasoning_effort: reasoningEffort }),
+          ...(effectiveReasoningEffort && { reasoning_effort: effectiveReasoningEffort }),
           // Only include thinking if model supports it and it's enabled
           ...(capabilities.supportsThinking && thinkingEnabled && {
             thinking: {

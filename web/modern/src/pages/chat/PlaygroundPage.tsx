@@ -219,7 +219,7 @@ import 'katex/dist/katex.min.css'
 import { codeBlockStyles } from '@/components/ui/markdown-css'
 import { clearStorage, loadFromStorage, Message, saveToStorage, generateUUIDv4 } from '@/lib/utils'
 import { STORAGE_KEYS } from '@/lib/storage'
-import { getModelCapabilities } from '@/lib/model-capabilities'
+import { getModelCapabilities, isOpenAIMediumOnlyReasoningModel } from '@/lib/model-capabilities'
 import { ParametersPanel } from '@/components/chat/ParametersPanel'
 import { ChatInterface } from '@/components/chat/ChatInterface'
 import { ExportConversationDialog } from '@/components/chat/ExportConversationDialog'
@@ -392,6 +392,14 @@ export function PlaygroundPage() {
   }, [])
 
   selectedModelRef.current = selectedModel
+
+  const mediumOnlyReasoning = useMemo(() => {
+    if (!selectedModel) {
+      return false
+    }
+
+    return isOpenAIMediumOnlyReasoningModel(selectedModel)
+  }, [selectedModel])
 
   useEffect(() => {
     const fetchChannelModels = async () => {
@@ -588,6 +596,19 @@ export function PlaygroundPage() {
   const [maxCompletionTokens, setMaxCompletionTokens] = useState([4096])
   const [stopSequences, setStopSequences] = useState('')
   const [reasoningEffort, setReasoningEffort] = useState('high')
+  const handleReasoningEffortChange = useCallback((value: string) => {
+    if (value === 'none') {
+      setReasoningEffort(value)
+      return
+    }
+
+    if (mediumOnlyReasoning) {
+      setReasoningEffort('medium')
+      return
+    }
+
+    setReasoningEffort(value)
+  }, [mediumOnlyReasoning])
   const [thinkingEnabled, setThinkingEnabled] = useState(false)
   const [thinkingBudgetTokens, setThinkingBudgetTokens] = useState([10000])
   const [systemMessage, setSystemMessage] = useState('')
@@ -626,6 +647,7 @@ export function PlaygroundPage() {
   useEffect(() => {
     if (selectedModel) {
       const capabilities = getModelCapabilities(selectedModel)
+      const mediumOnly = isOpenAIMediumOnlyReasoningModel(selectedModel)
 
       // Define default values for parameters
       const defaultParams = {
@@ -655,7 +677,11 @@ export function PlaygroundPage() {
       const newPresencePenalty = capabilities.supportsPresencePenalty ? presencePenalty : defaultParams.presencePenalty
       const newMaxCompletionTokens = capabilities.supportsMaxCompletionTokens ? maxCompletionTokens : defaultParams.maxCompletionTokens
       const newStopSequences = capabilities.supportsStop ? stopSequences : defaultParams.stopSequences
-      const newReasoningEffort = capabilities.supportsReasoningEffort ? reasoningEffort : defaultParams.reasoningEffort
+      const newReasoningEffort = capabilities.supportsReasoningEffort
+        ? (mediumOnly
+          ? (reasoningEffort === 'none' ? 'none' : 'medium')
+          : reasoningEffort)
+        : defaultParams.reasoningEffort
       const newThinkingEnabled = capabilities.supportsThinking ? thinkingEnabled : defaultParams.thinkingEnabled
       const newThinkingBudgetTokens = capabilities.supportsThinking ? thinkingBudgetTokens : defaultParams.thinkingBudgetTokens
 
@@ -677,6 +703,8 @@ export function PlaygroundPage() {
       }
       if (!capabilities.supportsReasoningEffort) {
         setReasoningEffort(defaultParams.reasoningEffort)
+      } else if (mediumOnly && reasoningEffort !== 'medium' && reasoningEffort !== 'none') {
+        setReasoningEffort('medium')
       }
       if (!capabilities.supportsThinking) {
         setThinkingEnabled(defaultParams.thinkingEnabled)
@@ -773,6 +801,7 @@ export function PlaygroundPage() {
     let validatedParams = savedParams
     if (savedModel) {
       const capabilities = getModelCapabilities(savedModel)
+      const mediumOnly = isOpenAIMediumOnlyReasoningModel(savedModel)
 
       // Define default values for validation
       const defaults = {
@@ -794,7 +823,11 @@ export function PlaygroundPage() {
         presencePenalty: capabilities.supportsPresencePenalty ? savedParams.presencePenalty : defaults.presencePenalty,
         maxCompletionTokens: capabilities.supportsMaxCompletionTokens ? savedParams.maxCompletionTokens : defaults.maxCompletionTokens,
         stopSequences: capabilities.supportsStop ? savedParams.stopSequences : defaults.stopSequences,
-        reasoningEffort: capabilities.supportsReasoningEffort ? savedParams.reasoningEffort : defaults.reasoningEffort,
+        reasoningEffort: capabilities.supportsReasoningEffort
+          ? (mediumOnly
+            ? (savedParams.reasoningEffort === 'none' ? 'none' : 'medium')
+            : savedParams.reasoningEffort)
+          : defaults.reasoningEffort,
         thinkingEnabled: capabilities.supportsThinking ? savedParams.thinkingEnabled : defaults.thinkingEnabled,
         thinkingBudgetTokens: capabilities.supportsThinking ? savedParams.thinkingBudgetTokens : defaults.thinkingBudgetTokens
       }
@@ -1289,7 +1322,7 @@ export function PlaygroundPage() {
         onPresencePenaltyChange={setPresencePenalty}
         onMaxCompletionTokensChange={setMaxCompletionTokens}
         onStopSequencesChange={setStopSequences}
-        onReasoningEffortChange={setReasoningEffort}
+        onReasoningEffortChange={handleReasoningEffortChange}
         onThinkingEnabledChange={setThinkingEnabled}
         onThinkingBudgetTokensChange={setThinkingBudgetTokens}
         onSystemMessageChange={setSystemMessage}

@@ -1,21 +1,21 @@
 /**
  * Model Capabilities Detection System
- * 
+ *
  * This module provides runtime detection of AI model capabilities based on model names.
  * Originally implemented by h0llyw00dzz for development with self-hosted GPU providers
  * such as Hyperbolic and DeepInfra.
- * 
+ *
  * ## Purpose
  * Different AI models and providers support different features and parameters. This system
  * automatically detects which capabilities a model supports based on its name pattern,
  * enabling the UI to show/hide relevant parameters and preventing API errors from
  * unsupported parameters.
- * 
+ *
  * ## Architecture
  * 1. Model Type Detection: Identifies the model family (Claude, OpenAI, Llama, etc.)
  * 2. Capability Mapping: Returns which parameters each model type supports
  * 3. Special Cases: Handles provider-specific implementations (Hyperbolic, DeepInfra, Vercel)
- * 
+ *
  * ## Supported Capabilities
  * - `supportsTools`: Function/tool calling (e.g., Claude, OpenAI, Cohere)
  * - `supportsThinking`: Extended reasoning mode (Claude Opus/Sonnet 4+, DeepSeek-R1, Qwen thinking models)
@@ -28,16 +28,16 @@
  * - `supportsPresencePenalty`: Penalize repeated topics (OpenAI, Claude, most models)
  * - `supportsMaxCompletionTokens`: Max output tokens parameter (OpenAI, DeepInfra, Vercel, Hyperbolic)
  * - `supportsVision`: Image/multimodal input (GPT-4 Vision, Claude 3+, Gemini, Nova, etc.)
- * 
+ *
  * ## Provider Detection
  * The system detects models from these providers:
  * - **Hyperbolic**: Models with prefixes like `openai/gpt-oss`, `qwen/qwen3-next`, `deepseek-ai/deepseek-r1`
  * - **DeepInfra**: Models with prefixes like `deepseek-ai/`, `qwen/`, `moonshotai/`, `nvidia/`
  * - **Vercel AI Gateway**: Models with prefix `alibaba/`
  * - **Direct APIs**: Claude, OpenAI, Cohere, Google, AWS (Nova), Writer (Palmyra)
- * 
+ *
  * ## Maintenance Guide
- * 
+ *
  * ### Adding a New Model Type
  * 1. Add detection logic in `getModelType()`:
  *    ```typescript
@@ -52,14 +52,14 @@
  *        // ... set all capabilities
  *      }
  *    ```
- * 
+ *
  * ### Adding a New Provider
  * 1. Add provider detection in `getModelType()` before generic model checks:
  *    ```typescript
  *    if (lowerName.includes('provider-prefix/')) return 'provider'
  *    ```
  * 2. Add provider-specific capabilities with appropriate support levels
- * 
+ *
  * ### Adding a New Capability
  * 1. Add to `ModelCapabilities` interface:
  *    ```typescript
@@ -68,36 +68,36 @@
  * 2. Update `getDefaultCapabilities()` with default value (usually `false`)
  * 3. Set capability for each model type in `getModelCapabilities()`
  * 4. Create helper function if capability varies within a model family
- * 
+ *
  * ### Adding Model-Specific Features
  * If only certain models within a family support a feature:
  * 1. Create a helper function like `claudeSupportsThinking()` or `hyperbolicSupportsThinking()`
  * 2. Check for specific model name patterns
  * 3. Call the helper in the capability mapping
- * 
+ *
  * ## Examples
- * 
+ *
  * ```typescript
  * // Detect capabilities for Claude Opus 4
  * const caps = getModelCapabilities('claude-opus-4-20250514')
  * // Returns: supportsTools=true, supportsThinking=true, supportsTopP=true
- * 
+ *
  * // Detect capabilities for Hyperbolic DeepSeek-R1
  * const caps = getModelCapabilities('deepseek-ai/deepseek-r1')
  * // Returns: supportsTools=true, supportsThinking=true, supportsLogprobs=true
- * 
+ *
  * // Detect capabilities for GPT-4 Vision
  * const caps = getModelCapabilities('gpt-4o')
  * // Returns: supportsTools=true, supportsVision=true, supportsLogprobs=true
  * ```
- * 
+ *
  * ## Important Notes
  * - Model detection is case-insensitive
  * - Provider-specific checks must come BEFORE generic model checks in `getModelType()`
  * - Vision support is detected separately via `modelSupportsVision()` due to complex patterns
  * - AWS OpenAI OSS models are checked before generic GPT detection to avoid misclassification
  * - Unknown models return default (minimal) capabilities for safety
- * 
+ *
  * @see ModelCapabilities for capability definitions
  * @see getModelCapabilities for usage
  */
@@ -154,6 +154,7 @@ const getModelType = (modelName: string): string => {
   if (lowerName.includes('palmyra')) return 'writer'
   // Check for AWS OpenAI OSS models first, before general GPT check
   if (isOpenAIOSSModel(modelName)) return 'openai-oss'
+  if (isOpenAIMediumOnlyReasoningModel(modelName) || lowerName.startsWith('gpt-5')) return 'openai'
   if (lowerName.includes('gpt')) return 'openai'
   if (lowerName.includes('gemini')) return 'google'
 
@@ -166,7 +167,7 @@ const claudeSupportsThinking = (modelName: string): boolean => {
 
   // Supported models according to the issue and documentation:
   // - Claude Opus 4.1 (claude-opus-4-1-20250805)
-  // - Claude Opus 4 (claude-opus-4-20250514) 
+  // - Claude Opus 4 (claude-opus-4-20250514)
   // - Claude Sonnet 4 (claude-sonnet-4-20250514)
   // - Claude Sonnet 3.7 (claude-3-7-sonnet-20250219)
 
@@ -207,6 +208,44 @@ const deepseekSupportsReasoningEffort = (modelName: string): boolean => {
   return (
     lowerName.includes('deepseek-v3.1')
   )
+}
+
+export const isOpenAIMediumOnlyReasoningModel = (modelName: string): boolean => {
+  const lowerName = modelName.toLowerCase().trim()
+  if (!lowerName) return false
+
+  if (lowerName.includes('gpt-5.1-chat')) {
+    return true
+  }
+
+  if (lowerName.startsWith('o')) {
+    if (lowerName.length === 1) {
+      return true
+    }
+
+    const nextChar = lowerName.charAt(1)
+    if ((nextChar >= '0' && nextChar <= '9') || nextChar === '-') {
+      return true
+    }
+  }
+
+  return false
+}
+
+// Check if OpenAI model supports reasoning effort
+const openaiSupportsReasoningEffort = (modelName: string): boolean => {
+  const lowerName = modelName.toLowerCase().trim()
+  if (!lowerName) return false
+
+  if (isOpenAIMediumOnlyReasoningModel(modelName) || lowerName.includes('deep-research')) {
+    return true
+  }
+
+  if (lowerName.startsWith('gpt-5') && !lowerName.startsWith('gpt-5-chat')) {
+    return true
+  }
+
+  return false
 }
 
 // Check if model supports vision/image input
@@ -378,7 +417,7 @@ export const getModelCapabilities = (modelName: string): ModelCapabilities => {
         supportsTools: true,
         supportsThinking: false,
         supportsStop: true,
-        supportsReasoningEffort: false,
+        supportsReasoningEffort: openaiSupportsReasoningEffort(modelName),
         supportsLogprobs: true,
         supportsTopK: false,
         supportsTopP: true,

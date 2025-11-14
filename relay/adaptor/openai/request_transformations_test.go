@@ -73,8 +73,8 @@ func TestApplyRequestTransformations_ReasoningDefaults(t *testing.T) {
 				t.Fatalf("expected TopP to be cleared for reasoning models, got %v", *req.TopP)
 			}
 
-			if req.ReasoningEffort == nil || *req.ReasoningEffort != "high" {
-				t.Fatalf("expected ReasoningEffort to default to 'high', got %v", req.ReasoningEffort)
+			if req.ReasoningEffort == nil || *req.ReasoningEffort != "medium" {
+				t.Fatalf("expected ReasoningEffort to default to 'medium', got %v", req.ReasoningEffort)
 			}
 
 			if len(req.Messages) != 1 || req.Messages[0].Role != "user" {

@@ -1383,12 +1383,12 @@ func TestAdvancedStructuredOutputScenarios(t *testing.T) {
 
 		responseAPI := ConvertChatCompletionToResponseAPI(chatRequest)
 
-		// Verify reasoning effort is preserved
+		// Verify reasoning effort is normalized to medium for medium-only models
 		if responseAPI.Reasoning == nil {
 			t.Fatal("Expected reasoning config to be set")
 		}
-		if responseAPI.Reasoning.Effort == nil || *responseAPI.Reasoning.Effort != "high" {
-			t.Errorf("Expected reasoning effort 'high', got '%v'", responseAPI.Reasoning.Effort)
+		if responseAPI.Reasoning.Effort == nil || *responseAPI.Reasoning.Effort != "medium" {
+			t.Errorf("Expected reasoning effort 'medium', got '%v'", responseAPI.Reasoning.Effort)
 		}
 
 		// Simulate response with reasoning and structured output

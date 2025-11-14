@@ -3,6 +3,8 @@ package controller
 import (
 	"strings"
 
+	gmw "github.com/Laisky/gin-middlewares/v7"
+	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
 
 	openaipayload "github.com/songquanpeng/one-api/relay/adaptor/openai"
@@ -97,7 +99,8 @@ func ensureReasoningEffort(c *gin.Context, request *relaymodel.GeneralOpenAIRequ
 		return
 	}
 
-	desired := normalizeReasoningEffort(modelName, c.Query("reasoning_effort"))
+	requested := strings.TrimSpace(c.Query("reasoning_effort"))
+	desired := normalizeReasoningEffort(modelName, requested)
 	if desired == "" {
 		desired = defaultReasoningEffort(modelName)
 	}
@@ -106,6 +109,14 @@ func ensureReasoningEffort(c *gin.Context, request *relaymodel.GeneralOpenAIRequ
 	}
 
 	request.ReasoningEffort = stringPtr(desired)
+	if lg := gmw.GetLogger(c); lg != nil {
+		lg.Debug("reasoning effort applied",
+			zap.String("model", modelName),
+			zap.String("reasoning_effort", desired),
+			zap.Bool("from_query", requested != ""),
+			zap.String("requested_effort", requested),
+		)
+	}
 }
 
 // ensureIncludeReasoning guarantees OpenRouter requests opt into reasoning payloads.
@@ -130,7 +141,8 @@ func ensureResponseReasoning(c *gin.Context, request *openaipayload.ResponseAPIR
 		return
 	}
 
-	desired := normalizeReasoningEffort(modelName, c.Query("reasoning_effort"))
+	requested := strings.TrimSpace(c.Query("reasoning_effort"))
+	desired := normalizeReasoningEffort(modelName, requested)
 	if desired == "" {
 		desired = defaultReasoningEffort(modelName)
 	}
@@ -142,6 +154,36 @@ func ensureResponseReasoning(c *gin.Context, request *openaipayload.ResponseAPIR
 		request.Reasoning = &relaymodel.OpenAIResponseReasoning{}
 	}
 	request.Reasoning.Effort = stringPtr(desired)
+	if lg := gmw.GetLogger(c); lg != nil {
+		lg.Debug("response reasoning effort applied",
+			zap.String("model", modelName),
+			zap.String("reasoning_effort", desired),
+			zap.Bool("from_query", requested != ""),
+			zap.String("requested_effort", requested),
+		)
+	}
+}
+
+func isMediumOnlyOpenAIReasoningModel(name string) bool {
+	if name == "" {
+		return false
+	}
+
+	if strings.Contains(name, "gpt-5.1-chat") {
+		return true
+	}
+
+	if name[0] == 'o' {
+		if len(name) == 1 {
+			return true
+		}
+		switch name[1] {
+		case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-':
+			return true
+		}
+	}
+
+	return false
 }
 
 // isReasoningCapableModel identifies models that accept reasoning configuration payloads.
@@ -151,12 +193,11 @@ func isReasoningCapableModel(modelName string) bool {
 		return false
 	}
 
-	switch {
-	case strings.HasPrefix(name, "o1"),
-		strings.HasPrefix(name, "o3"),
-		strings.HasPrefix(name, "o4"),
-		strings.HasPrefix(name, "o-"):
+	if isMediumOnlyOpenAIReasoningModel(name) {
 		return true
+	}
+
+	switch {
 	case strings.HasPrefix(name, "gpt-5") && !strings.HasPrefix(name, "gpt-5-chat"):
 		return true
 	case strings.Contains(name, "deep-research"):
@@ -178,7 +219,7 @@ func defaultReasoningEffort(modelName string) string {
 	if name == "" {
 		return ""
 	}
-	if strings.Contains(name, "deep-research") {
+	if strings.Contains(name, "deep-research") || isMediumOnlyOpenAIReasoningModel(name) {
 		return "medium"
 	}
 	return "high"
@@ -208,7 +249,7 @@ func isReasoningEffortAllowed(modelName, effort string) bool {
 	}
 
 	name := strings.ToLower(strings.TrimSpace(modelName))
-	if strings.Contains(name, "deep-research") {
+	if strings.Contains(name, "deep-research") || isMediumOnlyOpenAIReasoningModel(name) {
 		return effort == "medium"
 	}
 	return true
