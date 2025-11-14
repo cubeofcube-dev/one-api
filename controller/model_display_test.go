@@ -244,7 +244,8 @@ func TestGetModelsDisplay_GptImageShowsTokenPrice(t *testing.T) {
 	require.InDelta(t, expectedInput, modelInfo.InputPrice, 1e-6)
 	expectedCached := convertRatioToPrice(pricingCfg.CachedInputRatio)
 	require.InDelta(t, expectedCached, modelInfo.CachedInputPrice, 1e-6)
-	require.InDelta(t, pricingCfg.ImagePriceUsd, modelInfo.ImagePrice, 1e-9)
+	require.NotNil(t, pricingCfg.Image, "expected image pricing metadata for gpt-image-1")
+	require.InDelta(t, pricingCfg.Image.PricePerImageUsd, modelInfo.ImagePrice, 1e-9)
 }
 
 // TestGetModelsDisplay_LoggedInFiltersUnsupportedModels ensures logged-in users don't see models outside their allowed set

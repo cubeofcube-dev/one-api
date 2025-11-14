@@ -245,10 +245,10 @@ func GetModelsDisplay(c *gin.Context) {
 			var imagePrice float64
 
 			if cfg, ok := pricing[actual]; ok {
-				if cfg.ImagePriceUsd > 0 && cfg.Ratio == 0 && cfg.CachedInputRatio <= 0 {
+				if cfg.Image != nil && cfg.Image.PricePerImageUsd > 0 && cfg.Ratio == 0 && cfg.CachedInputRatio <= 0 {
 					result[modelName] = ModelDisplayInfo{
 						MaxTokens:        cfg.MaxTokens,
-						ImagePrice:       cfg.ImagePriceUsd,
+						ImagePrice:       cfg.Image.PricePerImageUsd,
 						InputPrice:       0,
 						CachedInputPrice: 0,
 					}
@@ -270,7 +270,9 @@ func GetModelsDisplay(c *gin.Context) {
 				}
 				outputPrice = inputPrice * cfg.CompletionRatio
 				maxTokens = cfg.MaxTokens
-				imagePrice = cfg.ImagePriceUsd
+				if cfg.Image != nil {
+					imagePrice = cfg.Image.PricePerImageUsd
+				}
 			} else {
 				inRatio := adaptor.GetModelRatio(actual)
 				compRatio := adaptor.GetCompletionRatio(actual)

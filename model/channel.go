@@ -81,6 +81,9 @@ type ChannelConfig struct {
 
 type ModelConfig struct {
 	MaxTokens int32 `json:"max_tokens,omitempty"`
+	// Legacy image pricing field kept for backwards compatibility during migrations.
+	ImagePriceUsd float64            `json:"image_price_usd,omitempty"`
+	Image         *ImagePricingLocal `json:"image,omitempty"`
 }
 
 // ModelConfigLocal represents the local definition of ModelConfig to avoid import cycles
@@ -90,6 +93,8 @@ type ModelConfigLocal struct {
 	CompletionRatio float64            `json:"completion_ratio,omitempty"`
 	MaxTokens       int32              `json:"max_tokens,omitempty"`
 	Video           *VideoPricingLocal `json:"video,omitempty"`
+	Audio           *AudioPricingLocal `json:"audio,omitempty"`
+	Image           *ImagePricingLocal `json:"image,omitempty"`
 }
 
 // VideoPricingLocal represents channel-scoped video pricing metadata stored alongside model configs.
@@ -97,6 +102,29 @@ type VideoPricingLocal struct {
 	PerSecondUsd          float64            `json:"per_second_usd,omitempty"`
 	BaseResolution        string             `json:"base_resolution,omitempty"`
 	ResolutionMultipliers map[string]float64 `json:"resolution_multipliers,omitempty"`
+}
+
+// AudioPricingLocal mirrors adaptor.AudioPricingConfig for persistence without creating import cycles.
+type AudioPricingLocal struct {
+	PromptRatio               float64 `json:"prompt_ratio,omitempty"`
+	CompletionRatio           float64 `json:"completion_ratio,omitempty"`
+	PromptTokensPerSecond     float64 `json:"prompt_tokens_per_second,omitempty"`
+	CompletionTokensPerSecond float64 `json:"completion_tokens_per_second,omitempty"`
+	UsdPerSecond              float64 `json:"usd_per_second,omitempty"`
+}
+
+// ImagePricingLocal mirrors adaptor.ImagePricingConfig for persistence.
+type ImagePricingLocal struct {
+	PricePerImageUsd       float64                       `json:"price_per_image_usd,omitempty"`
+	PromptRatio            float64                       `json:"prompt_ratio,omitempty"`
+	DefaultSize            string                        `json:"default_size,omitempty"`
+	DefaultQuality         string                        `json:"default_quality,omitempty"`
+	PromptTokenLimit       int                           `json:"prompt_token_limit,omitempty"`
+	MinImages              int                           `json:"min_images,omitempty"`
+	MaxImages              int                           `json:"max_images,omitempty"`
+	SizeMultipliers        map[string]float64            `json:"size_multipliers,omitempty"`
+	QualityMultipliers     map[string]float64            `json:"quality_multipliers,omitempty"`
+	QualitySizeMultipliers map[string]map[string]float64 `json:"quality_size_multipliers,omitempty"`
 }
 
 // ToolPricingLocal is the channel-scoped representation of adaptor.ToolPricingConfig.
@@ -206,6 +234,14 @@ func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
 	if err != nil {
 		return ModelConfigLocal{}, err
 	}
+	audio, err := normalizeAudioPricingLocal(cfg.Audio)
+	if err != nil {
+		return ModelConfigLocal{}, err
+	}
+	image, err := normalizeImagePricingLocal(cfg.Image)
+	if err != nil {
+		return ModelConfigLocal{}, err
+	}
 
 	normalized := ModelConfigLocal{
 		Ratio:           cfg.Ratio,
@@ -214,6 +250,12 @@ func normalizeModelConfigLocal(cfg ModelConfigLocal) (ModelConfigLocal, error) {
 	}
 	if video != nil {
 		normalized.Video = video
+	}
+	if audio != nil {
+		normalized.Audio = audio
+	}
+	if image != nil {
+		normalized.Image = image
 	}
 	return normalized, nil
 }
@@ -466,9 +508,12 @@ func (channel *Channel) GetModelConfig(modelName string) *ModelConfig {
 	priceConfig := channel.GetModelPriceConfig(modelName)
 	if priceConfig != nil {
 		// Convert ModelPriceLocal to ModelConfig for backward compatibility
-		return &ModelConfig{
-			MaxTokens: priceConfig.MaxTokens,
+		legacy := &ModelConfig{MaxTokens: priceConfig.MaxTokens}
+		if priceConfig.Image != nil {
+			legacy.ImagePriceUsd = priceConfig.Image.PricePerImageUsd
+			legacy.Image = priceConfig.Image
 		}
+		return legacy
 	}
 
 	return nil
@@ -575,6 +620,15 @@ func (channel *Channel) MigrateModelConfigsToModelPrice() error {
 		// Start with MaxTokens from old config if available
 		if oldConfig, exists := oldFormatConfigs[modelName]; exists {
 			newConfig.MaxTokens = oldConfig.MaxTokens
+			if oldConfig.Image != nil {
+				normalizedImage, err := normalizeImagePricingLocal(oldConfig.Image)
+				if err != nil {
+					return errors.Wrapf(err, "invalid legacy image pricing for model %s", modelName)
+				}
+				newConfig.Image = normalizedImage
+			} else if oldConfig.ImagePriceUsd > 0 {
+				newConfig.Image = &ImagePricingLocal{PricePerImageUsd: oldConfig.ImagePriceUsd}
+			}
 		}
 
 		// Add pricing information if available
@@ -651,9 +705,17 @@ func (channel *Channel) validateModelPriceConfigs(configs map[string]ModelConfig
 		if err != nil {
 			return err
 		}
+		hasAudioData, err := validateAudioPricingLocal(config.Audio, modelName)
+		if err != nil {
+			return err
+		}
+		hasImageData, err := validateImagePricingLocal(config.Image, modelName)
+		if err != nil {
+			return err
+		}
 
 		// Validate that at least one field has meaningful data
-		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 && !hasVideoData {
+		if config.Ratio == 0 && config.CompletionRatio == 0 && config.MaxTokens == 0 && !hasVideoData && !hasAudioData && !hasImageData {
 			return errors.Errorf("model %s has no meaningful configuration data", modelName)
 		}
 	}
@@ -722,6 +784,109 @@ func hasVideoPricingData(cfg *VideoPricingLocal) bool {
 	return len(cfg.ResolutionMultipliers) > 0
 }
 
+func validateAudioPricingLocal(cfg *AudioPricingLocal, modelName string) (bool, error) {
+	if cfg == nil {
+		return false, nil
+	}
+	if cfg.PromptRatio < 0 {
+		return false, errors.Errorf("audio prompt_ratio cannot be negative for model %s", modelName)
+	}
+	if cfg.CompletionRatio < 0 {
+		return false, errors.Errorf("audio completion_ratio cannot be negative for model %s", modelName)
+	}
+	if cfg.PromptTokensPerSecond < 0 {
+		return false, errors.Errorf("audio prompt_tokens_per_second cannot be negative for model %s", modelName)
+	}
+	if cfg.CompletionTokensPerSecond < 0 {
+		return false, errors.Errorf("audio completion_tokens_per_second cannot be negative for model %s", modelName)
+	}
+	if cfg.UsdPerSecond < 0 {
+		return false, errors.Errorf("audio usd_per_second cannot be negative for model %s", modelName)
+	}
+	return hasAudioPricingData(cfg), nil
+}
+
+func hasAudioPricingData(cfg *AudioPricingLocal) bool {
+	if cfg == nil {
+		return false
+	}
+	return cfg.PromptRatio != 0 || cfg.CompletionRatio != 0 || cfg.PromptTokensPerSecond != 0 ||
+		cfg.CompletionTokensPerSecond != 0 || cfg.UsdPerSecond != 0
+}
+
+func validateImagePricingLocal(cfg *ImagePricingLocal, modelName string) (bool, error) {
+	if cfg == nil {
+		return false, nil
+	}
+	if cfg.PricePerImageUsd < 0 {
+		return false, errors.Errorf("image price_per_image_usd cannot be negative for model %s", modelName)
+	}
+	if cfg.PromptRatio < 0 {
+		return false, errors.Errorf("image prompt_ratio cannot be negative for model %s", modelName)
+	}
+	if cfg.PromptTokenLimit < 0 {
+		return false, errors.Errorf("image prompt_token_limit cannot be negative for model %s", modelName)
+	}
+	if cfg.MinImages < 0 {
+		return false, errors.Errorf("image min_images cannot be negative for model %s", modelName)
+	}
+	if cfg.MaxImages < 0 {
+		return false, errors.Errorf("image max_images cannot be negative for model %s", modelName)
+	}
+	if cfg.MinImages > 0 && cfg.MaxImages > 0 && cfg.MinImages > cfg.MaxImages {
+		return false, errors.Errorf("image min_images cannot exceed max_images for model %s", modelName)
+	}
+	if len(cfg.SizeMultipliers) > 0 {
+		for key, value := range cfg.SizeMultipliers {
+			if strings.TrimSpace(key) == "" {
+				return false, errors.Errorf("image size multiplier key cannot be empty for model %s", modelName)
+			}
+			if value <= 0 {
+				return false, errors.Errorf("image size multiplier for %s (%s) must be positive", modelName, key)
+			}
+		}
+	}
+	if len(cfg.QualityMultipliers) > 0 {
+		for key, value := range cfg.QualityMultipliers {
+			if strings.TrimSpace(key) == "" {
+				return false, errors.Errorf("image quality multiplier key cannot be empty for model %s", modelName)
+			}
+			if value <= 0 {
+				return false, errors.Errorf("image quality multiplier for %s (%s) must be positive", modelName, key)
+			}
+		}
+	}
+	if len(cfg.QualitySizeMultipliers) > 0 {
+		for quality, sizeMap := range cfg.QualitySizeMultipliers {
+			if strings.TrimSpace(quality) == "" {
+				return false, errors.Errorf("image quality-size multiplier quality cannot be empty for model %s", modelName)
+			}
+			for size, value := range sizeMap {
+				if strings.TrimSpace(size) == "" {
+					return false, errors.Errorf("image quality-size multiplier size cannot be empty for model %s quality %s", modelName, quality)
+				}
+				if value <= 0 {
+					return false, errors.Errorf("image quality-size multiplier for %s (%s/%s) must be positive", modelName, quality, size)
+				}
+			}
+		}
+	}
+	return hasImagePricingData(cfg), nil
+}
+
+func hasImagePricingData(cfg *ImagePricingLocal) bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.PricePerImageUsd > 0 || cfg.PromptRatio > 0 || cfg.PromptTokenLimit > 0 {
+		return true
+	}
+	if cfg.MinImages > 0 || cfg.MaxImages > 0 {
+		return true
+	}
+	return len(cfg.SizeMultipliers) > 0 || len(cfg.QualityMultipliers) > 0 || len(cfg.QualitySizeMultipliers) > 0
+}
+
 func normalizeVideoResolutionKey(value string) string {
 	trimmed := strings.TrimSpace(strings.ToLower(value))
 	if trimmed == "" {
@@ -742,6 +907,231 @@ func normalizeVideoResolutionKey(value string) string {
 		width, height = height, width
 	}
 	return strconv.Itoa(width) + "x" + strconv.Itoa(height)
+}
+
+func normalizeAudioPricingLocal(cfg *AudioPricingLocal) (*AudioPricingLocal, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	if cfg.PromptRatio < 0 {
+		return nil, errors.New("audio prompt_ratio cannot be negative")
+	}
+	if cfg.CompletionRatio < 0 {
+		return nil, errors.New("audio completion_ratio cannot be negative")
+	}
+	if cfg.PromptTokensPerSecond < 0 {
+		return nil, errors.New("audio prompt_tokens_per_second cannot be negative")
+	}
+	if cfg.CompletionTokensPerSecond < 0 {
+		return nil, errors.New("audio completion_tokens_per_second cannot be negative")
+	}
+	if cfg.UsdPerSecond < 0 {
+		return nil, errors.New("audio usd_per_second cannot be negative")
+	}
+	normalized := &AudioPricingLocal{
+		PromptRatio:               cfg.PromptRatio,
+		CompletionRatio:           cfg.CompletionRatio,
+		PromptTokensPerSecond:     cfg.PromptTokensPerSecond,
+		CompletionTokensPerSecond: cfg.CompletionTokensPerSecond,
+		UsdPerSecond:              cfg.UsdPerSecond,
+	}
+	return normalized, nil
+}
+
+func normalizeImagePricingLocal(cfg *ImagePricingLocal) (*ImagePricingLocal, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+	if cfg.PricePerImageUsd < 0 {
+		return nil, errors.New("image price_per_image_usd cannot be negative")
+	}
+	if cfg.PromptRatio < 0 {
+		return nil, errors.New("image prompt_ratio cannot be negative")
+	}
+	if cfg.PromptTokenLimit < 0 {
+		return nil, errors.New("image prompt_token_limit cannot be negative")
+	}
+	if cfg.MinImages < 0 {
+		return nil, errors.New("image min_images cannot be negative")
+	}
+	if cfg.MaxImages < 0 {
+		return nil, errors.New("image max_images cannot be negative")
+	}
+	if cfg.MinImages > 0 && cfg.MaxImages > 0 && cfg.MinImages > cfg.MaxImages {
+		return nil, errors.New("image min_images cannot exceed max_images")
+	}
+	normalized := &ImagePricingLocal{
+		PricePerImageUsd: cfg.PricePerImageUsd,
+		PromptRatio:      cfg.PromptRatio,
+		PromptTokenLimit: cfg.PromptTokenLimit,
+		MinImages:        cfg.MinImages,
+		MaxImages:        cfg.MaxImages,
+	}
+	if trimmed := strings.TrimSpace(cfg.DefaultSize); trimmed != "" {
+		normalized.DefaultSize = normalizeImageSizeKey(trimmed)
+	}
+	if trimmedQuality := strings.TrimSpace(cfg.DefaultQuality); trimmedQuality != "" {
+		normalized.DefaultQuality = normalizeImageQualityKey(trimmedQuality)
+	}
+	if len(cfg.SizeMultipliers) > 0 {
+		normalized.SizeMultipliers = make(map[string]float64, len(cfg.SizeMultipliers))
+		for raw, value := range cfg.SizeMultipliers {
+			key := normalizeImageSizeKey(raw)
+			if key == "" {
+				return nil, errors.Errorf("image size multiplier key cannot be empty (input: %q)", raw)
+			}
+			if value <= 0 {
+				return nil, errors.Errorf("image size multiplier for %s must be positive", raw)
+			}
+			normalized.SizeMultipliers[key] = value
+		}
+	}
+	if len(cfg.QualityMultipliers) > 0 {
+		normalized.QualityMultipliers = make(map[string]float64, len(cfg.QualityMultipliers))
+		for raw, value := range cfg.QualityMultipliers {
+			key := normalizeImageQualityKey(raw)
+			if key == "" {
+				return nil, errors.Errorf("image quality multiplier key cannot be empty (input: %q)", raw)
+			}
+			if value <= 0 {
+				return nil, errors.Errorf("image quality multiplier for %s must be positive", raw)
+			}
+			normalized.QualityMultipliers[key] = value
+		}
+	}
+	if len(cfg.QualitySizeMultipliers) > 0 {
+		normalized.QualitySizeMultipliers = make(map[string]map[string]float64, len(cfg.QualitySizeMultipliers))
+		for rawQuality, sizeMap := range cfg.QualitySizeMultipliers {
+			qualityKey := normalizeImageQualityKey(rawQuality)
+			if qualityKey == "" {
+				return nil, errors.Errorf("image quality-size multiplier quality cannot be empty (input: %q)", rawQuality)
+			}
+			if len(sizeMap) == 0 {
+				continue
+			}
+			normalizedSizes := make(map[string]float64, len(sizeMap))
+			for rawSize, value := range sizeMap {
+				sizeKey := normalizeImageSizeKey(rawSize)
+				if sizeKey == "" {
+					return nil, errors.Errorf("image quality-size multiplier size cannot be empty (quality: %s)", rawQuality)
+				}
+				if value <= 0 {
+					return nil, errors.Errorf("image quality-size multiplier for %s/%s must be positive", rawQuality, rawSize)
+				}
+				normalizedSizes[sizeKey] = value
+			}
+			if len(normalizedSizes) > 0 {
+				normalized.QualitySizeMultipliers[qualityKey] = normalizedSizes
+			}
+		}
+	}
+	return normalized, nil
+}
+
+func normalizeImageSizeKey(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	trimmed = strings.ReplaceAll(trimmed, "×", "x")
+	trimmed = strings.ReplaceAll(trimmed, "*", "x")
+	trimmed = strings.ReplaceAll(trimmed, " ", "")
+	return trimmed
+}
+
+func normalizeImageQualityKey(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
+}
+
+func migrateLegacyImagePriceInConfigs(rawJSON string) (string, bool, error) {
+	trimmed := strings.TrimSpace(rawJSON)
+	if trimmed == "" || trimmed == "{}" {
+		return rawJSON, false, nil
+	}
+	decoder := json.NewDecoder(strings.NewReader(trimmed))
+	decoder.UseNumber()
+	var payload map[string]any
+	if err := decoder.Decode(&payload); err != nil {
+		return "", false, errors.Wrap(err, "decode legacy image pricing map")
+	}
+	changed := false
+	for modelName, rawCfg := range payload {
+		cfgMap, ok := rawCfg.(map[string]any)
+		if !ok || cfgMap == nil {
+			continue
+		}
+		legacyValue, hasLegacy := cfgMap["image_price_usd"]
+		if !hasLegacy {
+			continue
+		}
+		price, ok := floatFromAny(legacyValue)
+		delete(cfgMap, "image_price_usd")
+		if !ok || price <= 0 {
+			payload[modelName] = cfgMap
+			changed = true
+			continue
+		}
+		imageValue, hasImage := cfgMap["image"]
+		var imageMap map[string]any
+		if hasImage {
+			imageMap, _ = imageValue.(map[string]any)
+		}
+		if imageMap == nil {
+			imageMap = make(map[string]any)
+		}
+		if existing, exists := imageMap["price_per_image_usd"]; !exists {
+			imageMap["price_per_image_usd"] = price
+		} else if existingPrice, ok := floatFromAny(existing); ok && existingPrice <= 0 {
+			imageMap["price_per_image_usd"] = price
+		}
+		cfgMap["image"] = imageMap
+		payload[modelName] = cfgMap
+		changed = true
+	}
+	if !changed {
+		return rawJSON, false, nil
+	}
+	normalized, err := json.Marshal(payload)
+	if err != nil {
+		return "", false, errors.Wrap(err, "encode normalized image pricing")
+	}
+	return string(normalized), true, nil
+}
+
+func floatFromAny(value any) (float64, bool) {
+	switch v := value.(type) {
+	case json.Number:
+		f, err := v.Float64()
+		if err != nil {
+			return 0, false
+		}
+		return f, true
+	case float64:
+		return v, true
+	case float32:
+		return float64(v), true
+	case int:
+		return float64(v), true
+	case int64:
+		return float64(v), true
+	case int32:
+		return float64(v), true
+	case uint:
+		return float64(v), true
+	case uint64:
+		return float64(v), true
+	case uint32:
+		return float64(v), true
+	case string:
+		trimmed := strings.TrimSpace(v)
+		if trimmed == "" {
+			return 0, false
+		}
+		f, err := strconv.ParseFloat(trimmed, 64)
+		if err != nil {
+			return 0, false
+		}
+		return f, true
+	default:
+		return 0, false
+	}
 }
 
 // GetModelPriceConfigs returns the channel-specific model price configurations in the new unified format
@@ -1746,6 +2136,55 @@ func MigrateAllChannelModelConfigs() error {
 		logger.Logger.Info("No channels required data migration")
 	}
 
+	return nil
+}
+
+// MigrateChannelLegacyImagePricing normalizes legacy per-image pricing fields into Image configs.
+func MigrateChannelLegacyImagePricing() error {
+	logger.Logger.Info("Starting migration of legacy channel image pricing")
+	var channels []*Channel
+	if err := DB.Find(&channels).Error; err != nil {
+		return errors.Wrap(err, "fetch channels for image pricing migration")
+	}
+	migrated := 0
+	for _, channel := range channels {
+		if channel.ModelConfigs == nil || *channel.ModelConfigs == "" || *channel.ModelConfigs == "{}" {
+			continue
+		}
+		updated, changed, err := migrateLegacyImagePriceInConfigs(*channel.ModelConfigs)
+		if err != nil {
+			logger.Logger.Error("failed to normalize image pricing for channel",
+				zap.Int("channel_id", channel.Id),
+				zap.Error(err))
+			continue
+		}
+		if !changed {
+			continue
+		}
+		original := *channel.ModelConfigs
+		channel.ModelConfigs = &updated
+		configs := channel.GetModelPriceConfigs()
+		if err := channel.validateModelPriceConfigs(configs); err != nil {
+			logger.Logger.Error("validated migrated image pricing failed",
+				zap.Int("channel_id", channel.Id),
+				zap.Error(err))
+			channel.ModelConfigs = &original
+			continue
+		}
+		if err := DB.Model(channel).Update("model_configs", channel.ModelConfigs).Error; err != nil {
+			logger.Logger.Error("failed to persist migrated image pricing",
+				zap.Int("channel_id", channel.Id),
+				zap.Error(err))
+			channel.ModelConfigs = &original
+			continue
+		}
+		migrated++
+	}
+	if migrated > 0 {
+		logger.Logger.Info("Legacy channel image pricing migration completed", zap.Int("channels_migrated", migrated))
+	} else {
+		logger.Logger.Info("No legacy channel image pricing entries required migration")
+	}
 	return nil
 }
 

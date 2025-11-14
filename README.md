@@ -94,7 +94,7 @@ The original author stopped maintaining the project, leaving critical PRs and ne
       - [Support OpenAI o1/o1-mini/o1-preview](#support-openai-o1o1-minio1-preview)
       - [Support gpt-4o-audio](#support-gpt-4o-audio)
       - [Support OpenAI web search models](#support-openai-web-search-models)
-      - [Support gpt-image-1 \& gpt-image-1-mini image generation \& edits](#support-gpt-image-1--gpt-image-1-mini-image-generation--edits)
+      - [Support gpt-image family for image generation \& edits](#support-gpt-image-family-for-image-generation--edits)
       - [Support o3-mini \& o3 \& o4-mini \& gpt-4.1 \& o3-pro \& reasoning content](#support-o3-mini--o3--o4-mini--gpt-41--o3-pro--reasoning-content)
       - [Support OpenAI Response API](#support-openai-response-api)
       - [Support gpt-5 family](#support-gpt-5-family)
@@ -808,15 +808,88 @@ Response:
 }
 ```
 
-#### Support gpt-image-1 & gpt-image-1-mini image generation & edits
+#### Support gpt-image family for image generation & edits
 
-The mini variant accepts the same request schema as `gpt-image-1` while using lower per-image pricing. Swap the `model` field to `gpt-image-1-mini` when you prefer the cheaper tier.
+Support gpt-image-1 & gpt-image-1-mini for image generation and editing.
 
-![](https://s3.laisky.com/uploads/2025/04/gpt-image-1-2.png)
+Draw image:
 
-![](https://s3.laisky.com/uploads/2025/04/gpt-image-1-3.png)
+```sh
+curl --location 'https://oneapi.laisky.com/v1/images/generations' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: sk-xxxxxxx' \
+--data '{
+    "model": "gpt-image-1-mini",
+    "prompt": "draw a goose",
+    "n": 1,
+    "size": "1024x1024",
+    "response_format": "b64_json"
+}'
+```
 
-![](https://s3.laisky.com/uploads/2025/04/gpt-image-1-1.png)
+Response:
+
+```json
+{
+    "created": 1763152907,
+    "background": "opaque",
+    "data": [
+        {
+            "b64_json": "iVBORw0KGgoAAAANS..."
+        }
+    ],
+    "output_format": "png",
+    "quality": "high",
+    "size": "1536x1024",
+    "usage": {
+        "input_tokens": 437,
+        "input_tokens_details": {
+            "image_tokens": 388,
+            "text_tokens": 49
+        },
+        "output_tokens": 6208,
+        "total_tokens": 6645
+    }
+}
+```
+
+Edit image:
+
+```sh
+curl --location 'https://oneapi.laisky.com/v1/images/edits' \
+  --header 'Authorization: sk-xxxxxxx' \
+  --form 'image[]=@"postman-cloud:///1f020b33-1ca1-4f10-b6d2-7b12aa70111e"' \
+  --form 'image[]=@"postman-cloud:///1f020b33-22c6-4350-8314-063db53618a4"' \
+  --form 'prompt="put all items in references image into a gift busket"' \
+  --form 'model="gpt-image-1-mini"'
+```
+
+Response:
+
+```json
+{
+    "created": 1763152907,
+    "background": "opaque",
+    "data": [
+        {
+            "b64_json": "iVBORw0KGgoAAAANS..."
+        }
+    ],
+    "output_format": "png",
+    "quality": "high",
+    "size": "1536x1024",
+    "usage": {
+        "input_tokens": 437,
+        "input_tokens_details": {
+            "image_tokens": 388,
+            "text_tokens": 49
+        },
+        "output_tokens": 6208,
+        "total_tokens": 6645
+    }
+}
+```
+
 
 #### Support o3-mini & o3 & o4-mini & gpt-4.1 & o3-pro & reasoning content
 
@@ -868,6 +941,8 @@ Response:
 ```
 
 #### Support gpt-5 family
+
+gpt-5.1-chat-latest / gpt-5.1 / gpt-5.1-2025-11-13 / gpt-5.1-codex / gpt-5.1-codex-mini
 
 gpt-5-chat-latest / gpt-5 / gpt-5-mini / gpt-5-nano / gpt-5-codex / gpt-5-pro
 

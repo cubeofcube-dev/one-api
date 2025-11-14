@@ -151,9 +151,58 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"text-embedding-async-v1": {Ratio: 0.5 * ratio.MilliTokensRmb, CompletionRatio: 1},
 
 	// Image Generation Models
-	"ali-stable-diffusion-xl":   {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"ali-stable-diffusion-v1.5": {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
-	"wanx-v1":                   {Ratio: 8 * ratio.MilliTokensRmb, CompletionRatio: 1},
+	"ali-stable-diffusion-xl": {
+		Ratio:           8 * ratio.MilliTokensRmb,
+		CompletionRatio: 1,
+		Image: &adaptor.ImagePricingConfig{
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        4,
+			SizeMultipliers: map[string]float64{
+				"512x1024":  1,
+				"1024x768":  1,
+				"1024x1024": 1,
+				"576x1024":  1,
+				"1024x576":  1,
+			},
+		},
+	},
+	"ali-stable-diffusion-v1.5": {
+		Ratio:           8 * ratio.MilliTokensRmb,
+		CompletionRatio: 1,
+		Image: &adaptor.ImagePricingConfig{
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        4,
+			SizeMultipliers: map[string]float64{
+				"512x1024":  1,
+				"1024x768":  1,
+				"1024x1024": 1,
+				"576x1024":  1,
+				"1024x576":  1,
+			},
+		},
+	},
+	"wanx-v1": {
+		Ratio:           8 * ratio.MilliTokensRmb,
+		CompletionRatio: 1,
+		Image: &adaptor.ImagePricingConfig{
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        4,
+			SizeMultipliers: map[string]float64{
+				"1024x1024": 1,
+				"720x1280":  1,
+				"1280x720":  1,
+			},
+		},
+	},
 }
 
 // AliToolingDefaults notes that Alibaba Model Studio does not expose public built-in tool pricing (retrieved 2025-11-12).

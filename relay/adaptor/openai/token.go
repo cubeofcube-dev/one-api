@@ -16,8 +16,8 @@ import (
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/helper"
 	imgutil "github.com/songquanpeng/one-api/common/image"
-	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	"github.com/songquanpeng/one-api/relay/model"
+	"github.com/songquanpeng/one-api/relay/pricing"
 )
 
 // tokenEncoderMap won't grow after initialization
@@ -104,6 +104,8 @@ func CountTokenMessages(ctx context.Context,
 
 	tokenNum := 0
 	var totalAudioTokens float64
+	var audioTokensPerSecond float64
+	audioTokensConfigured := false
 	for _, message := range messages {
 		tokenNum += tokensPerMessage
 		contents := message.ParseContent()
@@ -155,9 +157,19 @@ func CountTokenMessages(ctx context.Context,
 					lg.Error("error decoding audio data", zap.Error(err))
 				}
 
+				if !audioTokensConfigured {
+					audioCfg, found := pricing.ResolveAudioPricing(actualModel, nil, &Adaptor{})
+					if found && audioCfg != nil && audioCfg.PromptTokensPerSecond > 0 {
+						audioTokensPerSecond = audioCfg.PromptTokensPerSecond
+					} else {
+						audioTokensPerSecond = pricing.DefaultAudioPromptTokensPerSecond
+					}
+					audioTokensConfigured = true
+				}
+
 				audioTokens, err := helper.GetAudioTokens(ctx,
 					bytes.NewReader(audioData),
-					ratio.GetAudioPromptTokensPerSecond(actualModel))
+					audioTokensPerSecond)
 				if err != nil {
 					lg.Error("error counting audio tokens", zap.Error(err))
 				} else {

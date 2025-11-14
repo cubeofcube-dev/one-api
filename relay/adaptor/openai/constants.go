@@ -40,18 +40,66 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// GPT-4o Models
 	// -------------------------------------
 
-	"gpt-4o":                               {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
-	"gpt-4o-2024-05-13":                    {Ratio: 5.0 * ratio.MilliTokensUsd, CompletionRatio: 3.0},
-	"gpt-4o-2024-08-06":                    {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
-	"gpt-4o-2024-11-20":                    {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
-	"gpt-4o-mini":                          {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 0.075 * ratio.MilliTokensUsd},
-	"gpt-4o-mini-2024-07-18":               {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 0.075 * ratio.MilliTokensUsd},
-	"gpt-4o-mini-audio-preview":            {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
-	"gpt-4o-mini-audio-preview-2024-12-17": {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
-	"gpt-4o-audio-preview":                 {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
-	"gpt-4o-audio-preview-2024-12-17":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
-	"gpt-4o-audio-preview-2024-10-01":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
-	"gpt-4o-audio-preview-2025-06-03":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0},
+	"gpt-4o":                 {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
+	"gpt-4o-2024-05-13":      {Ratio: 5.0 * ratio.MilliTokensUsd, CompletionRatio: 3.0},
+	"gpt-4o-2024-08-06":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
+	"gpt-4o-2024-11-20":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd},
+	"gpt-4o-mini":            {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 0.075 * ratio.MilliTokensUsd},
+	"gpt-4o-mini-2024-07-18": {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 4.0, CachedInputRatio: 0.075 * ratio.MilliTokensUsd},
+	"gpt-4o-mini-audio-preview": {
+		Ratio:           0.15 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           10.0 / 0.15,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-mini-audio-preview-2024-12-17": {
+		Ratio:           0.15 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           10.0 / 0.15,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-audio-preview": {
+		Ratio:           2.5 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           16,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-audio-preview-2024-12-17": {
+		Ratio:           2.5 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           16,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-audio-preview-2024-10-01": {
+		Ratio:           2.5 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           40,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-audio-preview-2025-06-03": {
+		Ratio:           2.5 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           16,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
 
 	// Realtime Models
 	// -------------------------------------
@@ -179,30 +227,184 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// Audio Models
 	// -------------------------------------
 
-	"whisper-1": {Ratio: 6.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $0.006 per minute
+	"whisper-1": {
+		Ratio:           6.0 * ratio.MilliTokensUsd,
+		CompletionRatio: 1.0, // $0.006 per minute
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           16,
+			CompletionRatio:       0,
+			PromptTokensPerSecond: 10,
+			UsdPerSecond:          0.0001,
+		},
+	},
 
 	// TTS Models
 	// -------------------------------------
 
-	"tts-1":                  {Ratio: 15.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $15.00 per 1M characters
-	"tts-1-1106":             {Ratio: 15.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $15.00 per 1M characters
-	"tts-1-hd":               {Ratio: 30.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $30.00 per 1M characters
-	"tts-1-hd-1106":          {Ratio: 30.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $30.00 per 1M characters
-	"gpt-4o-transcribe":      {Ratio: 2.5 * ratio.MilliTokensUsd, CompletionRatio: 4.0},  // $2.50 input, $10.00 output per 1M tokens
-	"gpt-4o-mini-transcribe": {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 4.0}, // $1.25 input, $5.00 output per 1M tokens
-	"gpt-4o-mini-tts":        {Ratio: 0.6 * ratio.MilliTokensUsd, CompletionRatio: 20.0}, // $0.60 input, $12.00 output per 1M tokens
+	"tts-1":         {Ratio: 15.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $15.00 per 1M characters
+	"tts-1-1106":    {Ratio: 15.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $15.00 per 1M characters
+	"tts-1-hd":      {Ratio: 30.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $30.00 per 1M characters
+	"tts-1-hd-1106": {Ratio: 30.0 * ratio.MilliTokensUsd, CompletionRatio: 1.0}, // $30.00 per 1M characters
+	"gpt-4o-transcribe": {
+		Ratio:           2.5 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0, // $2.50 input, $10.00 output per 1M tokens
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           6.0 / 2.5,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-mini-transcribe": {
+		Ratio:           1.25 * ratio.MilliTokensUsd,
+		CompletionRatio: 4.0, // $1.25 input, $5.00 output per 1M tokens
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:           3.0 / 1.25,
+			CompletionRatio:       2,
+			PromptTokensPerSecond: 10,
+		},
+	},
+	"gpt-4o-mini-tts": {Ratio: 0.6 * ratio.MilliTokensUsd, CompletionRatio: 20.0}, // $0.60 input, $12.00 output per 1M tokens
 
 	// Image Generation Models (Standard)
 	//
 	// ⚠️ should also update relay/billing/ratio/image.go when changing these values.
 	// -------------------------------------
 
-	// Policy: If a model is billed per image only, set Ratio=0 and use ImagePriceUsd.
-	// GPT Image models bill both prompt tokens and per-image output; keep Ratio in sync with prompt pricing while retaining ImagePriceUsd for renders.
-	"dall-e-2":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.016},
-	"dall-e-3":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
-	"gpt-image-1":      {Ratio: 5.0 * ratio.MilliTokensUsd, CachedInputRatio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
-	"gpt-image-1-mini": {Ratio: 2.0 * ratio.MilliTokensUsd, CachedInputRatio: 0.2 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
+	// Policy: If a model is billed per image only, set Ratio=0 and configure Image.PricePerImageUsd.
+	// GPT Image models bill both prompt tokens and per-image output; keep Ratio in sync with prompt pricing while retaining Image.PricePerImageUsd for renders.
+	"dall-e-2": {
+		Ratio:           0,
+		CompletionRatio: 1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.016,
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 1000,
+			MinImages:        1,
+			MaxImages:        10,
+			QualitySizeMultipliers: map[string]map[string]float64{
+				"default": {
+					"256x256":   1,
+					"512x512":   1.125,
+					"1024x1024": 1.25,
+				},
+				"standard": {
+					"256x256":   1,
+					"512x512":   1.125,
+					"1024x1024": 1.25,
+				},
+			},
+		},
+	},
+	"dall-e-3": {
+		Ratio:           0,
+		CompletionRatio: 1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.04,
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        1,
+			QualitySizeMultipliers: map[string]map[string]float64{
+				"default": {
+					"1024x1024": 1,
+					"1024x1792": 2,
+					"1792x1024": 2,
+				},
+				"standard": {
+					"1024x1024": 1,
+					"1024x1792": 2,
+					"1792x1024": 2,
+				},
+				"hd": {
+					"1024x1024": 2,
+					"1024x1792": 3,
+					"1792x1024": 3,
+				},
+			},
+		},
+	},
+	"gpt-image-1": {
+		Ratio:            5.0 * ratio.MilliTokensUsd,
+		CachedInputRatio: 1.25 * ratio.MilliTokensUsd,
+		CompletionRatio:  1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.011,
+			DefaultSize:      "1024x1536",
+			DefaultQuality:   "high",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        1,
+			QualitySizeMultipliers: map[string]map[string]float64{
+				"default": {
+					"1024x1024": 1,
+					"1024x1536": 16.0 / 11,
+					"1536x1024": 16.0 / 11,
+				},
+				"low": {
+					"1024x1024": 1,
+					"1024x1536": 16.0 / 11,
+					"1536x1024": 16.0 / 11,
+				},
+				"medium": {
+					"1024x1024": 42.0 / 11,
+					"1024x1536": 63.0 / 11,
+					"1536x1024": 63.0 / 11,
+				},
+				"high": {
+					"1024x1024": 167.0 / 11,
+					"1024x1536": 250.0 / 11,
+					"1536x1024": 250.0 / 11,
+				},
+				"auto": {
+					"1024x1024": 167.0 / 11,
+					"1024x1536": 250.0 / 11,
+					"1536x1024": 250.0 / 11,
+				},
+			},
+		},
+	},
+	"gpt-image-1-mini": {
+		Ratio:            2.0 * ratio.MilliTokensUsd,
+		CachedInputRatio: 0.2 * ratio.MilliTokensUsd,
+		CompletionRatio:  1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.005,
+			DefaultSize:      "1024x1536",
+			DefaultQuality:   "high",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        1,
+			QualitySizeMultipliers: map[string]map[string]float64{
+				"default": {
+					"1024x1024": 1,
+					"1024x1536": 0.006 / 0.005,
+					"1536x1024": 0.006 / 0.005,
+				},
+				"low": {
+					"1024x1024": 1,
+					"1024x1536": 0.006 / 0.005,
+					"1536x1024": 0.006 / 0.005,
+				},
+				"medium": {
+					"1024x1024": 0.011 / 0.005,
+					"1024x1536": 0.015 / 0.005,
+					"1536x1024": 0.015 / 0.005,
+				},
+				"high": {
+					"1024x1024": 0.036 / 0.005,
+					"1024x1536": 0.052 / 0.005,
+					"1536x1024": 0.052 / 0.005,
+				},
+				"auto": {
+					"1024x1024": 0.036 / 0.005,
+					"1024x1536": 0.052 / 0.005,
+					"1536x1024": 0.052 / 0.005,
+				},
+			},
+		},
+	},
 
 	// Video Generation Models
 	// -------------------------------------

@@ -17,6 +17,19 @@ import (
 	"github.com/songquanpeng/one-api/relay/relaymode"
 )
 
+// imagenDefaultImageConfig returns baseline image pricing metadata for Imagen models.
+func imagenDefaultImageConfig(pricePerImage float64) *adaptor.ImagePricingConfig {
+	return &adaptor.ImagePricingConfig{
+		PricePerImageUsd: pricePerImage,
+		DefaultSize:      "1024x1024",
+		DefaultQuality:   "standard",
+		MinImages:        1,
+		SizeMultipliers: map[string]float64{
+			"1024x1024": 1,
+		},
+	}
+}
+
 // ModelRatios contains all supported models and their pricing ratios
 // Model list is derived from the keys of this map, eliminating redundancy
 // Based on VertexAI Imagen pricing: https://cloud.google.com/vertex-ai/generative-ai/pricing
@@ -25,28 +38,28 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// Imagen Pricing (source: official Vertex AI pricing doc, 2025-08)
 
 	// Imagen 4.0 GA (2025-08-14)
-	"imagen-4.0-generate-001":       {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04}, // Imagen 4
-	"imagen-4.0-ultra-generate-001": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.06}, // Imagen 4 Ultra
-	"imagen-4.0-fast-generate-001":  {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02}, // Imagen 4 Fast
+	"imagen-4.0-generate-001":       {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)}, // Imagen 4
+	"imagen-4.0-ultra-generate-001": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.06)}, // Imagen 4 Ultra
+	"imagen-4.0-fast-generate-001":  {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)}, // Imagen 4 Fast
 
 	// Imagen 4.0 Public Preview (retained for backward compatibility)
-	"imagen-4.0-generate-preview-06-06":       {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
-	"imagen-4.0-ultra-generate-preview-06-06": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.06},
-	"imagen-4.0-fast-generate-preview-06-06":  {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02},
-	"imagen-4.0-generate-preview-05-20":       {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
-	"imagen-4.0-ultra-generate-preview-05-20": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.06},
-	"imagen-4.0-fast-generate-preview-05-20":  {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02},
+	"imagen-4.0-generate-preview-06-06":       {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)},
+	"imagen-4.0-ultra-generate-preview-06-06": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.06)},
+	"imagen-4.0-fast-generate-preview-06-06":  {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)},
+	"imagen-4.0-generate-preview-05-20":       {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)},
+	"imagen-4.0-ultra-generate-preview-05-20": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.06)},
+	"imagen-4.0-fast-generate-preview-05-20":  {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)},
 
 	// Imagen 3.0 (GA)
-	"imagen-3.0-generate-001":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04}, // Imagen 3
-	"imagen-3.0-generate-002":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04}, // Imagen 3
-	"imagen-3.0-fast-generate-001": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02}, // Imagen 3 Fast
-	"imagen-3.0-capability-001":    {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04}, // Imagen 3 edit/customize
+	"imagen-3.0-generate-001":      {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)}, // Imagen 3
+	"imagen-3.0-generate-002":      {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)}, // Imagen 3
+	"imagen-3.0-fast-generate-001": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)}, // Imagen 3 Fast
+	"imagen-3.0-capability-001":    {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.04)}, // Imagen 3 edit/customize
 
 	// Imagen 2.x & 1.x (legacy imagegeneration@ versions)
-	"imagegeneration@006": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02}, // Imagen 2 (gen + edit)
-	"imagegeneration@005": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02}, // Imagen 2 early GA
-	"imagegeneration@002": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02}, // Imagen 1 (gen + edit)
+	"imagegeneration@006": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)}, // Imagen 2 (gen + edit)
+	"imagegeneration@005": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)}, // Imagen 2 early GA
+	"imagegeneration@002": {Ratio: 0, CompletionRatio: 1.0, Image: imagenDefaultImageConfig(0.02)}, // Imagen 1 (gen + edit)
 }
 
 // ModelList derived from ModelRatios for backward compatibility.

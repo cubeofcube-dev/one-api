@@ -9,7 +9,7 @@ import (
 func TestGetImageCostRatio_Dalle3Tiers(t *testing.T) {
 	// standard 1024x1024 -> 1x
 	r := &relaymodel.ImageRequest{Model: "dall-e-3", Size: "1024x1024", Quality: "standard"}
-	v, err := getImageCostRatio(r)
+	v, err := getImageCostRatio(r, nil)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -19,7 +19,7 @@ func TestGetImageCostRatio_Dalle3Tiers(t *testing.T) {
 
 	// standard 1024x1792 -> 2x
 	r = &relaymodel.ImageRequest{Model: "dall-e-3", Size: "1024x1792", Quality: "standard"}
-	v, err = getImageCostRatio(r)
+	v, err = getImageCostRatio(r, nil)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestGetImageCostRatio_Dalle3Tiers(t *testing.T) {
 
 	// hd 1024x1024 -> 2x
 	r = &relaymodel.ImageRequest{Model: "dall-e-3", Size: "1024x1024", Quality: "hd"}
-	v, err = getImageCostRatio(r)
+	v, err = getImageCostRatio(r, nil)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestGetImageCostRatio_Dalle3Tiers(t *testing.T) {
 
 	// hd 1024x1792 -> 3x
 	r = &relaymodel.ImageRequest{Model: "dall-e-3", Size: "1024x1792", Quality: "hd"}
-	v, err = getImageCostRatio(r)
+	v, err = getImageCostRatio(r, nil)
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}

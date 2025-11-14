@@ -27,7 +27,6 @@ import (
 	"github.com/songquanpeng/one-api/relay"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/billing"
-	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	"github.com/songquanpeng/one-api/relay/channeltype"
 	"github.com/songquanpeng/one-api/relay/meta"
 	relaymodel "github.com/songquanpeng/one-api/relay/model"
@@ -61,7 +60,7 @@ func extractAudioModelFromMultipart(c *gin.Context) string {
 	return req.Model
 }
 
-func countAudioTokens(c *gin.Context) (float64, error) {
+func countAudioTokens(c *gin.Context, tokensPerSecond float64) (float64, error) {
 	body, err := common.GetRequestBody(c)
 	if err != nil {
 		return 0, errors.WithStack(err)
@@ -79,11 +78,9 @@ func countAudioTokens(c *gin.Context) (float64, error) {
 	}
 	defer reqFp.Close()
 
-	ctxMeta := meta.GetByContext(c)
-
 	return helper.GetAudioTokens(gmw.Ctx(c),
 		reqFp,
-		ratio.GetAudioPromptTokensPerSecond(ctxMeta.ActualModelName))
+		tokensPerSecond)
 }
 
 func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatusCode {
@@ -120,10 +117,12 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 
 	// get channel-specific pricing if available
 	var channelModelRatio map[string]float64
+	var channelModelConfigs map[string]model.ModelConfigLocal
 	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
 		if channel, ok := channelModel.(*model.Channel); ok {
 			// Get from unified ModelConfigs only (after migration)
 			channelModelRatio = channel.GetModelRatioFromConfigs()
+			channelModelConfigs = channel.GetModelPriceConfigs()
 		}
 	}
 
@@ -132,6 +131,12 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	modelRatio := pricing.GetModelRatioWithThreeLayers(audioModel, channelModelRatio, pricingAdaptor)
 	groupRatio := c.GetFloat64(ctxkey.ChannelRatio)
 	ratio := modelRatio * groupRatio
+
+	audioPricingCfg, hasAudioPricing := pricing.ResolveAudioPricing(audioModel, channelModelConfigs, pricingAdaptor)
+	tokensPerSecond := pricing.DefaultAudioPromptTokensPerSecond
+	if hasAudioPricing && audioPricingCfg != nil && audioPricingCfg.PromptTokensPerSecond > 0 {
+		tokensPerSecond = audioPricingCfg.PromptTokensPerSecond
+	}
 	var quota int64
 	var preConsumedQuota int64
 	switch relayMode {
@@ -140,7 +145,7 @@ func RelayAudioHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		quota = preConsumedQuota
 	case relaymode.AudioTranscription,
 		relaymode.AudioTranslation:
-		audioTokens, err := countAudioTokens(c)
+		audioTokens, err := countAudioTokens(c, tokensPerSecond)
 		if err != nil {
 			return openai.ErrorWrapper(err, "count_audio_tokens_failed", http.StatusInternalServerError)
 		}

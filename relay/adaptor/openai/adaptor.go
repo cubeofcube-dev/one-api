@@ -27,7 +27,6 @@ import (
 	"github.com/songquanpeng/one-api/relay/adaptor/minimax"
 	"github.com/songquanpeng/one-api/relay/adaptor/novita"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai_compatible"
-	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	"github.com/songquanpeng/one-api/relay/channeltype"
 	"github.com/songquanpeng/one-api/relay/meta"
 	"github.com/songquanpeng/one-api/relay/model"
@@ -35,6 +34,7 @@ import (
 )
 
 type Adaptor struct {
+	adaptor.DefaultPricingMethods
 	// failed to inline image URL; sending original URL upstream
 	// logger.Logger.Warn("failed to inline image URL; sending original URL upstream",
 	//     zap.String("url", url),
@@ -1200,19 +1200,15 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 }
 
 func (a *Adaptor) GetModelRatio(modelName string) float64 {
-	pricing := a.GetDefaultModelPricing()
-	if price, exists := pricing[modelName]; exists {
+	if price, exists := ModelRatios[modelName]; exists {
 		return price.Ratio
 	}
-	// Fallback to global pricing for unknown models
-	return ratio.GetModelRatio(modelName, a.ChannelType)
+	return a.DefaultPricingMethods.GetModelRatio(modelName)
 }
 
 func (a *Adaptor) GetCompletionRatio(modelName string) float64 {
-	pricing := a.GetDefaultModelPricing()
-	if price, exists := pricing[modelName]; exists {
+	if price, exists := ModelRatios[modelName]; exists {
 		return price.CompletionRatio
 	}
-	// Fallback to global pricing for unknown models
-	return ratio.GetCompletionRatio(modelName, a.ChannelType)
+	return a.DefaultPricingMethods.GetCompletionRatio(modelName)
 }

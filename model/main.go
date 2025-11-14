@@ -192,6 +192,10 @@ func InitDB() {
 		// Don't fail startup for this migration, just log the error
 	}
 
+	if err = MigrateChannelLegacyImagePricing(); err != nil {
+		logger.Logger.Error("failed to migrate legacy image pricing", zap.Error(err))
+	}
+
 	logger.Logger.Info("database migration completed")
 }
 

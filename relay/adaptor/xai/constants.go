@@ -25,8 +25,36 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// "grok-2-1212":        {Ratio: 2.0 * ratio.MilliTokensUsd, CompletionRatio: 5.0},        // $2.00 input, $10.00 output
 
 	// Image generation model (no per-token charge)
-	"grok-2-image-1212": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.07}, // $0.07 per image
-	"grok-2-image":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.07}, // $0.07 per image
+	"grok-2-image-1212": {
+		Ratio:           0,
+		CompletionRatio: 1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.07,
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        10,
+			SizeMultipliers: map[string]float64{
+				"1024x1024": 1,
+			},
+		},
+	}, // $0.07 per image
+	"grok-2-image": {
+		Ratio:           0,
+		CompletionRatio: 1.0,
+		Image: &adaptor.ImagePricingConfig{
+			PricePerImageUsd: 0.07,
+			DefaultSize:      "1024x1024",
+			DefaultQuality:   "standard",
+			PromptTokenLimit: 4000,
+			MinImages:        1,
+			MaxImages:        10,
+			SizeMultipliers: map[string]float64{
+				"1024x1024": 1,
+			},
+		},
+	}, // $0.07 per image
 
 	// Legacy aliases for backward compatibility
 	// "grok-beta":        {Ratio: 2.0 * ratio.MilliTokensUsd, CompletionRatio: 5.0}, // Updated to match grok-2-1212
