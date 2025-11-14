@@ -75,7 +75,7 @@ data: [DONE]`
 	var combined strings.Builder
 	fullTextChunks := 0
 
-	for _, part := range strings.Split(body, "\n\n") {
+	for part := range strings.SplitSeq(body, "\n\n") {
 		part = strings.TrimSpace(part)
 		if !strings.HasPrefix(part, "data: ") {
 			continue

@@ -234,7 +234,7 @@ func SendEmail(subject string, receiver string, content string) error {
 	if shouldAuth() {
 		mechSet := make(map[string]struct{})
 		addMechanisms := func(raw string) {
-			for _, token := range strings.Fields(strings.ToUpper(raw)) {
+			for token := range strings.FieldsSeq(strings.ToUpper(raw)) {
 				mechSet[token] = struct{}{}
 			}
 		}

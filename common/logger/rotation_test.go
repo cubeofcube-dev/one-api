@@ -41,7 +41,6 @@ func TestRotationWindowBoundaries(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			start, next := tc.interval.windowBounds(tc.when)
 			require.Equal(t, tc.start, start)

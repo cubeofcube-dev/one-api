@@ -331,10 +331,7 @@ func postConsumeRerankQuota(ctx context.Context,
 	totalQuota int64,
 	modelRatio float64,
 	groupRatio float64) (quota int64) {
-	quota = totalQuota
-	if quota < 0 {
-		quota = 0
-	}
+	quota = max(totalQuota, 0)
 
 	quotaDelta := quota - preConsumedQuota
 

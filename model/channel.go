@@ -3,6 +3,7 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 	"sync"
@@ -193,9 +194,7 @@ func cloneChannelToolingConfig(cfg *ChannelToolingConfig) *ChannelToolingConfig 
 	}
 	if len(cfg.Pricing) > 0 {
 		clone.Pricing = make(map[string]ToolPricingLocal, len(cfg.Pricing))
-		for k, v := range cfg.Pricing {
-			clone.Pricing[k] = v
-		}
+		maps.Copy(clone.Pricing, cfg.Pricing)
 	}
 	return clone
 }

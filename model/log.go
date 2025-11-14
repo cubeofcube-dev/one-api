@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"time"
 
@@ -130,9 +131,7 @@ func CloneLogMetadata(src LogMetadata) LogMetadata {
 	}
 
 	clone := LogMetadata{}
-	for k, v := range src {
-		clone[k] = v
-	}
+	maps.Copy(clone, src)
 	return clone
 }
 
@@ -181,16 +180,12 @@ func AppendToolUsageMetadata(metadata LogMetadata, summary *ToolUsageSummary) Lo
 	}
 	if len(summary.Counts) > 0 {
 		countsCopy := make(map[string]int, len(summary.Counts))
-		for k, v := range summary.Counts {
-			countsCopy[k] = v
-		}
+		maps.Copy(countsCopy, summary.Counts)
 		entry["counts"] = countsCopy
 	}
 	if len(summary.CostByTool) > 0 {
 		costCopy := make(map[string]int64, len(summary.CostByTool))
-		for k, v := range summary.CostByTool {
-			costCopy[k] = v
-		}
+		maps.Copy(costCopy, summary.CostByTool)
 		entry["cost_by_tool"] = costCopy
 	}
 

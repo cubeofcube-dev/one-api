@@ -25,7 +25,6 @@ func TestIsGitHubModelsBaseURL(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, IsGitHubModelsBaseURL(tc.baseURL))
@@ -56,7 +55,6 @@ func TestNormalizeGitHubRequestPath(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			require.Equal(t, tc.expected, NormalizeGitHubRequestPath(tc.path, tc.mode))

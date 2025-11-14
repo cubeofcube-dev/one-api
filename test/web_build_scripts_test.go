@@ -25,7 +25,6 @@ func TestCreateReactThemesCleanupBuildOutput(t *testing.T) {
 	}
 
 	for theme, expectedTarget := range themes {
-		theme := theme
 		expectedTarget := expectedTarget
 
 		t.Run(theme, func(t *testing.T) {

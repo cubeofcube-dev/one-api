@@ -678,9 +678,7 @@ func normalizeClaudeToolChoice(choice any) any {
 	case map[string]any:
 		// Clone the map so we do not mutate the original request payload.
 		cloned := make(map[string]any, len(src))
-		for k, v := range src {
-			cloned[k] = v
-		}
+		maps.Copy(cloned, src)
 
 		typeVal, _ := cloned["type"].(string)
 		switch strings.ToLower(typeVal) {
@@ -726,9 +724,7 @@ func cloneMap(input map[string]any) map[string]any {
 		return nil
 	}
 	cloned := make(map[string]any, len(input))
-	for k, v := range input {
-		cloned[k] = v
-	}
+	maps.Copy(cloned, input)
 	return cloned
 }
 

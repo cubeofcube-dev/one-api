@@ -39,9 +39,7 @@ func run(ctx context.Context, logger glog.Logger) error {
 		results   []testResult
 		collectWg sync.WaitGroup
 	)
-	collectWg.Add(1)
-	go func() {
-		defer collectWg.Done()
+	collectWg.Go(func() {
 		for res := range resultsCh {
 			results = append(results, res)
 			switch {
@@ -77,7 +75,7 @@ func run(ctx context.Context, logger glog.Logger) error {
 				)
 			}
 		}
-	}()
+	})
 
 	grp, grpCtx := errgroup.WithContext(ctx)
 	for _, modelName := range cfg.Models {

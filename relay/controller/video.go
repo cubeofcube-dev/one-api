@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"math"
 	"net/http"
 	"strings"
@@ -119,10 +120,7 @@ func RelayVideoHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	multiplier := videoPricing.EffectiveMultiplier(resolutionKey)
 	costUsd := videoPricing.PerSecondUsd * multiplier * durationSeconds
 	groupRatio := c.GetFloat64(ctxkey.ChannelRatio)
-	usedQuota := int64(math.Ceil(costUsd * billingratio.QuotaPerUsd * groupRatio))
-	if usedQuota < 0 {
-		usedQuota = 0
-	}
+	usedQuota := max(int64(math.Ceil(costUsd*billingratio.QuotaPerUsd*groupRatio)), 0)
 
 	tokenId := c.GetInt(ctxkey.TokenId)
 	userId := meta.UserId
@@ -260,9 +258,7 @@ func convertVideoLocalToAdaptor(local *model.VideoPricingLocal) *adaptor.VideoPr
 	}
 	if len(local.ResolutionMultipliers) > 0 {
 		cfg.ResolutionMultipliers = make(map[string]float64, len(local.ResolutionMultipliers))
-		for key, value := range local.ResolutionMultipliers {
-			cfg.ResolutionMultipliers[key] = value
-		}
+		maps.Copy(cfg.ResolutionMultipliers, local.ResolutionMultipliers)
 	}
 	return cfg
 }

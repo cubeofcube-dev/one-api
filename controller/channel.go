@@ -3,6 +3,7 @@ package controller
 import (
 	"bytes"
 	"encoding/json"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -83,9 +84,7 @@ func convertAdaptorVideoPricing(cfg *adaptor.VideoPricingConfig) *model.VideoPri
 	}
 	if len(cfg.ResolutionMultipliers) > 0 {
 		local.ResolutionMultipliers = make(map[string]float64, len(cfg.ResolutionMultipliers))
-		for key, value := range cfg.ResolutionMultipliers {
-			local.ResolutionMultipliers[key] = value
-		}
+		maps.Copy(local.ResolutionMultipliers, cfg.ResolutionMultipliers)
 	}
 	return local
 }

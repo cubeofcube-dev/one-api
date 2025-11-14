@@ -2,6 +2,7 @@ package adaptor
 
 import (
 	"io"
+	"maps"
 	"net/http"
 	"strconv"
 	"strings"
@@ -81,9 +82,7 @@ func (cfg *VideoPricingConfig) Clone() *VideoPricingConfig {
 	}
 	if len(cfg.ResolutionMultipliers) > 0 {
 		clone.ResolutionMultipliers = make(map[string]float64, len(cfg.ResolutionMultipliers))
-		for k, v := range cfg.ResolutionMultipliers {
-			clone.ResolutionMultipliers[k] = v
-		}
+		maps.Copy(clone.ResolutionMultipliers, cfg.ResolutionMultipliers)
 	}
 	return clone
 }

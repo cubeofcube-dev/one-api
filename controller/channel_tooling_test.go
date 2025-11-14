@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -85,9 +86,7 @@ func TestUpdateChannelToolingLifecycle(t *testing.T) {
 
 	// Clear tooling configuration by sending an empty string in the payload
 	clearPayload := make(map[string]any, len(updatePayload))
-	for k, v := range updatePayload {
-		clearPayload[k] = v
-	}
+	maps.Copy(clearPayload, updatePayload)
 	clearPayload["tooling"] = ""
 
 	clearBody, err := json.Marshal(clearPayload)
