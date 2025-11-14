@@ -16,7 +16,7 @@ describe("TimestampDisplay", () => {
   it("shows the UTC timestamp inside the tooltip", async () => {
     const user = userEvent.setup()
     const timestamp = 1728844800
-    const expectedTooltip = `UTC: ${formatTimestamp(timestamp, { timeZone: "UTC" })}`
+    const expectedTooltip = `${formatTimestamp(timestamp, { timeZone: "UTC" })}Z`
 
     render(<TimestampDisplay timestamp={timestamp} />)
 

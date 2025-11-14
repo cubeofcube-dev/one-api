@@ -393,7 +393,7 @@ export function ChannelsPage() {
       cell: ({ row }) => {
         const responseTime = row.original.response_time
         const testTime = row.original.test_time
-        const responseTitle = `Response time: ${responseTime ? `${responseTime}ms` : 'Not tested'}${testTime ? ` (Tested: ${formatTimestamp(testTime)} / UTC: ${formatTimestamp(testTime, { timeZone: 'UTC' })})` : ''}`
+        const responseTitle = `Response time: ${responseTime ? `${responseTime}ms` : 'Not tested'}${testTime ? ` (Tested: ${formatTimestamp(testTime)} / ${formatTimestamp(testTime, { timeZone: 'UTC' })}Z)` : ''}`
         return (
           <div className="text-center" title={responseTitle}>
             {formatResponseTime(responseTime)}

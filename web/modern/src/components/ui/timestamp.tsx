@@ -32,7 +32,7 @@ export function TimestampDisplay({
 
   const localDisplay = formatTimestamp(timestamp)
   const utcDisplay = formatTimestamp(timestamp, { timeZone: "UTC" })
-  const tooltipLabel = tooltipPrefix ? `${tooltipPrefix}: ${utcDisplay}` : `UTC: ${utcDisplay}`
+  const tooltipLabel = tooltipPrefix ? `${tooltipPrefix}: ${utcDisplay}` : `${utcDisplay}Z`
 
   return (
     <TooltipProvider delayDuration={150}>
