@@ -197,12 +197,12 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	// ⚠️ should also update relay/billing/ratio/image.go when changing these values.
 	// -------------------------------------
 
-	// Policy: If a model is billed per image, set Ratio=0 and use ImagePriceUsd.
-	// GPT Image 1 image generations are billed per image by size and fidelity tiers; tokens billed elsewhere do not apply to /images endpoints.
+	// Policy: If a model is billed per image only, set Ratio=0 and use ImagePriceUsd.
+	// GPT Image models bill both prompt tokens and per-image output; keep Ratio in sync with prompt pricing while retaining ImagePriceUsd for renders.
 	"dall-e-2":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.016},
 	"dall-e-3":         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},
-	"gpt-image-1":      {Ratio: 0, CachedInputRatio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
-	"gpt-image-1-mini": {Ratio: 0, CachedInputRatio: 0.2 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
+	"gpt-image-1":      {Ratio: 5.0 * ratio.MilliTokensUsd, CachedInputRatio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.011},
+	"gpt-image-1-mini": {Ratio: 2.0 * ratio.MilliTokensUsd, CachedInputRatio: 0.2 * ratio.MilliTokensUsd, CompletionRatio: 1.0, ImagePriceUsd: 0.005},
 
 	// Video Generation Models
 	// -------------------------------------

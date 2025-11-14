@@ -11,6 +11,7 @@ import (
 	"github.com/Laisky/errors/v2"
 	gmw "github.com/Laisky/gin-middlewares/v7"
 	gutils "github.com/Laisky/go-utils/v6"
+	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/sync/singleflight"
 
@@ -191,6 +192,7 @@ func GetModelsDisplay(c *gin.Context) {
 	// If logged-in, filter by user's allowed models; otherwise, show all supported models grouped by channel type
 	userId := c.GetInt(ctxkey.Id)
 	keyword := strings.ToLower(strings.TrimSpace(c.Query("keyword")))
+	lg := gmw.GetLogger(c)
 
 	// Helper to build pricing info map for a channel with given model names
 	convertRatioToPrice := func(r float64) float64 {
@@ -243,7 +245,7 @@ func GetModelsDisplay(c *gin.Context) {
 			var imagePrice float64
 
 			if cfg, ok := pricing[actual]; ok {
-				if cfg.ImagePriceUsd > 0 && cfg.Ratio == 0 {
+				if cfg.ImagePriceUsd > 0 && cfg.Ratio == 0 && cfg.CachedInputRatio <= 0 {
 					result[modelName] = ModelDisplayInfo{
 						MaxTokens:        cfg.MaxTokens,
 						ImagePrice:       cfg.ImagePriceUsd,
@@ -256,6 +258,15 @@ func GetModelsDisplay(c *gin.Context) {
 				cachedInputPrice = inputPrice
 				if cfg.CachedInputRatio != 0 {
 					cachedInputPrice = convertRatioToPrice(cfg.CachedInputRatio)
+					if inputPrice == 0 && cfg.CachedInputRatio > 0 {
+						if lg != nil {
+							lg.Debug("model display fell back to cached input ratio",
+								zap.String("channel", channel.Name),
+								zap.String("resolved_model", actual),
+								zap.Float64("cached_ratio", cfg.CachedInputRatio))
+						}
+						inputPrice = cachedInputPrice
+					}
 				}
 				outputPrice = inputPrice * cfg.CompletionRatio
 				maxTokens = cfg.MaxTokens

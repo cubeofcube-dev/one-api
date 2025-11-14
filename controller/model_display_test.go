@@ -195,6 +195,58 @@ func TestGetModelsDisplay_AnonymousUsesConfiguredModels(t *testing.T) {
 	require.InDelta(t, expected4oCached, gpt4o.CachedInputPrice, 1e-6)
 }
 
+// TestGetModelsDisplay_GptImageShowsTokenPrice verifies image models that bill prompt tokens expose input pricing.
+func TestGetModelsDisplay_GptImageShowsTokenPrice(t *testing.T) {
+	setupModelsDisplayTestEnv(t)
+	gin.SetMode(gin.TestMode)
+	channel := &model.Channel{
+		Name:   "Image Channel",
+		Type:   channeltype.OpenAI,
+		Status: model.ChannelStatusEnabled,
+		Models: "gpt-image-1",
+		Group:  "public",
+	}
+	require.NoError(t, model.DB.Create(channel).Error)
+
+	router := gin.New()
+	router.GET("/api/models/display", func(c *gin.Context) {
+		GetModelsDisplay(c)
+	})
+
+	req := httptest.NewRequest("GET", "/api/models/display", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp ModelsDisplayResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.True(t, resp.Success)
+
+	key := fmt.Sprintf("%s:%s", channeltype.IdToName(channel.Type), channel.Name)
+	info, ok := resp.Data[key]
+	require.True(t, ok, "expected channel %s in response", key)
+	modelInfo, ok := info.Models["gpt-image-1"]
+	require.True(t, ok, "expected gpt-image-1 in model listing")
+
+	convertRatioToPrice := func(r float64) float64 {
+		if r <= 0 {
+			return 0
+		}
+		if r < 0.001 {
+			return r * 1_000_000
+		}
+		return (r * 1_000_000) / ratio.QuotaPerUsd
+	}
+
+	pricingCfg := openai.ModelRatios["gpt-image-1"]
+	expectedInput := convertRatioToPrice(pricingCfg.Ratio)
+	require.InDelta(t, expectedInput, modelInfo.InputPrice, 1e-6)
+	expectedCached := convertRatioToPrice(pricingCfg.CachedInputRatio)
+	require.InDelta(t, expectedCached, modelInfo.CachedInputPrice, 1e-6)
+	require.InDelta(t, pricingCfg.ImagePriceUsd, modelInfo.ImagePrice, 1e-9)
+}
+
 // TestGetModelsDisplay_LoggedInFiltersUnsupportedModels ensures logged-in users don't see models outside their allowed set
 func TestGetModelsDisplay_LoggedInFiltersUnsupportedModels(t *testing.T) {
 	setupModelsDisplayTestEnv(t)
