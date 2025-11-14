@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { TimestampDisplay } from '@/components/ui/timestamp'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useResponsive } from '@/hooks/useResponsive'
 import { useNotifications } from '@/components/ui/notifications'
@@ -102,12 +103,6 @@ function StatusPageImpl() {
   useEffect(() => {
     fetchStatusData(currentPage, pageSize)
   }, [currentPage, pageSize, fetchStatusData])
-
-  const formatTimestamp = (timestamp: number): string => {
-    if (!timestamp) return 'Never'
-    const date = new Date(timestamp * 1000)
-    return date.toLocaleString()
-  }
 
   const formatResponseTime = (responseTime: number): string => {
     if (responseTime === 0) return 'N/A'
@@ -331,7 +326,11 @@ function StatusPageImpl() {
                         <Zap className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Last Test</span>
                       </div>
-                      <span className="text-sm font-mono">{formatTimestamp(channel.response.test_time)}</span>
+                      <TimestampDisplay
+                        timestamp={channel.response.test_time || null}
+                        className="text-sm font-mono"
+                        fallback="Never"
+                      />
                     </div>
 
                     {/* Created Time */}
@@ -340,7 +339,11 @@ function StatusPageImpl() {
                         <Calendar className="w-4 h-4 text-muted-foreground" />
                         <span className="text-sm text-muted-foreground">Created</span>
                       </div>
-                      <span className="text-sm font-mono">{formatTimestamp(channel.response.created_time)}</span>
+                      <TimestampDisplay
+                        timestamp={channel.response.created_time || null}
+                        className="text-sm font-mono"
+                        fallback="Never"
+                      />
                     </div>
                   </CardContent>
                 </Card>

@@ -15,7 +15,8 @@ import { Input } from '@/components/ui/input'
 import { useForm } from 'react-hook-form'
 import * as z from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { formatTimestamp, cn } from '@/lib/utils'
+import { cn } from '@/lib/utils'
+import { TimestampDisplay } from '@/components/ui/timestamp'
 
 interface RedemptionRow {
   id: number
@@ -123,9 +124,7 @@ export function RedemptionsPage() {
     {
       header: 'Created',
       cell: ({ row }) => (
-        <span className="text-sm" title={formatTimestamp(row.original.created_time)}>
-          {formatTimestamp(row.original.created_time)}
-        </span>
+        <TimestampDisplay timestamp={row.original.created_time} className="text-sm" />
       )
     },
     {

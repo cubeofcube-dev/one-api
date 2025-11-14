@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { TimestampDisplay } from '@/components/ui/timestamp'
 import { formatTimestamp, fromDateTimeLocal, toDateTimeLocal, renderQuota, cn } from '@/lib/utils'
 import { useAuthStore } from '@/lib/stores/auth'
 import { RefreshCw, Eye, EyeOff, Copy, FileDown, Filter } from 'lucide-react'
@@ -205,8 +206,15 @@ export function LogsPage() {
           content: (
             <div className="flex flex-col">
               <div className="font-medium">{log.model_name}</div>
-              <div className="text-sm text-muted-foreground">
-                {formatTimestamp(log.created_at)} • {getLogTypeBadge(log.type)} • Quota: {renderQuota(log.quota)}
+              <div className="text-sm text-muted-foreground flex flex-wrap items-center gap-2">
+                <TimestampDisplay
+                  timestamp={log.created_at}
+                  className="font-mono text-xs"
+                />
+                <span>•</span>
+                {getLogTypeBadge(log.type)}
+                <span>•</span>
+                <span>Quota: {renderQuota(log.quota)}</span>
               </div>
             </div>
           )
@@ -327,9 +335,11 @@ export function LogsPage() {
       header: 'Time',
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
-          <span className="font-mono text-xs" title={row.original.request_id || ''}>
-            {formatTimestamp(row.original.created_at)}
-          </span>
+          <TimestampDisplay
+            timestamp={row.original.created_at}
+            className="font-mono text-xs"
+            title={row.original.request_id || undefined}
+          />
           {row.original.request_id && <CopyButton text={row.original.request_id} />}
         </div>
       ),

@@ -128,7 +128,7 @@ describe('LogDetailsModal', () => {
 
     expect(screen.getByText(/log entry details/i)).toBeInTheDocument()
     expect(screen.getAllByText(/consume/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(formatTimestamp(log.created_at))).toBeInTheDocument()
+    expect(screen.getAllByText(formatTimestamp(log.created_at)).length).toBeGreaterThan(0)
     expect(screen.getByText(renderQuota(log.quota))).toBeInTheDocument()
     expect(screen.getByText('gpt-4')).toBeInTheDocument()
     expect(screen.getByText('prod-token')).toBeInTheDocument()

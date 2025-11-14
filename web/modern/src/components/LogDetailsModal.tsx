@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn, formatTimestamp, renderQuota } from '@/lib/utils'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { cn, renderQuota } from '@/lib/utils'
 import { LOG_TYPES, getLogTypeLabel } from '@/lib/constants/logs'
 import type { LogEntry, LogMetadata } from '@/types/log'
 import { useAuthStore } from '@/lib/stores/auth'
@@ -390,9 +391,11 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
                 <div className="space-y-1">
                   <div className="flex flex-wrap items-center gap-3">
                     <span className="font-medium">{event.title}</span>
-                    <span className="font-mono text-xs text-muted-foreground">
-                      {timestamp ? formatTimestamp(Math.floor(timestamp / 1000)) : 'N/A'}
-                    </span>
+                    <TimestampDisplay
+                      timestamp={timestamp ? Math.floor(timestamp / 1000) : null}
+                      className="font-mono text-xs text-muted-foreground"
+                      fallback="N/A"
+                    />
                     {duration && (
                       <Badge variant="outline" className="text-xs">
                         +{formatDuration(duration)}
@@ -447,14 +450,20 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     const latencyValue = formatLatency(log.elapsed_time)
     const latencyColor = getLatencyColor(log.elapsed_time)
     const logTypeLabel = getLogTypeLabel(log.type)
-    const createdAtDisplay = formatTimestamp(log.created_at)
-
     return (
       <div className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailItem label="Log ID" value={<span className="font-mono text-sm">{log.id}</span>} />
           <DetailItem label="Type" value={<Badge variant="outline">{logTypeLabel}</Badge>} />
-          <DetailItem label="Recorded At" value={<span className="font-mono text-sm">{createdAtDisplay}</span>} />
+          <DetailItem
+            label="Recorded At"
+            value={(
+              <TimestampDisplay
+                timestamp={log.created_at}
+                className="font-mono text-sm"
+              />
+            )}
+          />
           <DetailItem label="Model" value={log.model_name || '—'} />
           <DetailItem label="User" value={username} />
           <DetailItem label="Token" value={log.token_name || '—'} />
@@ -521,7 +530,11 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
           {log && (
             <DialogDescription className="flex items-center gap-2 text-sm">
               <Hash className="h-4 w-4" />
-              Recorded at {formatTimestamp(log.created_at)}
+              Recorded at{' '}
+              <TimestampDisplay
+                timestamp={log.created_at}
+                className="font-mono text-xs"
+              />
             </DialogDescription>
           )}
         </DialogHeader>

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { api } from '@/lib/api'
 import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { TimestampDisplay } from '@/components/ui/timestamp'
 import { formatNumber, cn } from '@/lib/utils'
 
 // Quota conversion utility
@@ -131,7 +132,7 @@ export function DashboardPage() {
   const [dashUser, setDashUser] = useState<string>('all')
   const [userOptions, setUserOptions] = useState<Array<{ id: number; username: string; display_name: string }>>([])
   const [loading, setLoading] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null)
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const [statisticsMetric, setStatisticsMetric] = useState<'tokens' | 'requests' | 'expenses'>('tokens')
   const [dateError, setDateError] = useState<string>('')
 
@@ -293,7 +294,7 @@ export function DashboardPage() {
           }))
         )
 
-        setLastUpdated(new Date().toLocaleString())
+        setLastUpdated(Math.floor(Date.now() / 1000))
         setDateError('')
       } else {
         setDateError(message || 'Failed to fetch dashboard data')
@@ -414,7 +415,7 @@ export function DashboardPage() {
           }))
         )
 
-        setLastUpdated(new Date().toLocaleString())
+        setLastUpdated(Math.floor(Date.now() / 1000))
         setDateError('')
       } else {
         setDateError(message || 'Failed to fetch dashboard data')
@@ -890,7 +891,13 @@ export function DashboardPage() {
             <p className="text-sm text-muted-foreground">Totals and leaders for the selected time range</p>
           </div>
           {lastUpdated && (
-            <span className="text-xs text-muted-foreground">Updated: {lastUpdated}</span>
+            <span className="text-xs text-muted-foreground flex items-center gap-1">
+              Updated:
+              <TimestampDisplay
+                timestamp={lastUpdated}
+                className="font-mono"
+              />
+            </span>
           )}
         </div>
 

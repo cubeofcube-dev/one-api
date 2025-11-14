@@ -11,8 +11,8 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { cn } from '@/lib/utils'
-import { renderQuota } from '@/lib/utils'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { cn, renderQuota } from '@/lib/utils'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
 import { Plus, Copy, Eye, EyeOff, Check } from 'lucide-react'
 import { useAuthStore } from '@/lib/stores/auth'
@@ -44,13 +44,6 @@ const TOKEN_STATUS = {
 const formatQuota = (quota: number, unlimited = false) => {
   if (unlimited) return 'Unlimited'
   return renderQuota(quota)
-}
-
-// Use unified timestamp formatting (local timezone) from utils
-import { formatTimestamp } from '@/lib/utils'
-const formatTimestampLocal = (timestamp: number) => {
-  if (timestamp === -1) return 'Never'
-  return formatTimestamp(timestamp)
 }
 
 const getStatusBadge = (status: number) => {
@@ -371,21 +364,33 @@ export function TokensPage() {
       accessorKey: 'created_time',
       header: 'Created',
       cell: ({ row }) => (
-        <span className="text-sm">{formatTimestampLocal(row.original.created_time)}</span>
+        <TimestampDisplay
+          timestamp={row.original.created_time}
+          className="text-sm font-mono"
+          fallback="—"
+        />
       ),
     },
     {
       accessorKey: 'accessed_time',
       header: 'Last Access',
       cell: ({ row }) => (
-        <span className="text-sm">{formatTimestampLocal(row.original.accessed_time)}</span>
+        <TimestampDisplay
+          timestamp={row.original.accessed_time > 0 ? row.original.accessed_time : null}
+          className="text-sm font-mono"
+          fallback="Never"
+        />
       ),
     },
     {
       accessorKey: 'expired_time',
       header: 'Expires',
       cell: ({ row }) => (
-        <span className="text-sm">{formatTimestampLocal(row.original.expired_time === 0 ? -1 : row.original.expired_time)}</span>
+        <TimestampDisplay
+          timestamp={row.original.expired_time > 0 ? row.original.expired_time : null}
+          className="text-sm font-mono"
+          fallback="Never"
+        />
       ),
     },
     {

@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { formatTimestamp, cn } from '@/lib/utils'
+import { TimestampDisplay } from '@/components/ui/timestamp'
 import { Plus, TestTube, RefreshCw, Trash2, Settings, AlertCircle } from 'lucide-react'
 import { useNotifications } from '@/components/ui/notifications'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
@@ -389,16 +390,21 @@ export function ChannelsPage() {
     {
       accessorKey: 'response_time',
       header: 'Response',
-      cell: ({ row }) => (
-        <div className="text-center" title={`Response time: ${row.original.response_time ? `${row.original.response_time}ms` : 'Not tested'}${row.original.test_time ? ` (Tested: ${formatTimestamp(row.original.test_time)})` : ''}`}>
-          {formatResponseTime(row.original.response_time)}
-          {row.original.test_time && (
-            <div className="text-xs text-muted-foreground">
-              {formatTimestamp(row.original.test_time)}
-            </div>
-          )}
-        </div>
-      ),
+      cell: ({ row }) => {
+        const responseTime = row.original.response_time
+        const testTime = row.original.test_time
+        const responseTitle = `Response time: ${responseTime ? `${responseTime}ms` : 'Not tested'}${testTime ? ` (Tested: ${formatTimestamp(testTime)} / UTC: ${formatTimestamp(testTime, { timeZone: 'UTC' })})` : ''}`
+        return (
+          <div className="text-center" title={responseTitle}>
+            {formatResponseTime(responseTime)}
+            {testTime && (
+              <div className="text-xs text-muted-foreground">
+                <TimestampDisplay timestamp={testTime} className="font-mono" />
+              </div>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: 'testing_model',
@@ -435,7 +441,7 @@ export function ChannelsPage() {
       accessorKey: 'created_time',
       header: 'Created',
       cell: ({ row }) => (
-        <span className="text-sm">{formatTimestamp(row.original.created_time)}</span>
+        <TimestampDisplay timestamp={row.original.created_time} className="text-sm font-mono" />
       ),
     },
     {
