@@ -7,6 +7,19 @@ import (
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 )
 
+// geminiImageConfig returns the baseline image metadata for Gemini image generation models.
+func geminiImageConfig(pricePerImage float64) *adaptor.ImagePricingConfig {
+	return &adaptor.ImagePricingConfig{
+		PricePerImageUsd: pricePerImage,
+		DefaultSize:      "1024x1024",
+		DefaultQuality:   "standard",
+		MinImages:        1,
+		SizeMultipliers: map[string]float64{
+			"1024x1024": 1,
+		},
+	}
+}
+
 // ModelRatios contains all supported models and their pricing ratios
 // Model list is derived from the keys of this map, eliminating redundancy
 // Based on Google AI pricing: https://ai.google.dev/pricing
@@ -53,8 +66,8 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 	"gemini-2.5-flash-preview-04-17":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
 	"gemini-2.5-flash-preview-05-20":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
 	"gemini-2.5-flash-preview-09-2025":      {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
-	"gemini-2.5-flash-image":                {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, ImagePriceUsd: 0.039 * ratio.QuotaPerUsd},
-	"gemini-2.5-flash-image-preview":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, ImagePriceUsd: 0.039 * ratio.QuotaPerUsd},
+	"gemini-2.5-flash-image":                {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, Image: geminiImageConfig(0.039)},
+	"gemini-2.5-flash-image-preview":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, Image: geminiImageConfig(0.039)},
 
 	// Gemini 2.5 Pro Models
 	"gemini-2.5-pro":               {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 8},

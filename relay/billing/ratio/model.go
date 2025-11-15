@@ -33,81 +33,6 @@ const (
 //
 // For new models, add them to the appropriate adapter's GetDefaultModelPricing() method.
 
-// AudioRatio represents the price ratio between audio tokens and text tokens
-var AudioRatio = map[string]float64{
-	"gpt-4o-audio-preview":                 16,
-	"gpt-4o-audio-preview-2024-12-17":      16,
-	"gpt-4o-audio-preview-2024-10-01":      40,
-	"gpt-4o-mini-audio-preview":            10 / 0.15,
-	"gpt-4o-mini-audio-preview-2024-12-17": 10 / 0.15,
-	"gpt-4o-transcribe":                    6 / 2.5,
-	"gpt-4o-mini-transcribe":               3 / 1.25,
-}
-
-// GetAudioPromptRatio returns the audio prompt ratio for the given model.
-func GetAudioPromptRatio(actualModelName string) float64 {
-	var v float64
-	if ratio, ok := AudioRatio[actualModelName]; ok {
-		v = ratio
-	} else {
-		v = 16
-	}
-
-	return v
-}
-
-// AudioCompletionRatio is the completion ratio for audio models.
-var AudioCompletionRatio = map[string]float64{
-	"whisper-1":                            0,
-	"gpt-4o-audio-preview":                 2,
-	"gpt-4o-audio-preview-2024-12-17":      2,
-	"gpt-4o-audio-preview-2024-10-01":      2,
-	"gpt-4o-mini-audio-preview":            2,
-	"gpt-4o-mini-audio-preview-2024-12-17": 2,
-}
-
-// GetAudioCompletionRatio returns the completion ratio for audio models.
-func GetAudioCompletionRatio(actualModelName string) float64 {
-	var v float64
-	if ratio, ok := AudioCompletionRatio[actualModelName]; ok {
-		v = ratio
-	} else {
-		v = 2
-	}
-
-	return v
-}
-
-// AudioTokensPerSecond is the number of audio tokens per second for each model.
-var AudioPromptTokensPerSecond = map[string]float64{
-	// Whisper API price is $0.0001/sec. One-api's historical ratio is 15,
-	// corresponding to $0.03/kilo_tokens.
-	// So the audio tokens per second is 15 / 0.03 = 500.
-	// But we use 10 here to be conservative.
-	"whisper-1":                            10,
-	"gpt-4o-audio-preview":                 10,
-	"gpt-4o-audio-preview-2024-12-17":      10,
-	"gpt-4o-audio-preview-2024-10-01":      10,
-	"gpt-4o-mini-audio-preview":            10,
-	"gpt-4o-mini-audio-preview-2024-12-17": 10,
-	"gpt-4o-transcribe":                    10,
-	"gpt-4o-mini-transcribe":               10,
-	"gpt-4o-mini-tts":                      10,
-}
-
-// GetAudioPromptTokensPerSecond returns the number of audio tokens per second
-// for the given model.
-func GetAudioPromptTokensPerSecond(actualModelName string) float64 {
-	var v float64
-	if ratio, ok := AudioPromptTokensPerSecond[actualModelName]; ok {
-		v = ratio
-	} else {
-		v = 10
-	}
-
-	return v
-}
-
 // LEGACY FUNCTIONS - These functions are deprecated and should only be used for legacy compatibility.
 // New code should use the two-layer approach directly:
 // 1. Check channel-specific overrides first
@@ -158,14 +83,6 @@ func GetModelRatioWithChannel(actualModelName string, channelType int, channelMo
 	// Note: We can't import pricing package here due to import cycles,
 	// so we skip this layer in the legacy function.
 	// Modern code should use pricing.GetModelRatioWithThreeLayers() instead.
-
-	// Layer 4: Legacy fallback - check remaining global maps for special models
-	for _, targetName := range []string{nameWithChannel, actualModelName} {
-		// Check audio models (still needed for special audio pricing)
-		if ratio, ok := AudioRatio[targetName]; ok {
-			return ratio
-		}
-	}
 
 	// Final fallback: reasonable default
 	logger.Logger.Warn(fmt.Sprintf("Legacy pricing fallback for model %s (channel type: %d), consider migrating to three-layer pricing", actualModelName, channelType))
@@ -219,14 +136,6 @@ func GetCompletionRatioWithChannel(name string, channelType int, channelCompleti
 	// Note: We can't import pricing package here due to import cycles,
 	// so we skip this layer in the legacy function.
 	// Modern code should use pricing.GetCompletionRatioWithThreeLayers() instead.
-
-	// Layer 4: Legacy fallback - check remaining global maps for special models
-	for _, targetName := range []string{model, name} {
-		// Check audio completion ratios (still needed for special audio pricing)
-		if ratio, ok := AudioCompletionRatio[targetName]; ok {
-			return ratio
-		}
-	}
 
 	// Final fallback: reasonable default
 	logger.Logger.Warn(fmt.Sprintf("completion ratio not found for model: %s (channel type: %d), using default value 1, consider migrating to three-layer pricing", name, channelType))

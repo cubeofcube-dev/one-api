@@ -22,6 +22,7 @@ import (
 	"github.com/songquanpeng/one-api/common/tracing"
 	"github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay"
+	relayadaptor "github.com/songquanpeng/one-api/relay/adaptor"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/adaptor/replicate"
 	billingratio "github.com/songquanpeng/one-api/relay/billing/ratio"
@@ -43,33 +44,10 @@ func getImageRequest(c *gin.Context, _ int) (*relaymodel.ImageRequest, error) {
 		imageRequest.N = 1
 	}
 
-	if imageRequest.Size == "" {
-		switch imageRequest.Model {
-		case "dall-e-2", "dall-e-3":
-			imageRequest.Size = "1024x1024"
-		case "gpt-image-1", "gpt-image-1-mini":
-			imageRequest.Size = "1024x1536"
-		case "grok-2-image", "grok-2-image-1212":
-			imageRequest.Size = "1024x1024" // Default size for Grok-2 image generation
-		}
-	}
 	if imageRequest.Model == "" {
 		imageRequest.Model = "dall-e-2"
 	}
 
-	if imageRequest.Quality == "" {
-		switch imageRequest.Model {
-		case "dall-e-2":
-			imageRequest.Quality = "standard"
-		case "dall-e-3":
-			// OpenAI only supports 'standard' and 'hd' for DALL·E 3; 'auto' is invalid
-			imageRequest.Quality = "standard"
-		case "gpt-image-1", "gpt-image-1-mini":
-			imageRequest.Quality = "high"
-		case "grok-2-image", "grok-2-image-1212":
-			imageRequest.Quality = "standard" // Default quality for Grok-2 image generation
-		}
-	}
 	if strings.HasPrefix(imageRequest.Model, "gpt-image-") {
 		imageRequest.ResponseFormat = nil
 	}
@@ -77,53 +55,203 @@ func getImageRequest(c *gin.Context, _ int) (*relaymodel.ImageRequest, error) {
 	return imageRequest, nil
 }
 
-func isValidImageSize(model string, size string) bool {
-	if model == "cogview-3" || billingratio.ImageSizeRatios[model] == nil {
+func normalizeImageSizeKey(value string) string {
+	trimmed := strings.TrimSpace(strings.ToLower(value))
+	trimmed = strings.ReplaceAll(trimmed, "×", "x")
+	trimmed = strings.ReplaceAll(trimmed, "*", "x")
+	trimmed = strings.ReplaceAll(trimmed, " ", "")
+	return trimmed
+}
+
+func normalizeImageQualityKey(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
+}
+
+func applyImageDefaults(req *relaymodel.ImageRequest, cfg *relayadaptor.ImagePricingConfig) {
+	if cfg != nil {
+		if req.Size == "" && cfg.DefaultSize != "" {
+			req.Size = cfg.DefaultSize
+		}
+		if req.Quality == "" && cfg.DefaultQuality != "" {
+			req.Quality = cfg.DefaultQuality
+		}
+		if cfg.MinImages > 0 && req.N < cfg.MinImages {
+			req.N = cfg.MinImages
+		}
+		if cfg.MaxImages > 0 && cfg.MaxImages >= cfg.MinImages && req.N > cfg.MaxImages {
+			req.N = cfg.MaxImages
+		}
+	}
+
+	if req.Size == "" {
+		switch req.Model {
+		case "gpt-image-1", "gpt-image-1-mini":
+			req.Size = "1024x1536"
+		case "dall-e-2", "dall-e-3", "grok-2-image", "grok-2-image-1212":
+			req.Size = "1024x1024"
+		}
+	}
+	if req.Size == "" {
+		req.Size = "1024x1024"
+	}
+
+	if req.Quality == "" {
+		switch req.Model {
+		case "gpt-image-1", "gpt-image-1-mini":
+			req.Quality = "high"
+		case "dall-e-2", "dall-e-3":
+			req.Quality = "standard"
+		default:
+			req.Quality = "standard"
+		}
+	}
+}
+
+func isValidImageSize(req *relaymodel.ImageRequest, cfg *relayadaptor.ImagePricingConfig) bool {
+	sizeKey := normalizeImageSizeKey(req.Size)
+	qualityKey := normalizeImageQualityKey(req.Quality)
+	if qualityKey == "" {
+		qualityKey = "default"
+	}
+	if cfg != nil {
+		if len(cfg.QualitySizeMultipliers) > 0 {
+			if table, ok := cfg.QualitySizeMultipliers[qualityKey]; ok {
+				if _, exists := table[sizeKey]; exists {
+					return true
+				}
+			}
+			if qualityKey != "default" {
+				return false
+			}
+			if table, ok := cfg.QualitySizeMultipliers["default"]; ok {
+				if _, exists := table[sizeKey]; exists {
+					return true
+				}
+			}
+			return false
+		}
+		if len(cfg.SizeMultipliers) > 0 {
+			_, exists := cfg.SizeMultipliers[sizeKey]
+			return exists
+		}
+		return req.Size != ""
+	}
+	if req.Model == "cogview-3" || billingratio.ImageSizeRatios[req.Model] == nil {
 		return true
 	}
-	_, ok := billingratio.ImageSizeRatios[model][size]
+	_, ok := billingratio.ImageSizeRatios[req.Model][req.Size]
 	return ok
 }
 
-func isValidImagePromptLength(model string, promptLength int) bool {
-	maxPromptLength, ok := billingratio.ImagePromptLengthLimitations[model]
-	return !ok || promptLength <= maxPromptLength
+func isValidImagePromptLength(req *relaymodel.ImageRequest, cfg *relayadaptor.ImagePricingConfig) bool {
+	if cfg != nil && cfg.PromptTokenLimit > 0 {
+		return len(req.Prompt) <= cfg.PromptTokenLimit
+	}
+	maxPromptLength, ok := billingratio.ImagePromptLengthLimitations[req.Model]
+	return !ok || len(req.Prompt) <= maxPromptLength
 }
 
-func isWithinRange(element string, value int) bool {
-	amounts, ok := billingratio.ImageGenerationAmounts[element]
-	return !ok || (value >= amounts[0] && value <= amounts[1])
+func isWithinRange(req *relaymodel.ImageRequest, cfg *relayadaptor.ImagePricingConfig) bool {
+	if cfg != nil {
+		if cfg.MinImages > 0 && req.N < cfg.MinImages {
+			return false
+		}
+		if cfg.MaxImages > 0 && req.N > cfg.MaxImages {
+			return false
+		}
+		return true
+	}
+	amounts, ok := billingratio.ImageGenerationAmounts[req.Model]
+	return !ok || (req.N >= amounts[0] && req.N <= amounts[1])
 }
 
-func getImageSizeRatio(model string, size string) float64 {
+func getImageCostRatio(imageRequest *relaymodel.ImageRequest, cfg *relayadaptor.ImagePricingConfig) (float64, error) {
+	if cfg != nil {
+		sizeKey := normalizeImageSizeKey(imageRequest.Size)
+		qualityKey := normalizeImageQualityKey(imageRequest.Quality)
+		if qualityKey == "" {
+			qualityKey = "default"
+		}
+		if len(cfg.QualitySizeMultipliers) > 0 {
+			if table, ok := cfg.QualitySizeMultipliers[qualityKey]; ok {
+				if v, exists := table[sizeKey]; exists && v > 0 {
+					return v, nil
+				}
+			}
+			if qualityKey != "default" {
+				return 0, errors.Errorf("quality %s not supported for model %s", imageRequest.Quality, imageRequest.Model)
+			}
+			if table, ok := cfg.QualitySizeMultipliers["default"]; ok {
+				if v, exists := table[sizeKey]; exists && v > 0 {
+					return v, nil
+				}
+			}
+			return 0, errors.Errorf("size %s not supported for quality %s", imageRequest.Size, imageRequest.Quality)
+		}
+		multiplier := 1.0
+		if len(cfg.SizeMultipliers) > 0 {
+			if v, ok := cfg.SizeMultipliers[sizeKey]; ok && v > 0 {
+				multiplier = v
+			} else {
+				return 0, errors.Errorf("size %s not supported for model %s", imageRequest.Size, imageRequest.Model)
+			}
+		}
+		if len(cfg.QualityMultipliers) > 0 {
+			if v, ok := cfg.QualityMultipliers[qualityKey]; ok && v > 0 {
+				multiplier *= v
+			} else if qualityKey != "default" {
+				return 0, errors.Errorf("quality %s not supported for model %s", imageRequest.Quality, imageRequest.Model)
+			}
+		}
+		if multiplier <= 0 {
+			multiplier = 1
+		}
+		return multiplier, nil
+	}
+
+	imageCostRatio := getImageSizeRatioFallback(imageRequest.Model, imageRequest.Size)
+	if imageRequest.Quality == "hd" && imageRequest.Model == "dall-e-3" {
+		if imageRequest.Size == "1024x1024" {
+			imageCostRatio *= 2
+		} else {
+			imageCostRatio *= 1.5
+		}
+	}
+	if imageCostRatio <= 0 {
+		imageCostRatio = 1
+	}
+	return imageCostRatio, nil
+}
+
+func getImageSizeRatioFallback(model string, size string) float64 {
 	if ratio, ok := billingratio.ImageSizeRatios[model][size]; ok {
 		return ratio
 	}
 	return 1
 }
 
-func validateImageRequest(imageRequest *relaymodel.ImageRequest, _ *metalib.Meta) *relaymodel.ErrorWithStatusCode {
+func validateImageRequest(imageRequest *relaymodel.ImageRequest, _ *metalib.Meta, cfg *relayadaptor.ImagePricingConfig) *relaymodel.ErrorWithStatusCode {
 	// check prompt length
 	if imageRequest.Prompt == "" {
 		return openai.ErrorWrapper(errors.New("prompt is required"), "prompt_missing", http.StatusBadRequest)
 	}
 
 	// model validation
-	if !isValidImageSize(imageRequest.Model, imageRequest.Size) {
+	if !isValidImageSize(imageRequest, cfg) {
 		return openai.ErrorWrapper(errors.New("size not supported for this image model"), "size_not_supported", http.StatusBadRequest)
 	}
 
-	if !isValidImagePromptLength(imageRequest.Model, len(imageRequest.Prompt)) {
+	if !isValidImagePromptLength(imageRequest, cfg) {
 		return openai.ErrorWrapper(errors.New("prompt is too long"), "prompt_too_long", http.StatusBadRequest)
 	}
 
 	// Number of generated images validation
-	if !isWithinRange(imageRequest.Model, imageRequest.N) {
+	if !isWithinRange(imageRequest, cfg) {
 		return openai.ErrorWrapper(errors.New("invalid value of n"), "n_not_within_range", http.StatusBadRequest)
 	}
 
 	// Model-specific quality validation
-	if imageRequest.Model == "dall-e-3" && imageRequest.Quality != "" {
+	if cfg == nil && imageRequest.Model == "dall-e-3" && imageRequest.Quality != "" {
 		q := strings.ToLower(imageRequest.Quality)
 		if q != "standard" && q != "hd" {
 			return openai.ErrorWrapper(
@@ -134,54 +262,6 @@ func validateImageRequest(imageRequest *relaymodel.ImageRequest, _ *metalib.Meta
 		}
 	}
 	return nil
-}
-
-func getImageCostRatio(imageRequest *relaymodel.ImageRequest) (float64, error) {
-	if imageRequest == nil {
-		return 0, errors.New("imageRequest is nil")
-	}
-	// Prefer structured tier tables when available; fallback to legacy logic
-	if tiersByQuality, ok := billingratio.ImageTierTables[imageRequest.Model]; ok {
-		quality := imageRequest.Quality
-		if quality == "" {
-			quality = "default"
-		}
-		// Try specific quality, then default
-		if tiersBySize, ok := tiersByQuality[quality]; ok {
-			if v, ok := tiersBySize[imageRequest.Size]; ok {
-				if v > 0 {
-					return v, nil
-				}
-			}
-		}
-		if tiersBySize, ok := tiersByQuality["default"]; ok {
-			if v, ok := tiersBySize[imageRequest.Size]; ok {
-				if v > 0 {
-					return v, nil
-				}
-			}
-		}
-		// When model has tier table but size not found, treat as invalid only for models with strict sizes (gpt-image-1 family)
-		if strings.HasPrefix(imageRequest.Model, "gpt-image-") {
-			return 0, errors.New("invalid size for gpt-image family, should be 1024x1024/1024x1536/1536x1024")
-		}
-		// Else, fall through to legacy map's permissive default
-	}
-
-	// Legacy fallback
-	imageCostRatio := getImageSizeRatio(imageRequest.Model, imageRequest.Size)
-	if imageRequest.Quality == "hd" && imageRequest.Model == "dall-e-3" {
-		if imageRequest.Size == "1024x1024" {
-			imageCostRatio *= 2
-		} else {
-			imageCostRatio *= 1.5
-		}
-	}
-
-	if imageCostRatio <= 0 {
-		imageCostRatio = 1
-	}
-	return imageCostRatio, nil
 }
 
 // getChannelImageTierOverride reads model tier overrides from channel model-configs map.
@@ -230,13 +310,30 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 	meta.ActualModelName = imageRequest.Model
 	metalib.Set2Context(c, meta)
 
-	// model validation
-	bizErr := validateImageRequest(imageRequest, meta)
+	var channelModelRatio map[string]float64
+	var channelModelConfigs map[string]model.ModelConfigLocal
+	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
+		if channel, ok := channelModel.(*model.Channel); ok {
+			channelModelRatio = channel.GetModelRatioFromConfigs()
+			channelModelConfigs = channel.GetModelPriceConfigs()
+		}
+	}
+
+	adaptor := relay.GetAdaptor(meta.APIType)
+	if adaptor == nil {
+		return openai.ErrorWrapper(errors.Errorf("invalid api type: %d", meta.APIType), "invalid_api_type", http.StatusBadRequest)
+	}
+
+	resolvedConfig, _ := pricing.ResolveModelConfig(imageRequest.Model, channelModelConfigs, adaptor)
+	imagePricingCfg := resolvedConfig.Image
+	applyImageDefaults(imageRequest, imagePricingCfg)
+
+	bizErr := validateImageRequest(imageRequest, meta, imagePricingCfg)
 	if bizErr != nil {
 		return bizErr
 	}
 
-	imageCostRatio, err := getImageCostRatio(imageRequest)
+	imageCostRatio, err := getImageCostRatio(imageRequest, imagePricingCfg)
 	if err != nil {
 		return openai.ErrorWrapper(err, "get_image_cost_ratio_failed", http.StatusInternalServerError)
 	}
@@ -258,10 +355,6 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		requestBody = c.Request.Body
 	}
 
-	adaptor := relay.GetAdaptor(meta.APIType)
-	if adaptor == nil {
-		return openai.ErrorWrapper(errors.Errorf("invalid api type: %d", meta.APIType), "invalid_api_type", http.StatusBadRequest)
-	}
 	adaptor.Init(meta)
 
 	// these adaptors need to convert the request
@@ -307,18 +400,9 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		}
 	}
 
-	// get channel-specific pricing if available
-	var channelModelRatio map[string]float64
-	if channelModel, ok := c.Get(ctxkey.ChannelModel); ok {
-		if channel, ok := channelModel.(*model.Channel); ok {
-			// Get from unified ModelConfigs only (after migration)
-			channelModelRatio = channel.GetModelRatioFromConfigs()
-		}
-	}
-
 	// Resolve model ratio using unified three-layer pricing (channel overrides → adapter defaults → global fallback)
 	// IMPORTANT: Use APIType here (adaptor family), not ChannelType. ChannelType IDs do not map to adaptor switch.
-	pricingAdaptor := relay.GetAdaptor(meta.APIType)
+	pricingAdaptor := adaptor
 	modelRatio := pricing.GetModelRatioWithThreeLayers(imageModel, channelModelRatio, pricingAdaptor)
 	// groupRatio := billingratio.GetGroupRatio(meta.Group)
 	groupRatio := c.GetFloat64(ctxkey.ChannelRatio)
@@ -328,51 +412,44 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		imageCostRatio = override
 	}
 
-	// Determine if this model is billed per image (ImagePriceUsd) or per token (Ratio)
-	var imagePriceUsd float64
-	if pricingAdaptor != nil {
-		if pm, ok := pricingAdaptor.GetDefaultModelPricing()[imageModel]; ok {
-			imagePriceUsd = pm.ImagePriceUsd
-		}
+	// Determine if this model is billed per image (Image.PricePerImageUsd) or per token (Ratio)
+	imagePriceUsd := 0.0
+	if resolvedConfig.Image != nil {
+		imagePriceUsd = resolvedConfig.Image.PricePerImageUsd
 	}
-	// Fallback to global pricing table if adapter has no entry
 	if imagePriceUsd == 0 {
-		if pm, ok := pricing.GetGlobalModelPricing()[imageModel]; ok {
-			imagePriceUsd = pm.ImagePriceUsd
+		if pm, ok := pricing.GetGlobalModelPricing()[imageModel]; ok && pm.Image != nil {
+			imagePriceUsd = pm.Image.PricePerImageUsd
 		}
 	}
 
 	ratio := modelRatio * groupRatio
-	userQuota, err := model.CacheGetUserQuota(ctx, meta.UserId)
+	requestedCount := imageRequest.N
+	if requestedCount <= 0 {
+		requestedCount = 1
+	}
+	billedCount := requestedCount
+	if meta.ChannelType == channeltype.Replicate && billedCount > 1 {
+		billedCount = 1
+	}
+	perImageBilling := imagePriceUsd > 0
+	baseQuota := calculateImageBaseQuota(imagePriceUsd, ratio, imageCostRatio, groupRatio, billedCount)
+	usedQuota := baseQuota
+	tokenQuota := int64(0)
+	tokenQuotaFloat := 0.0
 
-	var usedQuota int64
-	var preConsumedQuota int64
-	switch meta.ChannelType {
-	case channeltype.Replicate:
-		// Replicate always returns 1 image; charge for a single image
-		if imagePriceUsd > 0 {
-			// Per-image billing path
-			perImageQuota := math.Ceil(imagePriceUsd * billingratio.QuotaPerUsd * imageCostRatio * groupRatio)
-			usedQuota = int64(perImageQuota)
-		} else {
-			usedQuota = int64(math.Ceil(ratio * imageCostRatio))
-		}
-	default:
-		// Charge per requested image count (n)
-		if imagePriceUsd > 0 {
-			perImageQuota := math.Ceil(imagePriceUsd * billingratio.QuotaPerUsd * imageCostRatio * groupRatio)
-			usedQuota = int64(perImageQuota) * int64(imageRequest.N)
-		} else {
-			usedQuota = int64(math.Ceil(ratio*imageCostRatio)) * int64(imageRequest.N)
-		}
+	userQuota, err := model.CacheGetUserQuota(ctx, meta.UserId)
+	if err != nil {
+		return openai.ErrorWrapper(err, "get_user_quota_failed", http.StatusInternalServerError)
 	}
 
+	var preConsumedQuota int64
 	if userQuota < usedQuota {
 		return openai.ErrorWrapper(errors.New("user quota is not enough"), "insufficient_user_quota", http.StatusForbidden)
 	}
 
 	// If using per-image billing, pre-consume the estimated quota now
-	if imagePriceUsd > 0 && usedQuota > 0 {
+	if perImageBilling && usedQuota > 0 {
 		preConsumedQuota = usedQuota
 		if err := model.PreConsumeTokenQuota(ctx, meta.TokenId, preConsumedQuota); err != nil {
 			return openai.ErrorWrapper(err, "pre_consume_failed", http.StatusInternalServerError)
@@ -427,6 +504,9 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		if preConsumedQuota > 0 {
 			quotaDelta = usedQuota - preConsumedQuota
 		}
+		if quotaDelta < 0 {
+			quotaDelta = 0
+		}
 		err := model.PostConsumeTokenQuota(bgCtx, meta.TokenId, quotaDelta)
 		if err != nil {
 			lg.Error("error consuming token remain quota", zap.Error(err))
@@ -437,13 +517,22 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		}
 		if usedQuota >= 0 {
 			tokenName := c.GetString(ctxkey.TokenName)
-			// Improve log clarity for per-image billed models
-			var logContent string
-			if imagePriceUsd > 0 {
-				logContent = fmt.Sprintf("image usd %.3f, tier %.2f, group rate %.2f, num %d", imagePriceUsd, imageCostRatio, groupRatio, imageRequest.N)
-			} else {
-				logContent = fmt.Sprintf("model rate %.2f, group rate %.2f, num %d", modelRatio, groupRatio, imageRequest.N)
-			}
+			logContent := formatImageBillingLog(imageBillingLogParams{
+				OriginModel:     meta.OriginModelName,
+				Model:           imageModel,
+				Size:            imageRequest.Size,
+				Quality:         imageRequest.Quality,
+				RequestCount:    requestedCount,
+				BilledCount:     billedCount,
+				ImagePriceUsd:   imagePriceUsd,
+				ImageTier:       imageCostRatio,
+				BaseQuota:       baseQuota,
+				TokenQuota:      tokenQuota,
+				TokenQuotaFloat: tokenQuotaFloat,
+				TotalQuota:      usedQuota,
+				GroupRatio:      groupRatio,
+				ModelRatio:      modelRatio,
+			})
 			// Record log with RequestId/TraceId set directly on the log
 			model.RecordConsumeLog(bgCtx, &model.Log{
 				UserId:           meta.UserId,
@@ -481,20 +570,10 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		if usage != nil {
 			promptTokens = usage.PromptTokens
 			completionTokens = usage.CompletionTokens
-			if imagePriceUsd > 0 {
-				if final := computeImageUsageQuota(imageModel, usage, groupRatio); final > 0 {
-					usedQuota = int64(math.Ceil(final))
-				}
-			} else {
-				switch meta.ActualModelName {
-				case "gpt-image-1", "gpt-image-1-mini":
-					if usage.PromptTokensDetails != nil {
-						textQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.TextTokens) * 5 * billingratio.MilliTokensUsd))
-						imageQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.ImageTokens) * 10 * billingratio.MilliTokensUsd))
-						usedQuota += textQuota + imageQuota
-					}
-				}
-			}
+			summary := finalizeImageQuota(baseQuota, perImageBilling, imageModel, meta.ActualModelName, usage, groupRatio)
+			tokenQuota = summary.TokenQuota
+			tokenQuotaFloat = summary.TokenQuotaFloat
+			usedQuota = summary.TotalQuota
 		}
 		return respErr
 	}
@@ -503,23 +582,11 @@ func RelayImageHelper(c *gin.Context, relayMode int) *relaymodel.ErrorWithStatus
 		promptTokens = usage.PromptTokens
 		completionTokens = usage.CompletionTokens
 
-		// Universal reconciliation: if we have reliable usage and a known token pricing rule for this model,
-		// recompute the quota from tokens and override the pre-consumed per-image estimate.
-		if imagePriceUsd > 0 {
-			if final := computeImageUsageQuota(imageModel, usage, groupRatio); final > 0 {
-				usedQuota = int64(math.Ceil(final))
-			}
-		} else {
-			// Legacy token-based path for models without per-image pricing configured
-			switch meta.ActualModelName {
-			case "gpt-image-1", "gpt-image-1-mini":
-				if usage.PromptTokensDetails != nil {
-					textQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.TextTokens) * 5 * billingratio.MilliTokensUsd))
-					imageQuota := int64(math.Ceil(float64(usage.PromptTokensDetails.ImageTokens) * 10 * billingratio.MilliTokensUsd))
-					usedQuota += textQuota + imageQuota
-				}
-			}
-		}
+		// Universal reconciliation: if we have reliable usage, compute token quota and add it to per-image base.
+		summary := finalizeImageQuota(baseQuota, perImageBilling, imageModel, meta.ActualModelName, usage, groupRatio)
+		tokenQuota = summary.TokenQuota
+		tokenQuotaFloat = summary.TokenQuotaFloat
+		usedQuota = summary.TotalQuota
 	}
 
 	return nil
@@ -624,4 +691,176 @@ func computeImageUsageQuota(modelName string, usage *relaymodel.Usage, groupRati
 		// Add more models here as they publish token pricing for image buckets
 		return 0
 	}
+}
+
+// imageQuotaSummary tracks the breakdown of image billing across fixed per-image components and token-based usage.
+type imageQuotaSummary struct {
+	BaseQuota       int64
+	TokenQuota      int64
+	TokenQuotaFloat float64
+	TotalQuota      int64
+}
+
+// calculateImageBaseQuota derives the upfront quota reservation for an image request.
+// When per-image billing is enabled, the quota scales with the billed image count and tier multiplier.
+// For token-only models, the base quota falls back to the model ratio estimation.
+func calculateImageBaseQuota(imagePriceUsd, ratio, imageCostRatio, groupRatio float64, count int) int64 {
+	if count <= 0 {
+		return 0
+	}
+	if imagePriceUsd > 0 {
+		perImageQuota := math.Ceil(imagePriceUsd * billingratio.QuotaPerUsd * imageCostRatio * groupRatio)
+		if perImageQuota <= 0 {
+			return 0
+		}
+		return int64(perImageQuota) * int64(count)
+	}
+	if ratio <= 0 {
+		return 0
+	}
+	perImageQuota := math.Ceil(ratio * imageCostRatio)
+	if perImageQuota <= 0 {
+		return 0
+	}
+	return int64(perImageQuota) * int64(count)
+}
+
+// finalizeImageQuota merges token usage data with the reserved base quota to produce the final billed amount.
+// Token usage augments per-image pricing, ensuring prompt and output buckets are not skipped.
+func finalizeImageQuota(baseQuota int64, perImageBilling bool, imageModel string, actualModel string, usage *relaymodel.Usage, groupRatio float64) imageQuotaSummary {
+	summary := imageQuotaSummary{
+		BaseQuota:  baseQuota,
+		TotalQuota: baseQuota,
+	}
+	if usage == nil {
+		return summary
+	}
+
+	tokenQuotaFloat := computeImageUsageQuota(imageModel, usage, groupRatio)
+	if tokenQuotaFloat < 0 {
+		tokenQuotaFloat = 0
+	}
+	tokenQuota := int64(math.Ceil(tokenQuotaFloat))
+	if tokenQuota < 0 {
+		tokenQuota = 0
+	}
+	summary.TokenQuotaFloat = tokenQuotaFloat
+	summary.TokenQuota = tokenQuota
+
+	if perImageBilling {
+		if tokenQuota > 0 {
+			summary.TotalQuota += tokenQuota
+		}
+		return summary
+	}
+
+	if tokenQuota > 0 {
+		summary.TotalQuota = tokenQuota
+		return summary
+	}
+
+	fallbackFloat := computeLegacyImageTokenQuota(actualModel, usage, groupRatio)
+	if fallbackFloat > 0 {
+		fallbackQuota := int64(math.Ceil(fallbackFloat))
+		if fallbackQuota < 0 {
+			fallbackQuota = 0
+		}
+		summary.TokenQuotaFloat = fallbackFloat
+		summary.TokenQuota = fallbackQuota
+		summary.TotalQuota = baseQuota + fallbackQuota
+	}
+
+	return summary
+}
+
+// computeLegacyImageTokenQuota handles legacy token billing paths for image models lacking detailed bucket pricing.
+func computeLegacyImageTokenQuota(modelName string, usage *relaymodel.Usage, groupRatio float64) float64 {
+	if usage == nil || usage.PromptTokensDetails == nil {
+		return 0
+	}
+	switch modelName {
+	case "gpt-image-1", "gpt-image-1-mini":
+		textTokens := usage.PromptTokensDetails.TextTokens
+		if textTokens < 0 {
+			textTokens = 0
+		}
+		imageTokens := usage.PromptTokensDetails.ImageTokens
+		if imageTokens < 0 {
+			imageTokens = 0
+		}
+		quota := float64(textTokens)*5*billingratio.MilliTokensUsd + float64(imageTokens)*10*billingratio.MilliTokensUsd
+		if groupRatio > 0 {
+			quota *= groupRatio
+		}
+		return quota
+	default:
+		return 0
+	}
+}
+
+// imageBillingLogParams captures the attributes required to build a user-facing billing log entry for image requests.
+type imageBillingLogParams struct {
+	OriginModel     string
+	Model           string
+	Size            string
+	Quality         string
+	RequestCount    int
+	BilledCount     int
+	ImagePriceUsd   float64
+	ImageTier       float64
+	BaseQuota       int64
+	TokenQuota      int64
+	TokenQuotaFloat float64
+	TotalQuota      int64
+	GroupRatio      float64
+	ModelRatio      float64
+}
+
+// formatImageBillingLog renders a concise billing summary including size, quality, pricing tiers, and token costs.
+func formatImageBillingLog(params imageBillingLogParams) string {
+	var builder strings.Builder
+	builder.Grow(256)
+	builder.WriteString("image")
+
+	modelName := params.Model
+	if modelName == "" {
+		modelName = "unknown"
+	}
+	builder.WriteString(" model=")
+	builder.WriteString(modelName)
+	if params.OriginModel != "" && params.OriginModel != modelName {
+		builder.WriteString(" origin_model=")
+		builder.WriteString(params.OriginModel)
+	}
+	if params.Size != "" {
+		builder.WriteString(" size=")
+		builder.WriteString(params.Size)
+	}
+	if params.Quality != "" {
+		builder.WriteString(" quality=")
+		builder.WriteString(params.Quality)
+	}
+	fmt.Fprintf(&builder, " requested_n=%d billed_n=%d", params.RequestCount, params.BilledCount)
+
+	totalUsd := float64(params.TotalQuota) / billingratio.QuotaPerUsd
+	fmt.Fprintf(&builder, " total_usd=%.4f", totalUsd)
+	fmt.Fprintf(&builder, " group_rate=%.2f", params.GroupRatio)
+
+	if params.ImagePriceUsd > 0 {
+		unitUsd := params.ImagePriceUsd * params.ImageTier
+		baseUsd := float64(params.BaseQuota) / billingratio.QuotaPerUsd
+		fmt.Fprintf(&builder, " unit_usd=%.4f tier=%.2f base_usd=%.4f", unitUsd, params.ImageTier, baseUsd)
+	} else if params.ModelRatio > 0 {
+		fmt.Fprintf(&builder, " model_ratio=%.4f", params.ModelRatio)
+	}
+
+	if params.TokenQuota > 0 {
+		tokenUsd := float64(params.TokenQuota) / billingratio.QuotaPerUsd
+		fmt.Fprintf(&builder, " token_usd=%.4f", tokenUsd)
+	} else if params.TokenQuotaFloat > 0 {
+		tokenUsd := params.TokenQuotaFloat / billingratio.QuotaPerUsd
+		fmt.Fprintf(&builder, " token_usd=%.4f", tokenUsd)
+	}
+
+	return builder.String()
 }

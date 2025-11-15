@@ -21,9 +21,9 @@ import (
 	"github.com/songquanpeng/one-api/common/tracing"
 	relaymodel "github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai_compatible"
-	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	metalib "github.com/songquanpeng/one-api/relay/meta"
 	"github.com/songquanpeng/one-api/relay/model"
+	"github.com/songquanpeng/one-api/relay/pricing"
 	"github.com/songquanpeng/one-api/relay/relaymode"
 	"github.com/songquanpeng/one-api/relay/streaming"
 )
@@ -532,21 +532,23 @@ func hasAudioTokens(response *SlimTextResponse) bool {
 // Helper function to calculate audio token usage
 func calculateAudioTokens(response *SlimTextResponse, modelName string) {
 	// Convert audio tokens for prompt
+	audioCfg, found := pricing.ResolveAudioPricing(modelName, nil, &Adaptor{})
+	promptRatio := pricing.DefaultAudioPromptRatio
+	completionRatio := pricing.DefaultAudioCompletionRatio
+	if found && audioCfg != nil {
+		promptRatio = audioCfg.PromptRatio
+		completionRatio = audioCfg.CompletionRatio
+	}
+
 	if response.PromptTokensDetails != nil {
 		response.Usage.PromptTokens = response.PromptTokensDetails.TextTokens +
-			int(math.Ceil(
-				float64(response.PromptTokensDetails.AudioTokens)*
-					ratio.GetAudioPromptRatio(modelName),
-			))
+			int(math.Ceil(float64(response.PromptTokensDetails.AudioTokens)*promptRatio))
 	}
 
 	// Convert audio tokens for completion
 	if response.CompletionTokensDetails != nil {
 		response.Usage.CompletionTokens = response.CompletionTokensDetails.TextTokens +
-			int(math.Ceil(
-				float64(response.CompletionTokensDetails.AudioTokens)*
-					ratio.GetAudioPromptRatio(modelName)*ratio.GetAudioCompletionRatio(modelName),
-			))
+			int(math.Ceil(float64(response.CompletionTokensDetails.AudioTokens)*promptRatio*completionRatio))
 	}
 
 	// Calculate total tokens

@@ -6,6 +6,9 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
+
+	"github.com/songquanpeng/one-api/relay/adaptor/openai"
+	"github.com/songquanpeng/one-api/relay/pricing"
 )
 
 // Test that DALL·E 3 defaults quality to "standard" (not "auto").
@@ -27,6 +30,11 @@ func TestGetImageRequest_DefaultQuality_DALLE3(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getImageRequest error: %v", err)
 	}
+	cfg, ok := pricing.ResolveModelConfig("dall-e-3", nil, &openai.Adaptor{})
+	if !ok || cfg.Image == nil {
+		t.Fatalf("expected pricing config for dall-e-3")
+	}
+	applyImageDefaults(ir, cfg.Image)
 	if ir.Quality != "standard" {
 		t.Fatalf("expected default quality 'standard' for dall-e-3, got %q", ir.Quality)
 	}
@@ -50,6 +58,11 @@ func TestGetImageRequest_DefaultQuality_GPTImage1(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getImageRequest error: %v", err)
 	}
+	cfg, ok := pricing.ResolveModelConfig("gpt-image-1", nil, &openai.Adaptor{})
+	if !ok || cfg.Image == nil {
+		t.Fatalf("expected pricing config for gpt-image-1")
+	}
+	applyImageDefaults(ir, cfg.Image)
 	if ir.Quality != "high" {
 		t.Fatalf("expected default quality 'high' for gpt-image-1, got %q", ir.Quality)
 	}
@@ -73,6 +86,11 @@ func TestGetImageRequest_DefaultQuality_GPTImage1Mini(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getImageRequest error: %v", err)
 	}
+	cfg, ok := pricing.ResolveModelConfig("gpt-image-1-mini", nil, &openai.Adaptor{})
+	if !ok || cfg.Image == nil {
+		t.Fatalf("expected pricing config for gpt-image-1-mini")
+	}
+	applyImageDefaults(ir, cfg.Image)
 	if ir.Quality != "high" {
 		t.Fatalf("expected default quality 'high' for gpt-image-1-mini, got %q", ir.Quality)
 	}
@@ -96,6 +114,11 @@ func TestGetImageRequest_DefaultQuality_DALLE2(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getImageRequest error: %v", err)
 	}
+	cfg, ok := pricing.ResolveModelConfig("dall-e-2", nil, &openai.Adaptor{})
+	if !ok || cfg.Image == nil {
+		t.Fatalf("expected pricing config for dall-e-2")
+	}
+	applyImageDefaults(ir, cfg.Image)
 	if ir.Quality != "standard" {
 		t.Fatalf("expected default quality 'standard' for dall-e-2, got %q", ir.Quality)
 	}

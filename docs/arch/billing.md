@@ -457,13 +457,13 @@ const (
 type ModelConfig struct {
     Ratio             float64 `json:"ratio"`
     CompletionRatio   float64 `json:"completion_ratio,omitempty"`
-    // For image models: explicit USD price per generated image.
-    ImagePriceUsd     float64 `json:"image_price_usd,omitempty"`
     // Cached reads (cache hit/refresh)
     CachedInputRatio  float64 `json:"cached_input_ratio,omitempty"`
     // Cache writes (cache creation)
     CacheWrite5mRatio float64 `json:"cache_write_5m_ratio,omitempty"`
     CacheWrite1hRatio float64 `json:"cache_write_1h_ratio,omitempty"`
+    // Optional nested metadata for per-image, audio, or video billing.
+    Image             *ImagePricingConfig `json:"image,omitempty"`
 }
 ```
 
@@ -680,7 +680,7 @@ The billing system now implements a universal, robust two-step billing process f
 
 **1. Pre-consume:**
 
-- Before sending the request, the system pre-consumes quota based on a fixed per-image price (`ImagePriceUsd`), multiplied by the appropriate size/quality tier and group ratio.
+- Before sending the request, the system pre-consumes quota based on a fixed per-image price (`image.price_per_image_usd`), multiplied by the appropriate size/quality tier and group ratio.
 - This ensures quota is reserved up front, even if usage data is missing later.
 - For gpt-image-1, the base price for 1024x1024/low is $0.011; higher qualities and sizes use tier multipliers (see `ratio.ImageTierTables`).
 - gpt-image-1-mini uses the same tier table with a $0.005 base price for 1024x1024/low.

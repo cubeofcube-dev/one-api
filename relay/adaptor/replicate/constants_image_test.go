@@ -14,8 +14,8 @@ func TestReplicateImageModelPrices(t *testing.T) {
 		if !ok {
 			t.Fatalf("model %s not found in ModelRatios", model)
 		}
-		if cfg.ImagePriceUsd <= 0 {
-			t.Fatalf("expected ImagePriceUsd > 0 for %s, got %v", model, cfg.ImagePriceUsd)
+		if cfg.Image == nil || cfg.Image.PricePerImageUsd <= 0 {
+			t.Fatalf("expected price_per_image_usd > 0 for %s", model)
 		}
 	}
 }

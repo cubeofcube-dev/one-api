@@ -10,7 +10,8 @@ func TestDallE3HasPerImagePricing(t *testing.T) {
 	cfg, ok := ModelRatios["dall-e-3"]
 	require.True(t, ok, "dall-e-3 not found in ModelRatios")
 	require.Equal(t, 0.0, cfg.Ratio, "expected Ratio=0 for per-image model")
-	require.Greater(t, cfg.ImagePriceUsd, 0.0, "expected ImagePriceUsd > 0 for dall-e-3")
+	require.NotNil(t, cfg.Image, "expected image config for dall-e-3")
+	require.Greater(t, cfg.Image.PricePerImageUsd, 0.0, "expected price_per_image_usd > 0 for dall-e-3")
 }
 
 func TestOpenAIToolingDefaultsWebSearchPricing(t *testing.T) {

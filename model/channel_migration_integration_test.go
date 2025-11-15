@@ -140,6 +140,24 @@ func TestMigrationIntegration_CompleteWorkflow(t *testing.T) {
 	}
 }
 
+func TestMigrateLegacyImagePriceInConfigs(t *testing.T) {
+	input := `{"gpt-image-1":{"ratio":0.0,"image_price_usd":0.04}}`
+	updated, changed, err := migrateLegacyImagePriceInConfigs(input)
+	require.NoError(t, err)
+	require.True(t, changed)
+	var configs map[string]ModelConfigLocal
+	require.NoError(t, json.Unmarshal([]byte(updated), &configs))
+	cfg, ok := configs["gpt-image-1"]
+	require.True(t, ok)
+	require.NotNil(t, cfg.Image)
+	require.InDelta(t, 0.04, cfg.Image.PricePerImageUsd, 1e-9)
+	// idempotent re-run should report no further change
+	updatedAgain, changedAgain, err := migrateLegacyImagePriceInConfigs(updated)
+	require.NoError(t, err)
+	require.False(t, changedAgain)
+	require.Equal(t, updated, updatedAgain)
+}
+
 // TestMigrationIntegration_DataConsistency tests data consistency after migration
 func TestMigrationIntegration_DataConsistency(t *testing.T) {
 	channel := &Channel{

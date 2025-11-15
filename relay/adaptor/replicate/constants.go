@@ -8,34 +8,41 @@ import (
 // ModelRatios contains all supported models and their pricing ratios
 // Model list is derived from the keys of this map, eliminating redundancy
 // Based on Replicate pricing: https://replicate.com/pricing
+func replicateImageConfig(pricePerImage float64) *adaptor.ImagePricingConfig {
+	return &adaptor.ImagePricingConfig{
+		PricePerImageUsd: pricePerImage,
+		MinImages:        1,
+	}
+}
+
 var ModelRatios = map[string]adaptor.ModelConfig{
 	// -------------------------------------
 	// Image Generation Models
 	// -------------------------------------
-	"black-forest-labs/flux-kontext-pro":            {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},  // $0.04 per image
-	"black-forest-labs/flux-1.1-pro":                {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},  // $0.04 per image
-	"black-forest-labs/flux-1.1-pro-ultra":          {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.06},  // $0.06 per image
-	"black-forest-labs/flux-canny-dev":              {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.025}, // $0.025 per image
-	"black-forest-labs/flux-canny-pro":              {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.05},  // $0.05 per image
-	"black-forest-labs/flux-depth-dev":              {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.025}, // $0.025 per image
-	"black-forest-labs/flux-depth-pro":              {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.05},  // $0.05 per image
-	"black-forest-labs/flux-dev":                    {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.025}, // $0.025 per image
-	"black-forest-labs/flux-dev-lora":               {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.032}, // $0.032 per image
-	"black-forest-labs/flux-fill-dev":               {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},  // $0.04 per image
-	"black-forest-labs/flux-fill-pro":               {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.05},  // $0.05 per image
-	"black-forest-labs/flux-pro":                    {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.055}, // $0.055 per image
-	"black-forest-labs/flux-redux-dev":              {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.025}, // $0.025 per image
-	"black-forest-labs/flux-redux-schnell":          {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.003}, // $0.003 per image
-	"black-forest-labs/flux-schnell":                {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.003}, // $0.003 per image
-	"black-forest-labs/flux-schnell-lora":           {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.02},  // $0.02 per image
-	"ideogram-ai/ideogram-v2":                       {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.08},  // $0.08 per image
-	"ideogram-ai/ideogram-v2-turbo":                 {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.05},  // $0.05 per image
-	"recraft-ai/recraft-v3":                         {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},  // $0.04 per image
-	"recraft-ai/recraft-v3-svg":                     {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.08},  // $0.08 per image
-	"stability-ai/stable-diffusion-3":               {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.035}, // $0.035 per image
-	"stability-ai/stable-diffusion-3.5-large":       {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.065}, // $0.065 per image
-	"stability-ai/stable-diffusion-3.5-large-turbo": {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.04},  // $0.04 per image
-	"stability-ai/stable-diffusion-3.5-medium":      {Ratio: 0, CompletionRatio: 1.0, ImagePriceUsd: 0.035}, // $0.035 per image
+	"black-forest-labs/flux-kontext-pro":            {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.04)},  // $0.04 per image
+	"black-forest-labs/flux-1.1-pro":                {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.04)},  // $0.04 per image
+	"black-forest-labs/flux-1.1-pro-ultra":          {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.06)},  // $0.06 per image
+	"black-forest-labs/flux-canny-dev":              {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.025)}, // $0.025 per image
+	"black-forest-labs/flux-canny-pro":              {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.05)},  // $0.05 per image
+	"black-forest-labs/flux-depth-dev":              {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.025)}, // $0.025 per image
+	"black-forest-labs/flux-depth-pro":              {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.05)},  // $0.05 per image
+	"black-forest-labs/flux-dev":                    {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.025)}, // $0.025 per image
+	"black-forest-labs/flux-dev-lora":               {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.032)}, // $0.032 per image
+	"black-forest-labs/flux-fill-dev":               {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.04)},  // $0.04 per image
+	"black-forest-labs/flux-fill-pro":               {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.05)},  // $0.05 per image
+	"black-forest-labs/flux-pro":                    {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.055)}, // $0.055 per image
+	"black-forest-labs/flux-redux-dev":              {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.025)}, // $0.025 per image
+	"black-forest-labs/flux-redux-schnell":          {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.003)}, // $0.003 per image
+	"black-forest-labs/flux-schnell":                {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.003)}, // $0.003 per image
+	"black-forest-labs/flux-schnell-lora":           {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.02)},  // $0.02 per image
+	"ideogram-ai/ideogram-v2":                       {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.08)},  // $0.08 per image
+	"ideogram-ai/ideogram-v2-turbo":                 {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.05)},  // $0.05 per image
+	"recraft-ai/recraft-v3":                         {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.04)},  // $0.04 per image
+	"recraft-ai/recraft-v3-svg":                     {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.08)},  // $0.08 per image
+	"stability-ai/stable-diffusion-3":               {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.035)}, // $0.035 per image
+	"stability-ai/stable-diffusion-3.5-large":       {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.065)}, // $0.065 per image
+	"stability-ai/stable-diffusion-3.5-large-turbo": {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.04)},  // $0.04 per image
+	"stability-ai/stable-diffusion-3.5-medium":      {Ratio: 0, CompletionRatio: 1.0, Image: replicateImageConfig(0.035)}, // $0.035 per image
 
 	// -------------------------------------
 	// Language Models

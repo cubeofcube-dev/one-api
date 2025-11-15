@@ -24,9 +24,6 @@ type ModelConfig struct {
 	// The upstream channel applies distinct pricing for cache‑hit and cache‑miss inputs,
 	// while the output price remains the same, equal to Ratio * CompletionRatio.
 	CompletionRatio float64 `json:"completion_ratio,omitempty"`
-	// ImagePriceUsd is the USD cost per generated image for image models.
-	// Text models should leave this as zero.
-	ImagePriceUsd float64 `json:"image_price_usd,omitempty"`
 	// CachedInputRatio specifies price per cached input token.
 	// If non-zero, it overrides Ratio for cached input tokens. Negative means free.
 	CachedInputRatio float64 `json:"cached_input_ratio,omitempty"`
@@ -45,6 +42,10 @@ type ModelConfig struct {
 	MaxTokens int32 `json:"max_tokens,omitempty"`
 	// Video holds per-second pricing metadata for video generation models.
 	Video *VideoPricingConfig `json:"video,omitempty"`
+	// Audio captures pricing metadata for audio prompt and completion billing.
+	Audio *AudioPricingConfig `json:"audio,omitempty"`
+	// Image captures pricing metadata for image prompt and render billing.
+	Image *ImagePricingConfig `json:"image,omitempty"`
 }
 
 // VideoPricingConfig captures pricing metadata for video generation requests.
@@ -175,6 +176,96 @@ type ChannelToolConfig struct {
 	Whitelist []string `json:"whitelist,omitempty"`
 	// Pricing defines per-tool invocation pricing for the entire channel.
 	Pricing map[string]ToolPricingConfig `json:"pricing,omitempty"`
+}
+
+// AudioPricingConfig captures pricing metadata for audio prompts and completions.
+// PromptRatio converts audio prompt tokens to text-token billing units; CompletionRatio
+// applies when upstream returns audio completions. Per-second fields allow direct
+// billing of duration-based models.
+type AudioPricingConfig struct {
+	PromptRatio               float64 `json:"prompt_ratio,omitempty"`
+	CompletionRatio           float64 `json:"completion_ratio,omitempty"`
+	PromptTokensPerSecond     float64 `json:"prompt_tokens_per_second,omitempty"`
+	CompletionTokensPerSecond float64 `json:"completion_tokens_per_second,omitempty"`
+	UsdPerSecond              float64 `json:"usd_per_second,omitempty"`
+}
+
+// HasData reports whether the audio configuration carries any non-zero metadata.
+func (cfg *AudioPricingConfig) HasData() bool {
+	if cfg == nil {
+		return false
+	}
+	return cfg.PromptRatio != 0 || cfg.CompletionRatio != 0 || cfg.PromptTokensPerSecond != 0 ||
+		cfg.CompletionTokensPerSecond != 0 || cfg.UsdPerSecond != 0
+}
+
+// Clone returns a copy of the audio pricing configuration.
+func (cfg *AudioPricingConfig) Clone() *AudioPricingConfig {
+	if cfg == nil {
+		return nil
+	}
+	clone := *cfg
+	return &clone
+}
+
+// ImagePricingConfig captures prompt and render billing metadata for image models.
+// Size and quality multipliers scale the base price; missing entries imply fallback to 1.0.
+type ImagePricingConfig struct {
+	PricePerImageUsd       float64                       `json:"price_per_image_usd,omitempty"`
+	PromptRatio            float64                       `json:"prompt_ratio,omitempty"`
+	DefaultSize            string                        `json:"default_size,omitempty"`
+	DefaultQuality         string                        `json:"default_quality,omitempty"`
+	PromptTokenLimit       int                           `json:"prompt_token_limit,omitempty"`
+	MinImages              int                           `json:"min_images,omitempty"`
+	MaxImages              int                           `json:"max_images,omitempty"`
+	SizeMultipliers        map[string]float64            `json:"size_multipliers,omitempty"`
+	QualityMultipliers     map[string]float64            `json:"quality_multipliers,omitempty"`
+	QualitySizeMultipliers map[string]map[string]float64 `json:"quality_size_multipliers,omitempty"`
+}
+
+// HasData reports whether the image configuration contains any pricing metadata.
+func (cfg *ImagePricingConfig) HasData() bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.PricePerImageUsd > 0 || cfg.PromptRatio > 0 || cfg.PromptTokenLimit > 0 || cfg.MinImages > 0 || cfg.MaxImages > 0 {
+		return true
+	}
+	if len(cfg.SizeMultipliers) > 0 || len(cfg.QualityMultipliers) > 0 || len(cfg.QualitySizeMultipliers) > 0 {
+		return true
+	}
+	return false
+}
+
+// Clone returns a deep copy of the image pricing configuration.
+func (cfg *ImagePricingConfig) Clone() *ImagePricingConfig {
+	if cfg == nil {
+		return nil
+	}
+	clone := *cfg
+	if len(cfg.SizeMultipliers) > 0 {
+		clone.SizeMultipliers = make(map[string]float64, len(cfg.SizeMultipliers))
+		for k, v := range cfg.SizeMultipliers {
+			clone.SizeMultipliers[k] = v
+		}
+	}
+	if len(cfg.QualityMultipliers) > 0 {
+		clone.QualityMultipliers = make(map[string]float64, len(cfg.QualityMultipliers))
+		for k, v := range cfg.QualityMultipliers {
+			clone.QualityMultipliers[k] = v
+		}
+	}
+	if len(cfg.QualitySizeMultipliers) > 0 {
+		clone.QualitySizeMultipliers = make(map[string]map[string]float64, len(cfg.QualitySizeMultipliers))
+		for quality, sizes := range cfg.QualitySizeMultipliers {
+			inner := make(map[string]float64, len(sizes))
+			for size, value := range sizes {
+				inner[size] = value
+			}
+			clone.QualitySizeMultipliers[quality] = inner
+		}
+	}
+	return &clone
 }
 
 // ToolingDefaultsProvider is implemented by adaptors that expose built-in tool defaults.

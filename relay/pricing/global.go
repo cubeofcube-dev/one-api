@@ -233,6 +233,20 @@ func GetGlobalModelPricing() map[string]adaptor.ModelConfig {
 	return result
 }
 
+// GetGlobalModelConfig returns the full global model configuration for a given model name.
+// The returned configuration is cloned to prevent external mutation of the cache.
+func GetGlobalModelConfig(modelName string) (adaptor.ModelConfig, bool) {
+	globalPricingManager.mu.RLock()
+	defer globalPricingManager.mu.RUnlock()
+
+	globalPricingManager.ensureInitialized()
+
+	if cfg, exists := globalPricingManager.globalModelPricing[modelName]; exists {
+		return cloneModelConfig(cfg), true
+	}
+	return adaptor.ModelConfig{}, false
+}
+
 // ReloadGlobalPricing forces a reload of the global pricing from contributing adapters
 func ReloadGlobalPricing() {
 	globalPricingManager.mu.Lock()
@@ -360,6 +374,12 @@ func cloneModelConfig(src adaptor.ModelConfig) adaptor.ModelConfig {
 	}
 	if src.Video != nil {
 		clone.Video = src.Video.Clone()
+	}
+	if src.Audio != nil {
+		clone.Audio = src.Audio.Clone()
+	}
+	if src.Image != nil {
+		clone.Image = src.Image.Clone()
 	}
 	return clone
 }

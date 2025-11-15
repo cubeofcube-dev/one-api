@@ -193,16 +193,16 @@ func TestSpecificAdapterPricing(t *testing.T) {
 
 			if imageModelRatio != expectedImageConfig.Ratio {
 				t.Errorf("xAI %s: expected ratio %.6f, got %.6f (Image model: $%.2f per image)",
-					imageModel, expectedImageConfig.Ratio, imageModelRatio, expectedImageConfig.ImagePriceUsd)
+					imageModel, expectedImageConfig.Ratio, imageModelRatio, expectedImageConfig.Image.PricePerImageUsd)
 			}
 			if imageModelCompletionRatio != expectedImageConfig.CompletionRatio {
 				t.Errorf("xAI %s: expected completion ratio %.2f, got %.2f",
 					imageModel, expectedImageConfig.CompletionRatio, imageModelCompletionRatio)
 			}
 
-			t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - $%.2f per image using QuotaPerUsd",
+			t.Logf("xAI %s: ratio=%.6f (expected %.6f), completion_ratio=%.2f (expected %.2f) - $%.2f per image",
 				imageModel, imageModelRatio, expectedImageConfig.Ratio, imageModelCompletionRatio, expectedImageConfig.CompletionRatio,
-				expectedImageConfig.ImagePriceUsd)
+				expectedImageConfig.Image.PricePerImageUsd)
 		}
 	})
 

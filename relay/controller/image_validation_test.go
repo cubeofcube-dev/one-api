@@ -27,7 +27,7 @@ func TestValidateImageRequest_DALLE3_RejectAutoQuality(t *testing.T) {
 	}
 
 	// meta not used for validation currently
-	if got := validateImageRequest(ir, metalib.GetByContext(c)); got == nil {
+	if got := validateImageRequest(ir, metalib.GetByContext(c), nil); got == nil {
 		t.Fatalf("expected validation error for quality=auto")
 	} else if got.StatusCode != http.StatusBadRequest {
 		t.Fatalf("expected 400, got %d", got.StatusCode)
