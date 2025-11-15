@@ -22,6 +22,18 @@ const (
 	Done             = "[DONE]"
 )
 
+func shouldLogDetailedUpstreamBody(c *gin.Context) bool {
+	if c == nil {
+		return true
+	}
+	if skipRaw, exists := c.Get(ctxkey.SkipAdaptorResponseBodyLog); exists {
+		if flag, ok := skipRaw.(bool); ok {
+			return !flag
+		}
+	}
+	return true
+}
+
 // ChatCompletionsStreamResponse represents the streaming response structure
 type ChatCompletionsStreamResponse struct {
 	Id      string                                `json:"id"`
@@ -160,7 +172,19 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStat
 		return ErrorWrapper(err, "read_response_body_failed", http.StatusInternalServerError), nil
 	}
 
-	logger.Debug("receive embedding response from upstream channel", zap.ByteString("response_body", responseBody))
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("response_body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	logger.Debug("receive embedding response from upstream channel", fields...)
 	if err = resp.Body.Close(); err != nil {
 		return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), nil
 	}
@@ -244,7 +268,19 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return ErrorWrapper(err, "read_response_body_failed", http.StatusInternalServerError), nil
 	}
 
-	logger.Debug("receive from upstream channel", zap.ByteString("response_body", responseBody))
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("response_body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	logger.Debug("receive from upstream channel", fields...)
 	if err = resp.Body.Close(); err != nil {
 		return ErrorWrapper(err, "close_response_body_failed", http.StatusInternalServerError), nil
 	}

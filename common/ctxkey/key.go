@@ -218,6 +218,11 @@ const (
 	// Read in: controller/claude_messages to return converted responses.
 	ConvertedResponse = "converted_response"
 
+	// SkipAdaptorResponseBodyLog suppresses verbose adaptor-level upstream body logging when the
+	// controller already captured and will emit a debug preview. This avoids duplicate payload logs
+	// while keeping high-level status metadata available.
+	SkipAdaptorResponseBodyLog = "skip_adaptor_response_body_log"
+
 	// DebugResponseWriter stores the body-capturing response writer used for debug logging of outbound payloads.
 	// Set in: relay/controller debug logging helpers when enhanced diagnostics are enabled.
 	// Read in: controller/relay and relay/controller helpers when writing response debug logs.

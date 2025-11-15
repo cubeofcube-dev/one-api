@@ -205,6 +205,7 @@ func RelayClaudeMessagesHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 			respErr, usage = anthropic.ClaudeNativeStreamHandler(c, resp)
 		} else {
 			// For AWS Bedrock streaming, delegate to adapter's DoResponse
+			c.Set(ctxkey.SkipAdaptorResponseBodyLog, true)
 			usage, respErr = adaptorInstance.DoResponse(c, resp, meta)
 		}
 	} else if passthrough, ok := c.Get(ctxkey.ClaudeDirectPassthrough); ok && passthrough.(bool) && !meta.IsStream {
@@ -260,10 +261,12 @@ func RelayClaudeMessagesHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 			}
 		} else {
 			// For AWS Bedrock non-streaming, delegate to adapter's DoResponse
+			c.Set(ctxkey.SkipAdaptorResponseBodyLog, true)
 			usage, respErr = adaptorInstance.DoResponse(c, resp, meta)
 		}
 	} else {
 		// Call the adapter's DoResponse method to handle response conversion
+		c.Set(ctxkey.SkipAdaptorResponseBodyLog, true)
 		usage, respErr = adaptorInstance.DoResponse(c, resp, meta)
 	}
 	if upstreamCapture != nil {

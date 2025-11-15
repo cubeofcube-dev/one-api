@@ -190,6 +190,7 @@ func RelayResponseAPIHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 	}
 
 	// do response
+	c.Set(ctxkey.SkipAdaptorResponseBodyLog, true)
 	usage, respErr := requestAdaptor.DoResponse(c, resp, meta)
 	if upstreamCapture != nil {
 		logUpstreamResponseFromCapture(lg, resp, upstreamCapture, "response_api")

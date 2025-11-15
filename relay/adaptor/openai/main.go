@@ -14,6 +14,7 @@ import (
 	"github.com/Laisky/zap"
 	"github.com/gin-gonic/gin"
 
+	"github.com/Laisky/errors/v2"
 	"github.com/songquanpeng/one-api/common"
 	"github.com/songquanpeng/one-api/common/conv"
 	"github.com/songquanpeng/one-api/common/ctxkey"
@@ -77,6 +78,18 @@ func recordUpstreamCompleted(c *gin.Context) {
 		return
 	}
 	tracing.RecordTraceTimestamp(c, relaymodel.TimestampUpstreamCompleted)
+}
+
+func shouldLogDetailedUpstreamBody(c *gin.Context) bool {
+	if c == nil {
+		return true
+	}
+	if skipRaw, exists := c.Get(ctxkey.SkipAdaptorResponseBodyLog); exists {
+		if flag, ok := skipRaw.(bool); ok {
+			return !flag
+		}
+	}
+	return true
 }
 
 // StreamHandler processes streaming responses from OpenAI API
@@ -357,7 +370,19 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 	}
 
 	// Log the upstream response before any transformation so troubleshooting retains full context
-	logger.Debug("receive upstream response", zap.ByteString("body", responseBody))
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	logger.Debug("receive upstream response", fields...)
 
 	// Parse the response JSON
 	var textResponse SlimTextResponse
@@ -454,6 +479,100 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 
 	// Usage was already calculated above
 	return nil, &textResponse.Usage
+}
+
+// EmbeddingHandler processes non-streaming embedding responses from the OpenAI API and derives usage
+// information even when upstream omits the usage block.
+func EmbeddingHandler(c *gin.Context, resp *http.Response, promptTokens int, modelName string) (*model.ErrorWithStatusCode, *model.Usage) {
+	logger := gmw.GetLogger(c)
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ErrorWrapper(err, "read_embedding_response_body_failed", http.StatusInternalServerError), nil
+	}
+
+	if err = resp.Body.Close(); err != nil {
+		return ErrorWrapper(err, "close_embedding_response_body_failed", http.StatusInternalServerError), nil
+	}
+
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	logger.Debug("receive upstream embedding response", fields...)
+
+	if len(responseBody) == 0 {
+		logger.Error("received empty embedding response body from upstream",
+			zap.Int("status_code", resp.StatusCode),
+			zap.String("model", modelName))
+		return ErrorWrapper(errors.Errorf("empty embedding response body from upstream"),
+			"empty_embedding_response", http.StatusInternalServerError), nil
+	}
+
+	var embeddingResponse EmbeddingResponse
+	if err = json.Unmarshal(responseBody, &embeddingResponse); err != nil {
+		logger.Error("failed to unmarshal embedding response body",
+			zap.Error(err),
+			zap.ByteString("response_body", responseBody))
+		return ErrorWrapper(err, "unmarshal_embedding_response_failed", http.StatusInternalServerError), nil
+	}
+
+	if embeddingResponse.Error != nil && embeddingResponse.Error.Type != "" {
+		if embeddingResponse.Error.RawError == nil && embeddingResponse.Error.Message != "" {
+			embeddingResponse.Error.RawError = stdErrors.New(embeddingResponse.Error.Message)
+		}
+		logger.Debug("upstream returned embedding error response",
+			zap.String("error_type", embeddingResponse.Error.Type),
+			zap.String("error_message", embeddingResponse.Error.Message),
+			zap.Error(embeddingResponse.Error.RawError))
+		return &model.ErrorWithStatusCode{
+			Error:      *embeddingResponse.Error,
+			StatusCode: resp.StatusCode,
+		}, nil
+	}
+
+	if len(embeddingResponse.Data) == 0 {
+		logger.Error("embedding response has no data, possible upstream error",
+			zap.ByteString("response_body", responseBody))
+		return ErrorWrapper(errors.Errorf("no embedding data in upstream response"),
+			"missing_embedding_data", http.StatusInternalServerError), nil
+	}
+
+	usage := embeddingResponse.Usage
+	if usage.PromptTokens == 0 && promptTokens > 0 {
+		usage.PromptTokens = promptTokens
+	}
+	if usage.TotalTokens == 0 {
+		usage.TotalTokens = usage.PromptTokens + usage.CompletionTokens
+	}
+
+	logger.Debug("finalized embedding usage",
+		zap.Int("prompt_tokens", usage.PromptTokens),
+		zap.Int("completion_tokens", usage.CompletionTokens),
+		zap.Int("total_tokens", usage.TotalTokens))
+
+	// Preserve aggregated response for downstream inspection (e.g. tests or converters)
+	embeddingResponse.Usage = usage
+	c.Set(ctxkey.ConvertedResponse, embeddingResponse)
+
+	for key, values := range resp.Header {
+		for _, value := range values {
+			c.Writer.Header().Add(key, value)
+		}
+	}
+	c.Writer.WriteHeader(resp.StatusCode)
+	if _, err = c.Writer.Write(responseBody); err != nil {
+		return ErrorWrapper(err, "write_embedding_response_body_failed", http.StatusInternalServerError), &usage
+	}
+
+	return nil, &usage
 }
 
 // processReasoningContent is a helper function to extract and process reasoning content from the message
@@ -576,8 +695,19 @@ func ResponseAPIHandler(c *gin.Context, resp *http.Response, promptTokens int, m
 	}
 
 	lg := gmw.GetLogger(c)
-	// Log the response body for debugging
-	lg.Debug("got response from upstream", zap.ByteString("body", responseBody))
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	lg.Debug("got response from upstream", fields...)
 
 	// Close the original response body
 	if err = resp.Body.Close(); err != nil {
@@ -1132,8 +1262,19 @@ func ResponseAPIDirectHandler(c *gin.Context, resp *http.Response, promptTokens 
 		return ErrorWrapper(err, "read_response_body_failed", http.StatusInternalServerError), nil
 	}
 
-	// Log the response body for debugging
-	gmw.GetLogger(c).Debug("got response from upstream", zap.ByteString("body", responseBody))
+	fields := []zap.Field{
+		zap.Int("status_code", resp.StatusCode),
+		zap.Int("body_bytes", len(responseBody)),
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "" {
+		fields = append(fields, zap.String("content_type", contentType))
+	}
+	if shouldLogDetailedUpstreamBody(c) {
+		fields = append(fields, zap.ByteString("body", responseBody))
+	} else {
+		fields = append(fields, zap.Bool("body_logging_suppressed", true))
+	}
+	gmw.GetLogger(c).Debug("got response from upstream", fields...)
 
 	// Close the original response body
 	if err = resp.Body.Close(); err != nil {

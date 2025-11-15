@@ -126,6 +126,7 @@ func RelayRerankHelper(c *gin.Context) *relaymodel.ErrorWithStatusCode {
 		return RelayErrorHandlerWithContext(c, resp)
 	}
 
+	c.Set(ctxkey.SkipAdaptorResponseBodyLog, true)
 	usage, respErr := adaptorImpl.DoResponse(c, resp, meta)
 	if upstreamCapture != nil {
 		logUpstreamResponseFromCapture(lg, resp, upstreamCapture, "rerank")

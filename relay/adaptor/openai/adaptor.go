@@ -838,6 +838,8 @@ func (a *Adaptor) DoResponse(c *gin.Context,
 				// Regular ChatCompletion request
 				err, usage = Handler(c, resp, meta.PromptTokens, meta.ActualModelName)
 			}
+		case relaymode.Embeddings:
+			err, usage = EmbeddingHandler(c, resp, meta.PromptTokens, meta.ActualModelName)
 		default:
 			err, usage = Handler(c, resp, meta.PromptTokens, meta.ActualModelName)
 		}

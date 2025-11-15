@@ -130,6 +130,7 @@ type EmbeddingResponse struct {
 	Data        []EmbeddingResponseItem `json:"data"`
 	Model       string                  `json:"model"`
 	model.Usage `json:"usage"`
+	Error       *model.Error `json:"error,omitempty"`
 }
 
 // ImageData represents an image in the response
