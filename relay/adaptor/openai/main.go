@@ -8,6 +8,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"strconv"
 	"strings"
 
 	gmw "github.com/Laisky/gin-middlewares/v7"
@@ -458,10 +459,23 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 
 	// Forward all response headers (not just first value of each)
 	for k, values := range resp.Header {
+		if strings.EqualFold(k, "Content-Length") ||
+			strings.EqualFold(k, "Transfer-Encoding") ||
+			strings.EqualFold(k, "Content-Encoding") {
+			continue
+		}
 		for _, v := range values {
 			c.Writer.Header().Add(k, v)
 		}
 	}
+
+	// Ensure content length reflects the rewritten body size so clients do not wait for
+	// more bytes than we send (e.g. when we drop upstream-only fields).
+	newLength := strconv.Itoa(len(responseBody))
+	c.Writer.Header().Set("Content-Length", newLength)
+	logger.Debug("adjusted response content length",
+		zap.String("original_content_length", resp.Header.Get("Content-Length")),
+		zap.String("rewritten_content_length", newLength))
 
 	// Set response status and copy body to client
 	c.Writer.WriteHeader(resp.StatusCode)
@@ -795,8 +809,11 @@ func ResponseAPIHandler(c *gin.Context, resp *http.Response, promptTokens int, m
 	}
 
 	// Set response status and send the converted response to client
+	newLength := strconv.Itoa(len(jsonResponse))
+	c.Writer.Header().Set("Content-Length", newLength)
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(resp.StatusCode)
+	lg.Debug("adjusted response content length", zap.String("original_content_length", resp.Header.Get("Content-Length")), zap.String("rewritten_content_length", newLength))
 	if _, err = c.Writer.Write(jsonResponse); err != nil {
 		// Return usage even on write failure so billing can proceed for forwarded requests
 		return ErrorWrapper(err, "write_response_body_failed", http.StatusInternalServerError), &chatCompletionResp.Usage
@@ -1343,8 +1360,11 @@ func ResponseAPIDirectHandler(c *gin.Context, resp *http.Response, promptTokens 
 	}
 
 	// Set response status and send the response directly to client
+	newLength := strconv.Itoa(len(responseBody))
+	c.Writer.Header().Set("Content-Length", newLength)
 	c.Writer.Header().Set("Content-Type", "application/json")
 	c.Writer.WriteHeader(resp.StatusCode)
+	gmw.GetLogger(c).Debug("adjusted response content length", zap.String("original_content_length", resp.Header.Get("Content-Length")), zap.String("rewritten_content_length", newLength))
 	if _, err = c.Writer.Write(responseBody); err != nil {
 		// Return usage even on write failure so billing can proceed for forwarded requests
 		return ErrorWrapper(err, "write_response_body_failed", http.StatusInternalServerError), finalUsage

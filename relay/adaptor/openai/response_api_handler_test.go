@@ -83,9 +83,7 @@ func TestResponseAPIHandlerRewritesHeaders(t *testing.T) {
 	require.Equal(t, "ok", recorder.Header().Get("X-Upstream"))
 	require.Empty(t, recorder.Header().Get("Content-Encoding"))
 	require.Empty(t, recorder.Header().Get("Transfer-Encoding"))
-	if recorded := recorder.Header().Get("Content-Length"); recorded != "" {
-		require.Equal(t, strconv.Itoa(len(recorder.Body.Bytes())), recorded)
-	}
+	require.Equal(t, strconv.Itoa(len(recorder.Body.Bytes())), recorder.Header().Get("Content-Length"))
 	require.NotEmpty(t, recorder.Body.String())
 }
 
@@ -112,9 +110,7 @@ func TestResponseAPIDirectHandlerRewritesHeaders(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "direct", recorder.Header().Get("X-Upstream"))
 	require.Empty(t, recorder.Header().Get("Content-Encoding"))
-	if recorded := recorder.Header().Get("Content-Length"); recorded != "" {
-		require.Equal(t, strconv.Itoa(len(recorder.Body.Bytes())), recorded)
-	}
+	require.Equal(t, strconv.Itoa(len(recorder.Body.Bytes())), recorder.Header().Get("Content-Length"))
 	require.JSONEq(t, string(raw), recorder.Body.String())
 }
 
