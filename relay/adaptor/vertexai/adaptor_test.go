@@ -46,7 +46,7 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}
 		})
 
-		Convey("gemini-2.5-pro-preview models should use global endpoint", func() {
+		Convey("gemini-2.5 family models should use global endpoint", func() {
 			testCases := []struct {
 				name           string
 				modelName      string
@@ -57,23 +57,23 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}{
 				{
 					name:           "gemini-2.5-pro-preview non-stream",
-					modelName:      "gemini-2.5-pro-preview-05-06",
+					modelName:      "gemini-2.5-pro-preview",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
 					expectedSuffix: "generateContent",
 				},
 				{
-					name:           "gemini-2.5-pro-preview stream",
-					modelName:      "gemini-2.5-pro-preview-12-24",
+					name:           "gemini-2.5-pro stream",
+					modelName:      "gemini-2.5-pro",
 					isStream:       true,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
 					expectedSuffix: "streamGenerateContent?alt=sse",
 				},
 				{
-					name:           "gemini-2.5-pro-preview with additional suffix",
-					modelName:      "gemini-2.5-pro-preview-latest",
+					name:           "gemini-2.5-flash",
+					modelName:      "gemini-2.5-flash",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
@@ -110,22 +110,22 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 				expectedSuffix string
 			}{
 				{
-					name:           "gemini-pro non-stream",
-					modelName:      "gemini-pro",
+					name:           "gemini-2.0-flash non-stream",
+					modelName:      "gemini-2.0-flash",
 					isStream:       false,
 					region:         "us-central1",
 					expectedSuffix: "generateContent",
 				},
 				{
-					name:           "gemini-1.5-pro stream",
-					modelName:      "gemini-1.5-pro",
+					name:           "gemini-2.0-flash-lite stream",
+					modelName:      "gemini-2.0-flash-lite",
 					isStream:       true,
 					region:         "europe-west4",
 					expectedSuffix: "streamGenerateContent?alt=sse",
 				},
 				{
-					name:           "gemini-flash",
-					modelName:      "gemini-1.5-flash",
+					name:           "gemini-3-pro-preview",
+					modelName:      "gemini-3-pro-preview",
 					isStream:       false,
 					region:         "asia-southeast1",
 					expectedSuffix: "generateContent",
@@ -179,14 +179,14 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}{
 				{
 					name:        "gemini-2.5-pro-preview with custom BaseURL",
-					modelName:   "gemini-2.5-pro-preview-05-06",
+					modelName:   "gemini-2.5-pro-preview",
 					isStream:    false,
 					expectedLoc: "global",
 					suffix:      "generateContent",
 				},
 				{
 					name:        "regular gemini with custom BaseURL",
-					modelName:   "gemini-pro",
+					modelName:   "gemini-2.0-flash",
 					isStream:    false,
 					expectedLoc: "us-central1",
 					suffix:      "generateContent",
@@ -224,14 +224,12 @@ func TestIsRequireGlobalEndpoint(t *testing.T) {
 			expected bool
 		}{
 			{"gemini-2.5-pro-preview", true},
-			{"gemini-2.5-pro-preview-05-06", true},
-			{"gemini-2.5-pro-preview-12-24", true},
-			{"gemini-2.5-pro-preview-latest", true},
-			{"gemini-2.5-pro-preview-experimental", true},
-			{"gemini-pro", false},
-			{"gemini-1.5-pro", false},
-			{"gemini-1.0-pro", false},
-			{"gemini-1.5-flash", false},
+			{"gemini-2.5-pro", true},
+			{"gemini-2.5-flash", true},
+			{"gemini-2.5-flash-lite", true},
+			{"gemini-3-pro-preview", false},
+			{"gemini-2.0-flash", false},
+			{"gemini-2.0-flash-lite", false},
 			{"claude-3-sonnet", false},
 			{"gpt-4", false},
 			{"imagen-3.0", false},
@@ -256,7 +254,7 @@ func TestIsDeepSeekModel(t *testing.T) {
 			{"deepseek-ai/deepseek-v3.1-maas", true},
 			{"deepseek-ai/deepseek-r1-0528-maas", true},
 			{"deepseek-ai/deepseek-v2", true},
-			{"gemini-1.5-pro", false},
+			{"gemini-2.5-pro", false},
 			{"claude-3-sonnet", false},
 			{"", false},
 		}
@@ -398,7 +396,7 @@ func TestIsImagenModel(t *testing.T) {
 			{"imagen-4.0-fast-generate-001", true},
 			{"imagen-3.0-generate-002", true},
 			{"imagegeneration@006", true},
-			{"gemini-1.5-pro", false},
+			{"gemini-2.5-pro", false},
 			{"claude-3-sonnet", false},
 			{"", false},
 		}
@@ -418,7 +416,7 @@ func TestIsOpenAIModel(t *testing.T) {
 		}{
 			{"openai/gpt-oss-20b-maas", true},
 			{"openai/gpt-oss-120b-maas", true},
-			{"gemini-1.5-pro", false},
+			{"gemini-2.5-pro", false},
 			{"claude-3-sonnet", false},
 			{"", false},
 		}
@@ -442,7 +440,7 @@ func TestIsQwenModel(t *testing.T) {
 			{"qwen/qwen-turbo", true},
 			{"qwen/qwen-plus", true},
 			{"openai/gpt-oss-20b-maas", false},
-			{"gemini-1.5-pro", false},
+			{"gemini-2.5-pro", false},
 			{"claude-3-sonnet", false},
 			{"", false},
 		}

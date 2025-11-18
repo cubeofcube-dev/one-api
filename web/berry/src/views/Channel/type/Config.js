@@ -143,7 +143,7 @@ const typeConfig = {
       other: '版本号'
     },
     input: {
-      models: ['gemini-pro']
+      models: ['gemini-2.5-flash']
     },
     prompt: {
       other: '请输入版本号，例如：v1'

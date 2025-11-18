@@ -23,9 +23,9 @@ func TestAdapterPricingImplementations(t *testing.T) {
 		{"Ali", apitype.Ali, "qwen-turbo", false},
 		{"Baidu", apitype.Baidu, "ERNIE-4.0-8K", false},
 		{"Tencent", apitype.Tencent, "hunyuan-lite", false},
-		{"Gemini", apitype.Gemini, "gemini-pro", false},
+		{"Gemini", apitype.Gemini, "gemini-2.5-flash", false},
 		{"Xunfei", apitype.Xunfei, "Spark-Lite", false},
-		{"VertexAI", apitype.VertexAI, "gemini-pro", false},
+		{"VertexAI", apitype.VertexAI, "gemini-2.5-flash", false},
 		{"xAI", apitype.XAI, "grok-3", false},
 		{"AWS Bedrock/Mistral AI", apitype.AwsClaude, "mistral-pixtral-large-2502", false},
 		// Adapters that still use DefaultPricingMethods (expected to have empty pricing)
@@ -217,9 +217,9 @@ func TestSpecificAdapterPricing(t *testing.T) {
 			expectedRatio           float64
 			expectedCompletionRatio float64
 		}{
-			"gemini-pro":       {0.5 * 0.5, 3.0},   // 0.5 * ratio.MilliTokensUsd
-			"gemini-1.5-flash": {0.075 * 0.5, 4.0}, // 0.075 * ratio.MilliTokensUsd
-			"gemini-1.5-pro":   {1.25 * 0.5, 4.0},  // 1.25 * ratio.MilliTokensUsd
+			"gemini-2.5-pro":   {1.25 * 0.5, 10.0 / 1.25},
+			"gemini-2.5-flash": {0.30 * 0.5, 2.5 / 0.30},
+			"gemini-2.0-flash": {0.10 * 0.5, 0.40 / 0.10},
 		}
 
 		for model, expected := range testModels {
@@ -242,7 +242,7 @@ func TestSpecificAdapterPricing(t *testing.T) {
 		}
 
 		// VertexAI should have the same pricing as Gemini for shared models
-		testModels := []string{"gemini-pro", "gemini-1.5-flash", "gemini-1.5-pro"}
+		testModels := []string{"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash"}
 
 		for _, model := range testModels {
 			ratio := adaptor.GetModelRatio(model)

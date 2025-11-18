@@ -20,60 +20,134 @@ func geminiImageConfig(pricePerImage float64) *adaptor.ImagePricingConfig {
 	}
 }
 
+var (
+	gemini25ProPricing = adaptor.ModelConfig{
+		Ratio:             1.25 * ratio.MilliTokensUsd,
+		CompletionRatio:   10.0 / 1.25,
+		CacheWrite5mRatio: 0.125 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.125 * ratio.MilliTokensUsd,
+		Tiers: []adaptor.ModelRatioTier{
+			{
+				Ratio:               2.50 * ratio.MilliTokensUsd,
+				CompletionRatio:     15.0 / 2.50,
+				CacheWrite5mRatio:   0.25 * ratio.MilliTokensUsd,
+				CacheWrite1hRatio:   0.25 * ratio.MilliTokensUsd,
+				InputTokenThreshold: 200001,
+			},
+		},
+	}
+	gemini25FlashPricing = adaptor.ModelConfig{
+		Ratio:             0.30 * ratio.MilliTokensUsd,
+		CompletionRatio:   2.50 / 0.30,
+		CacheWrite5mRatio: 0.03 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.03 * ratio.MilliTokensUsd,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     1.00 / 0.30,
+			CompletionRatio: 0.30,
+		},
+	}
+	gemini25FlashLitePricing = adaptor.ModelConfig{
+		Ratio:             0.10 * ratio.MilliTokensUsd,
+		CompletionRatio:   0.40 / 0.10,
+		CacheWrite5mRatio: 0.01 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.01 * ratio.MilliTokensUsd,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     0.30 / 0.10,
+			CompletionRatio: 0.10 / 0.30,
+		},
+	}
+)
+
 // ModelRatios contains all supported models and their pricing ratios
 // Model list is derived from the keys of this map, eliminating redundancy
 // Based on Google AI pricing: https://ai.google.dev/pricing
 //
 // ⚠️ Note: should also check relay/adaptor/vertexai/adaptor.go:IsRequireGlobalEndpoint
 var ModelRatios = map[string]adaptor.ModelConfig{
-	// Gemini Pro Models
-	"gemini-pro":     {Ratio: 0.5 * ratio.MilliTokensUsd, CompletionRatio: 3},
-	"gemini-1.0-pro": {Ratio: 0.5 * ratio.MilliTokensUsd, CompletionRatio: 3},
-
 	// Gemma Models
 	"gemma-2-2b-it":  {Ratio: 0.35 * ratio.MilliTokensUsd, CompletionRatio: 1.4},
 	"gemma-2-9b-it":  {Ratio: 0.35 * ratio.MilliTokensUsd, CompletionRatio: 1.4},
 	"gemma-2-27b-it": {Ratio: 0.35 * ratio.MilliTokensUsd, CompletionRatio: 1.4},
 	"gemma-3-27b-it": {Ratio: 0.35 * ratio.MilliTokensUsd, CompletionRatio: 1.4},
 
-	// Gemini 1.5 Flash Models
-	"gemini-1.5-flash":    {Ratio: 0.075 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-1.5-flash-8b": {Ratio: 0.0375 * ratio.MilliTokensUsd, CompletionRatio: 4},
+	// Embedding & evaluation models
+	"gemini-embedding-001": {Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 1},
+	"aqa":                  {Ratio: 1, CompletionRatio: 1},
 
-	// Gemini 1.5 Pro Models
-	"gemini-1.5-pro":              {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-1.5-pro-experimental": {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 4},
+	// Gemini 3 Models
+	"gemini-3-pro-preview": {
+		Ratio:             2.0 * ratio.MilliTokensUsd,
+		CompletionRatio:   12.0 / 2.0,
+		CacheWrite5mRatio: 0.20 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.20 * ratio.MilliTokensUsd,
+		Tiers: []adaptor.ModelRatioTier{
+			{
+				Ratio:               4.0 * ratio.MilliTokensUsd,
+				CompletionRatio:     18.0 / 4.0,
+				CacheWrite5mRatio:   0.40 * ratio.MilliTokensUsd,
+				CacheWrite1hRatio:   0.40 * ratio.MilliTokensUsd,
+				InputTokenThreshold: 200001,
+			},
+		},
+	},
 
-	// Embedding Models
-	"text-embedding-004": {Ratio: 0.00001 * ratio.MilliTokensUsd, CompletionRatio: 1},
-	"aqa":                {Ratio: 1, CompletionRatio: 1},
+	// Gemini 2.5 Pro & Computer Use Models
+	"gemini-2.5-pro":                  gemini25ProPricing,
+	"gemini-2.5-pro-preview":          gemini25ProPricing,
+	"gemini-2.5-computer-use-preview": gemini25ProPricing,
+
+	// Gemini 2.5 Flash Family
+	"gemini-2.5-flash":              gemini25FlashPricing,
+	"gemini-2.5-flash-preview":      gemini25FlashPricing,
+	"gemini-2.5-flash-lite":         gemini25FlashLitePricing,
+	"gemini-2.5-flash-lite-preview": gemini25FlashLitePricing,
+	"gemini-2.5-flash-native-audio": {
+		Ratio:           0.50 * ratio.MilliTokensUsd,
+		CompletionRatio: 2.0 / 0.50,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     3.0 / 0.50,
+			CompletionRatio: 1,
+		},
+	},
+	"gemini-2.5-flash-image":         {Ratio: 0.30 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.30, Image: geminiImageConfig(0.039)},
+	"gemini-2.5-flash-image-preview": {Ratio: 0.30 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.30, Image: geminiImageConfig(0.039)},
+	"gemini-2.5-flash-preview-tts": {
+		Ratio:           0.50 * ratio.MilliTokensUsd,
+		CompletionRatio: 10.0 / 0.50,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     1,
+			CompletionRatio: 1,
+		},
+	},
+	"gemini-2.5-pro-preview-tts": {
+		Ratio:           1.0 * ratio.MilliTokensUsd,
+		CompletionRatio: 20.0 / 1.0,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     1,
+			CompletionRatio: 1,
+		},
+	},
+	"gemini-robotics-er-1.5-preview": {
+		Ratio:           0.30 * ratio.MilliTokensUsd,
+		CompletionRatio: 2.5 / 0.30,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     1.00 / 0.30,
+			CompletionRatio: 0.30,
+		},
+	},
 
 	// Gemini 2.0 Flash Models
-	"gemini-2.0-flash":                      {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-2.0-flash-exp":                  {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-2.0-flash-lite":                 {Ratio: 0.075 * ratio.MilliTokensUsd, CompletionRatio: 0.3 / 0.075},
-	"gemini-2.0-flash-thinking-exp-01-21":   {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-2.0-flash-exp-image-generation": {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-
-	// Gemini 2.0 Pro Models
-	"gemini-2.0-pro-exp-02-05": {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 4},
-
-	// Gemini 2.5 Flash Models
-	"gemini-2.5-flash-lite":                 {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 0.4 / 0.1},
-	"gemini-2.5-flash-lite-preview-06-17":   {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-2.5-flash-lite-preview-09-2025": {Ratio: 0.1 * ratio.MilliTokensUsd, CompletionRatio: 4},
-	"gemini-2.5-flash":                      {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
-	"gemini-2.5-flash-preview-04-17":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
-	"gemini-2.5-flash-preview-05-20":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
-	"gemini-2.5-flash-preview-09-2025":      {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3},
-	"gemini-2.5-flash-image":                {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, Image: geminiImageConfig(0.039)},
-	"gemini-2.5-flash-image-preview":        {Ratio: 0.3 * ratio.MilliTokensUsd, CompletionRatio: 2.5 / 0.3, Image: geminiImageConfig(0.039)},
-
-	// Gemini 2.5 Pro Models
-	"gemini-2.5-pro":               {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 8},
-	"gemini-2.5-pro-exp-03-25":     {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 8},
-	"gemini-2.5-pro-preview-05-06": {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 8},
-	"gemini-2.5-pro-preview-06-05": {Ratio: 1.25 * ratio.MilliTokensUsd, CompletionRatio: 8},
+	"gemini-2.0-flash": {
+		Ratio:             0.10 * ratio.MilliTokensUsd,
+		CompletionRatio:   0.40 / 0.10,
+		CacheWrite5mRatio: 0.025 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.025 * ratio.MilliTokensUsd,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     0.70 / 0.10,
+			CompletionRatio: 0.10 / 0.70,
+		},
+	},
+	"gemini-2.0-flash-lite": {Ratio: 0.075 * ratio.MilliTokensUsd, CompletionRatio: 0.30 / 0.075},
 }
 
 // ModelList derived from ModelRatios for backward compatibility
@@ -84,29 +158,17 @@ const geminiWebSearchUsdPerCall = 35.0 / 1000.0
 // geminiWebSearchModels enumerates Gemini models with grounded web search pricing in Google documentation.
 // Source: https://ai.google.dev/gemini-api/docs/pricing (retrieved via https://r.jina.ai/https://ai.google.dev/gemini-api/docs/pricing)
 var geminiWebSearchModels = map[string]struct{}{
-	"gemini-1.5-flash":                      {},
-	"gemini-1.5-flash-8b":                   {},
-	"gemini-1.5-pro":                        {},
-	"gemini-1.5-pro-experimental":           {},
-	"gemini-2.0-flash":                      {},
-	"gemini-2.0-flash-exp":                  {},
-	"gemini-2.0-flash-lite":                 {},
-	"gemini-2.0-flash-thinking-exp-01-21":   {},
-	"gemini-2.0-flash-exp-image-generation": {},
-	"gemini-2.0-pro-exp-02-05":              {},
-	"gemini-2.5-flash-lite":                 {},
-	"gemini-2.5-flash-lite-preview-06-17":   {},
-	"gemini-2.5-flash-lite-preview-09-2025": {},
-	"gemini-2.5-flash":                      {},
-	"gemini-2.5-flash-preview-04-17":        {},
-	"gemini-2.5-flash-preview-05-20":        {},
-	"gemini-2.5-flash-preview-09-2025":      {},
-	"gemini-2.5-flash-image":                {},
-	"gemini-2.5-flash-image-preview":        {},
-	"gemini-2.5-pro":                        {},
-	"gemini-2.5-pro-exp-03-25":              {},
-	"gemini-2.5-pro-preview-05-06":          {},
-	"gemini-2.5-pro-preview-06-05":          {},
+	"gemini-3-pro-preview":            {},
+	"gemini-2.5-pro":                  {},
+	"gemini-2.5-pro-preview":          {},
+	"gemini-2.5-computer-use-preview": {},
+	"gemini-2.5-flash":                {},
+	"gemini-2.5-flash-preview":        {},
+	"gemini-2.5-flash-lite":           {},
+	"gemini-2.5-flash-lite-preview":   {},
+	"gemini-2.0-flash":                {},
+	"gemini-2.0-flash-lite":           {},
+	"gemini-robotics-er-1.5-preview":  {},
 }
 
 var geminiToolingDefaults = buildGeminiToolingDefaults()

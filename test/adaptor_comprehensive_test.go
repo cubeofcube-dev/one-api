@@ -119,7 +119,7 @@ func getAllAdapterTestCases() []AdapterTestCase {
 			ChannelType:            channeltype.Gemini,
 			SupportsChatCompletion: true,
 			SupportsClaudeMessages: true,
-			TestModel:              "gemini-pro",
+			TestModel:              "gemini-2.5-flash",
 		},
 		{
 			Name:                   "Ali",
@@ -167,7 +167,7 @@ func getAllAdapterTestCases() []AdapterTestCase {
 			ChannelType:            channeltype.VertextAI,
 			SupportsChatCompletion: true,
 			SupportsClaudeMessages: true,
-			TestModel:              "gemini-pro",
+			TestModel:              "gemini-2.5-flash",
 		},
 		{
 			Name:                   "Replicate",

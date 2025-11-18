@@ -38,12 +38,13 @@ const channelName = "vertexai"
 //   - https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
 //   - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-preview
 func IsRequireGlobalEndpoint(model string) bool {
-	// gemini-2.5-pro-preview models use global endpoint
-	if strings.HasPrefix(model, "gemini-2.5") {
+	switch {
+	case strings.HasPrefix(model, "gemini-2.5"),
+		strings.HasPrefix(model, "gemini-3"):
 		return true
+	default:
+		return false
 	}
-
-	return false
 }
 
 type Adaptor struct {
@@ -228,7 +229,7 @@ func (a *Adaptor) GetModelList() []string {
 	models = append(models, adaptor.GetModelListFromPricing(qwen.ModelRatios)...)
 
 	// Add VertexAI-specific models
-	models = append(models, "text-embedding-004", "aqa")
+	models = append(models, "gemini-embedding-001", "aqa")
 
 	return models
 }
@@ -268,7 +269,7 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 	// Using global ratio.MilliTokensUsd = 0.5 for consistent quota-based pricing
 
 	// VertexAI-specific models
-	pricing["text-embedding-004"] = adaptor.ModelConfig{Ratio: 0.00001 * ratio.MilliTokensUsd, CompletionRatio: 1}
+	pricing["gemini-embedding-001"] = adaptor.ModelConfig{Ratio: 0.15 * ratio.MilliTokensUsd, CompletionRatio: 1}
 	pricing["aqa"] = adaptor.ModelConfig{Ratio: 1, CompletionRatio: 1}
 
 	return pricing

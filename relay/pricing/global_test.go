@@ -84,8 +84,8 @@ func mockGetAdaptor(apiType int) adaptor.Adaptor {
 		return &MockAdaptor{
 			name: "gemini",
 			pricing: map[string]adaptor.ModelConfig{
-				"gemini-pro": {Ratio: 0.5 * 0.000001, CompletionRatio: 3.0},
-				"gpt-4":      {Ratio: 25 * 0.000001, CompletionRatio: 2.5}, // Conflict with OpenAI
+				"gemini-2.5-flash": {Ratio: 0.30 * 0.000001, CompletionRatio: 2.5 / 0.30},
+				"gpt-4":            {Ratio: 25 * 0.000001, CompletionRatio: 2.5}, // Conflict with OpenAI
 			},
 		}
 	default:
@@ -142,8 +142,8 @@ func TestGlobalPricingMerging(t *testing.T) {
 	}
 
 	// Check Gemini models
-	if _, exists := pricing["gemini-pro"]; !exists {
-		t.Error("Expected gemini-pro from Gemini to be in global pricing")
+	if _, exists := pricing["gemini-2.5-flash"]; !exists {
+		t.Error("Expected gemini-2.5-flash from Gemini to be in global pricing")
 	}
 
 	// Test conflict resolution (first adapter wins)

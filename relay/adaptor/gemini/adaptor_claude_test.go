@@ -50,7 +50,7 @@ func TestConvertNonStreamingToClaudeResponse_Basic(t *testing.T) {
 	}
 	resp.Header.Set("Content-Type", "application/json")
 
-	metaInfo := &meta.Meta{ActualModelName: "gemini-1.5-flash", PromptTokens: 5}
+	metaInfo := &meta.Meta{ActualModelName: "gemini-2.5-flash", PromptTokens: 5}
 
 	newResp, errResp := adaptor.convertNonStreamingToClaudeResponse(ctx, resp, bodyBytes, metaInfo)
 	if errResp != nil {
@@ -123,7 +123,7 @@ func TestConvertStreamingToClaudeResponse_Basic(t *testing.T) {
 	}
 	resp.Header.Set("Content-Type", "text/event-stream")
 
-	metaInfo := &meta.Meta{ActualModelName: "gemini-1.5-flash", PromptTokens: 4}
+	metaInfo := &meta.Meta{ActualModelName: "gemini-2.5-flash", PromptTokens: 4}
 
 	newResp, errResp := adaptor.convertStreamingToClaudeResponse(ctx, resp, streamBuf.Bytes(), metaInfo)
 	if errResp != nil {

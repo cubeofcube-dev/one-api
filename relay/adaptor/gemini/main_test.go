@@ -388,7 +388,7 @@ func TestConvertRequestWithToolsRegression(t *testing.T) {
 
 	// Test the exact scenario from the error log
 	textRequest := model.GeneralOpenAIRequest{
-		Model: "gemini-1.5-pro",
+		Model: "gemini-2.5-pro",
 		Messages: []model.Message{
 			{
 				Role:    "user",
@@ -687,7 +687,7 @@ func TestOriginalErrorScenario(t *testing.T) {
 
 	// Recreate the exact scenario from the error log
 	textRequest := model.GeneralOpenAIRequest{
-		Model: "gemini-1.5-pro",
+		Model: "gemini-2.5-pro",
 		Messages: []model.Message{
 			{
 				Role:    "user",

@@ -19,7 +19,7 @@ func TestChannelFieldsCanHandleLargeData(t *testing.T) {
 		"gpt-3.5-turbo", "gpt-3.5-turbo-0301", "gpt-3.5-turbo-0613", "gpt-3.5-turbo-1106", "gpt-3.5-turbo-16k",
 		"gpt-4", "gpt-4-0314", "gpt-4-0613", "gpt-4-1106-preview", "gpt-4-turbo", "gpt-4-turbo-preview",
 		"gpt-4o", "gpt-4o-mini", "claude-3-opus", "claude-3-sonnet", "claude-3-haiku", "claude-3-5-sonnet",
-		"gemini-pro", "gemini-pro-vision", "gemini-1.5-pro", "gemini-1.5-flash", "text-embedding-ada-002",
+		"gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-3-pro-preview", "text-embedding-ada-002",
 		"text-embedding-3-small", "text-embedding-3-large", "dall-e-2", "dall-e-3", "whisper-1", "tts-1", "tts-1-hd",
 	}
 
