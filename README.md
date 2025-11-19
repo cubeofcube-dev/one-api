@@ -118,6 +118,7 @@ The original author stopped maintaining the project, leaving critical PRs and ne
       - [Support gemini-2.5-pro](#support-gemini-25-pro)
       - [Support GCP Vertex gloabl region and gemini-2.5-pro-preview-06-05](#support-gcp-vertex-gloabl-region-and-gemini-25-pro-preview-06-05)
       - [Support gemini-2.5-flash-image-preview \& imagen-4 series](#support-gemini-25-flash-image-preview--imagen-4-series)
+      - [Support gemini-3 family](#support-gemini-3-family)
     - [OpenCode Support](#opencode-support)
     - [AWS Features](#aws-features)
       - [Support AWS cross-region inferences](#support-aws-cross-region-inferences)
@@ -831,25 +832,25 @@ Response:
 
 ```json
 {
-    "created": 1763152907,
-    "background": "opaque",
-    "data": [
-        {
-            "b64_json": "iVBORw0KGgoAAAANS..."
-        }
-    ],
-    "output_format": "png",
-    "quality": "high",
-    "size": "1536x1024",
-    "usage": {
-        "input_tokens": 437,
-        "input_tokens_details": {
-            "image_tokens": 388,
-            "text_tokens": 49
-        },
-        "output_tokens": 6208,
-        "total_tokens": 6645
+  "created": 1763152907,
+  "background": "opaque",
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANS..."
     }
+  ],
+  "output_format": "png",
+  "quality": "high",
+  "size": "1536x1024",
+  "usage": {
+    "input_tokens": 437,
+    "input_tokens_details": {
+      "image_tokens": 388,
+      "text_tokens": 49
+    },
+    "output_tokens": 6208,
+    "total_tokens": 6645
+  }
 }
 ```
 
@@ -868,28 +869,27 @@ Response:
 
 ```json
 {
-    "created": 1763152907,
-    "background": "opaque",
-    "data": [
-        {
-            "b64_json": "iVBORw0KGgoAAAANS..."
-        }
-    ],
-    "output_format": "png",
-    "quality": "high",
-    "size": "1536x1024",
-    "usage": {
-        "input_tokens": 437,
-        "input_tokens_details": {
-            "image_tokens": 388,
-            "text_tokens": 49
-        },
-        "output_tokens": 6208,
-        "total_tokens": 6645
+  "created": 1763152907,
+  "background": "opaque",
+  "data": [
+    {
+      "b64_json": "iVBORw0KGgoAAAANS..."
     }
+  ],
+  "output_format": "png",
+  "quality": "high",
+  "size": "1536x1024",
+  "usage": {
+    "input_tokens": 437,
+    "input_tokens_details": {
+      "image_tokens": 388,
+      "text_tokens": 49
+    },
+    "output_tokens": 6208,
+    "total_tokens": 6645
+  }
 }
 ```
-
 
 #### Support o3-mini & o3 & o4-mini & gpt-4.1 & o3-pro & reasoning content
 
@@ -1186,6 +1186,10 @@ claude-opus-4-0 / claude-opus-4-1 / claude-sonnet-4-0 / claude-sonnet-4-5 / clau
 #### Support gemini-2.5-flash-image-preview & imagen-4 series
 
 ![](https://s3.laisky.com/uploads/2025/09/gemini-banana.png)
+
+#### Support gemini-3 family
+
+Support gemini-3-pro-preview
 
 ### OpenCode Support
 

@@ -46,7 +46,7 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}
 		})
 
-		Convey("global-only gemini families should use global endpoint", func() {
+		Convey("gemini models >=2.5 should use global endpoint", func() {
 			testCases := []struct {
 				name           string
 				modelName      string
@@ -56,32 +56,48 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 				expectedSuffix string
 			}{
 				{
-					name:           "gemini-2.5-pro-preview non-stream",
-					modelName:      "gemini-2.5-pro-preview",
+					name:           "gemini-2.5-pro non-stream",
+					modelName:      "gemini-2.5-pro",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
 					expectedSuffix: "generateContent",
 				},
 				{
-					name:           "gemini-2.5-pro stream",
-					modelName:      "gemini-2.5-pro",
+					name:           "gemini-2.5-flash stream",
+					modelName:      "gemini-2.5-flash",
 					isStream:       true,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
 					expectedSuffix: "streamGenerateContent?alt=sse",
 				},
 				{
-					name:           "gemini-2.5-flash",
-					modelName:      "gemini-2.5-flash",
+					name:           "gemini-2.6-pro-preview non-stream",
+					modelName:      "gemini-2.6-pro-preview",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
 					expectedSuffix: "generateContent",
 				},
 				{
+					name:           "gemini-2.7-flash stream",
+					modelName:      "gemini-2.7-flash",
+					isStream:       true,
+					expectedHost:   "aiplatform.googleapis.com",
+					expectedLoc:    "global",
+					expectedSuffix: "streamGenerateContent?alt=sse",
+				},
+				{
 					name:           "gemini-3-pro-preview",
 					modelName:      "gemini-3-pro-preview",
+					isStream:       false,
+					expectedHost:   "aiplatform.googleapis.com",
+					expectedLoc:    "global",
+					expectedSuffix: "generateContent",
+				},
+				{
+					name:           "gemini-4-ultra",
+					modelName:      "gemini-4-ultra",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
@@ -109,7 +125,7 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}
 		})
 
-		Convey("regular gemini models should use regional endpoint", func() {
+		Convey("gemini models <2.5 should use configured region", func() {
 			testCases := []struct {
 				name           string
 				modelName      string
@@ -179,8 +195,8 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 				suffix      string
 			}{
 				{
-					name:        "gemini-2.5-pro-preview with custom BaseURL",
-					modelName:   "gemini-2.5-pro-preview",
+					name:        "gemini-3-pro-preview with custom BaseURL",
+					modelName:   "gemini-3-pro-preview",
 					isStream:    false,
 					expectedLoc: "global",
 					suffix:      "generateContent",
@@ -225,11 +241,12 @@ func TestIsRequireGlobalEndpoint(t *testing.T) {
 			expected bool
 		}{
 			{"gemini-2.5-pro-preview", true},
-			{"gemini-2.5-pro", true},
-			{"gemini-2.5-flash", true},
-			{"gemini-2.5-flash-lite", true},
+			{"gemini-2.5001-pro", true},
+			{"gemini-2.6-flash", true},
 			{"gemini-3-pro-preview", true},
-			{"gemini-3-pro", true},
+			{"gemini-10-ultra", true},
+			{"gemini-2.5-flash-lite", true},
+			{"gemini-2.1", false},
 			{"gemini-2.0-flash", false},
 			{"gemini-2.0-flash-lite", false},
 			{"claude-3-sonnet", false},
