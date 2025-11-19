@@ -46,7 +46,7 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 			}
 		})
 
-		Convey("gemini-2.5 family models should use global endpoint", func() {
+		Convey("global-only gemini families should use global endpoint", func() {
 			testCases := []struct {
 				name           string
 				modelName      string
@@ -74,6 +74,14 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 				{
 					name:           "gemini-2.5-flash",
 					modelName:      "gemini-2.5-flash",
+					isStream:       false,
+					expectedHost:   "aiplatform.googleapis.com",
+					expectedLoc:    "global",
+					expectedSuffix: "generateContent",
+				},
+				{
+					name:           "gemini-3-pro-preview",
+					modelName:      "gemini-3-pro-preview",
 					isStream:       false,
 					expectedHost:   "aiplatform.googleapis.com",
 					expectedLoc:    "global",
@@ -122,13 +130,6 @@ func TestAdaptor_GetRequestURL(t *testing.T) {
 					isStream:       true,
 					region:         "europe-west4",
 					expectedSuffix: "streamGenerateContent?alt=sse",
-				},
-				{
-					name:           "gemini-3-pro-preview",
-					modelName:      "gemini-3-pro-preview",
-					isStream:       false,
-					region:         "asia-southeast1",
-					expectedSuffix: "generateContent",
 				},
 			}
 
@@ -227,7 +228,8 @@ func TestIsRequireGlobalEndpoint(t *testing.T) {
 			{"gemini-2.5-pro", true},
 			{"gemini-2.5-flash", true},
 			{"gemini-2.5-flash-lite", true},
-			{"gemini-3-pro-preview", false},
+			{"gemini-3-pro-preview", true},
+			{"gemini-3-pro", true},
 			{"gemini-2.0-flash", false},
 			{"gemini-2.0-flash-lite", false},
 			{"claude-3-sonnet", false},
