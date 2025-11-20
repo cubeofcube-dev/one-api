@@ -653,13 +653,97 @@ func GetAffCode(c *gin.Context) {
 	})
 }
 
-// GetSelfByToken get user by openai api token
+// GetSelfByToken returns the authenticated user and token metadata for API key calls.
 func GetSelfByToken(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"uid":      c.GetInt("id"),
-		"token_id": c.GetInt("token_id"),
-		"username": c.GetString("username"),
-	})
+	userID := c.GetInt(ctxkey.Id)
+	tokenID := c.GetInt(ctxkey.TokenId)
+	if userID == 0 || tokenID == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "missing token context",
+		})
+		return
+	}
+
+	user, err := model.GetUserById(userID, false)
+	if err != nil {
+		helper.RespondError(c, err)
+		return
+	}
+
+	token, err := model.GetTokenByIds(tokenID, userID)
+	if err != nil {
+		helper.RespondError(c, err)
+		return
+	}
+
+	userData := gin.H{
+		"id":           user.Id,
+		"username":     user.Username,
+		"display_name": user.DisplayName,
+		"role":         user.Role,
+		"status":       user.Status,
+		"group":        user.Group,
+		"quota":        user.Quota,
+		"used_quota":   user.UsedQuota,
+		"created_at":   user.CreatedAt,
+		"updated_at":   user.UpdatedAt,
+	}
+
+	var models any
+	if token.Models != nil {
+		if trimmed := strings.TrimSpace(*token.Models); trimmed != "" {
+			models = trimmed
+		}
+	}
+
+	var subnet any
+	if token.Subnet != nil {
+		if trimmed := strings.TrimSpace(*token.Subnet); trimmed != "" {
+			subnet = trimmed
+		}
+	}
+
+	tokenData := gin.H{
+		"id":               token.Id,
+		"name":             token.Name,
+		"status":           token.Status,
+		"remain_quota":     token.RemainQuota,
+		"used_quota":       token.UsedQuota,
+		"unlimited_quota":  token.UnlimitedQuota,
+		"expired_time":     token.ExpiredTime,
+		"accessed_time":    token.AccessedTime,
+		"created_time":     token.CreatedTime,
+		"created_at":       token.CreatedAt,
+		"updated_at":       token.UpdatedAt,
+		"models":           models,
+		"subnet":           subnet,
+		"available_models": c.GetString(ctxkey.AvailableModels),
+	}
+
+	response := gin.H{
+		"success": true,
+		"message": "",
+		"data": gin.H{
+			"user":  userData,
+			"token": tokenData,
+		},
+		"uid":                    user.Id,
+		"username":               user.Username,
+		"token_id":               token.Id,
+		"token_name":             token.Name,
+		"token_status":           token.Status,
+		"token_used_quota":       token.UsedQuota,
+		"token_remain_quota":     token.RemainQuota,
+		"token_unlimited_quota":  token.UnlimitedQuota,
+		"token_created_time":     token.CreatedTime,
+		"token_updated_at":       token.UpdatedAt,
+		"token_accessed_time":    token.AccessedTime,
+		"token_expired_time":     token.ExpiredTime,
+		"token_available_models": tokenData["available_models"],
+	}
+
+	c.JSON(http.StatusOK, response)
 }
 
 func GetSelf(c *gin.Context) {
