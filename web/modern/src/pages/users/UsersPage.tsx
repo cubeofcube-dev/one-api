@@ -1,22 +1,23 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { ColumnDef } from '@tanstack/react-table'
-import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { ResponsivePageContainer } from '@/components/ui/responsive-container'
-import { useResponsive } from '@/hooks/useResponsive'
-import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { useForm } from 'react-hook-form'
-import * as z from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { renderQuota, cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import { useNotifications } from '@/components/ui/notifications'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
+import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { type SearchOption } from '@/components/ui/searchable-dropdown'
+import { useResponsive } from '@/hooks/useResponsive'
+import { api } from '@/lib/api'
+import { cn, renderQuota } from '@/lib/utils'
+import { zodResolver } from '@hookform/resolvers/zod'
+import type { ColumnDef } from '@tanstack/react-table'
+import { Ban, CheckCircle, CreditCard, Settings, Trash2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useNavigate } from 'react-router-dom'
+import * as z from 'zod'
 
 interface UserRow {
   id: number
@@ -277,6 +278,49 @@ export function UsersPage() {
           <EnhancedDataTable
             columns={columns}
             data={data}
+            floatingRowActions={(row) => (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/users/edit/${row.id}`)}
+                  title="Edit"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const idx = data.findIndex(u => u.id === row.id)
+                    manage(row.id, row.status === 1 ? 'disable' : 'enable', idx)
+                  }}
+                  title={row.status === 1 ? 'Disable' : 'Enable'}
+                  className={row.status === 1 ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
+                >
+                  {row.status === 1 ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setOpenTopup({ open: true, userId: row.id, username: row.username })}
+                  title="Top Up"
+                >
+                  <CreditCard className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const idx = data.findIndex(u => u.id === row.id)
+                    manage(row.id, 'delete', idx)
+                  }}
+                  title="Delete"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             pageIndex={pageIndex}
             pageSize={pageSize}
             total={total}

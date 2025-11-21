@@ -1,21 +1,21 @@
-import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { ColumnDef } from '@tanstack/react-table'
-import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { ResponsivePageContainer } from '@/components/ui/responsive-container'
-import { useResponsive } from '@/hooks/useResponsive'
-import { api } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { TimestampDisplay } from '@/components/ui/timestamp'
-import { cn, renderQuota } from '@/lib/utils'
+import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
-import { Plus, Copy, Eye, EyeOff, Check } from 'lucide-react'
+import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { type SearchOption } from '@/components/ui/searchable-dropdown'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { useResponsive } from '@/hooks/useResponsive'
+import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/stores/auth'
+import { cn, renderQuota } from '@/lib/utils'
+import type { ColumnDef } from '@tanstack/react-table'
+import { Ban, Check, CheckCircle, Copy, Eye, EyeOff, Plus, Settings, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useClipboardManager } from './useClipboardManager'
 
 export interface Token {
@@ -488,6 +488,40 @@ export function TokensPage() {
             <EnhancedDataTable
               columns={columns}
               data={data}
+              floatingRowActions={(row) => (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => navigate(`/tokens/edit/${row.id}`)}
+                    title="Edit"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => manage(row.id, row.status === TOKEN_STATUS.ENABLED ? 'disable' : 'enable')}
+                    title={row.status === TOKEN_STATUS.ENABLED ? 'Disable' : 'Enable'}
+                    className={row.status === TOKEN_STATUS.ENABLED ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
+                  >
+                    {row.status === TOKEN_STATUS.ENABLED ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => {
+                      const label = row.name || `ID ${row.id}`
+                      if (confirm(`Are you sure you want to delete token "${label}"?`)) {
+                        manage(row.id, 'delete')
+                      }
+                    }}
+                    title="Delete"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
               pageIndex={pageIndex}
               pageSize={pageSize}
               total={total}

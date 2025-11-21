@@ -1,19 +1,19 @@
-import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
-import type { ColumnDef } from '@tanstack/react-table'
-import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { ResponsivePageContainer } from '@/components/ui/responsive-container'
-import { useResponsive } from '@/hooks/useResponsive'
-import { api } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { formatTimestamp, cn } from '@/lib/utils'
-import { TimestampDisplay } from '@/components/ui/timestamp'
-import { Plus, TestTube, RefreshCw, Trash2, Settings, AlertCircle } from 'lucide-react'
+import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
 import { useNotifications } from '@/components/ui/notifications'
 import { ResponsiveActionGroup } from '@/components/ui/responsive-action-group'
+import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { type SearchOption } from '@/components/ui/searchable-dropdown'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { useResponsive } from '@/hooks/useResponsive'
+import { api } from '@/lib/api'
+import { cn, formatTimestamp } from '@/lib/utils'
+import type { ColumnDef } from '@tanstack/react-table'
+import { Ban, CheckCircle, Plus, RefreshCw, Settings, TestTube, Trash2 } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 
 interface Channel {
   id: number
@@ -582,6 +582,38 @@ export function ChannelsPage() {
           <EnhancedDataTable
             columns={columns}
             data={data}
+            floatingRowActions={(row) => (
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/channels/edit/${row.id}`)}
+                  title="Edit"
+                >
+                  <Settings className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => manage(row.id, row.status === 1 ? 'disable' : 'enable')}
+                  title={row.status === 1 ? 'Disable' : 'Enable'}
+                  className={row.status === 1 ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
+                >
+                  {row.status === 1 ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => {
+                    const idx = data.findIndex((c) => c.id === row.id)
+                    manage(row.id, 'test', idx !== -1 ? idx : undefined)
+                  }}
+                  title="Test"
+                >
+                  <TestTube className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
             pageIndex={pageIndex}
             pageSize={pageSize}
             total={total}

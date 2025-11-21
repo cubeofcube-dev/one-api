@@ -1,17 +1,18 @@
-import * as React from 'react'
+import { AdvancedPagination } from '@/components/ui/advanced-pagination'
+import { Button } from '@/components/ui/button'
+import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useResponsive } from '@/hooks/useResponsive'
+import { cn } from '@/lib/utils'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import {
   flexRender,
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
-import { AdvancedPagination } from '@/components/ui/advanced-pagination'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { useResponsive } from '@/hooks/useResponsive'
-import { ArrowUpDown, ArrowUp, ArrowDown, Search, RotateCcw } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { ArrowDown, ArrowUp, ArrowUpDown, RotateCcw, Search } from 'lucide-react'
+import * as React from 'react'
+import { createPortal } from 'react-dom'
 
 export interface EnhancedDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -43,6 +44,7 @@ export interface EnhancedDataTableProps<TData, TValue> {
 
   // Row interaction
   onRowClick?: (row: TData) => void
+  floatingRowActions?: (row: TData) => React.ReactNode
 
   // Responsive options
   mobileCardLayout?: boolean
@@ -76,6 +78,7 @@ export function EnhancedDataTable<TData, TValue>({
   toolbarActions,
   onRefresh,
   onRowClick,
+  floatingRowActions,
   mobileCardLayout = true,
   hideColumnsOnMobile = [],
   compactMode = false,
@@ -86,6 +89,41 @@ export function EnhancedDataTable<TData, TValue>({
   const { isMobile, isTablet } = useResponsive()
   // Client-side sorting state (for display only when no server-side sorting)
   const [sorting, setSorting] = React.useState<SortingState>([])
+
+  // Floating actions state
+  const [hoveredRowData, setHoveredRowData] = React.useState<TData | null>(null)
+  const [floatingPos, setFloatingPos] = React.useState<{ top: number; left: number } | null>(null)
+  const hoverTimeoutRef = React.useRef<NodeJS.Timeout>()
+
+  const handleRowMouseEnter = (event: React.MouseEvent<HTMLTableRowElement>, row: TData) => {
+    if (!floatingRowActions) return
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+
+    setFloatingPos({
+      top: event.clientY,
+      left: event.clientX + 16
+    })
+    setHoveredRowData(row)
+  }
+
+  const handleRowMouseLeave = () => {
+    if (!floatingRowActions) return
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredRowData(null)
+      setFloatingPos(null)
+    }, 100)
+  }
+
+  const handleFloatingMouseEnter = () => {
+    if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+  }
+
+  const handleFloatingMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredRowData(null)
+      setFloatingPos(null)
+    }, 100)
+  }
 
   // Handle column header click for server-side sorting
   const handleSort = (accessorKey: string) => {
@@ -351,6 +389,8 @@ export function EnhancedDataTable<TData, TValue>({
                           onRowClick && "cursor-pointer"
                         )}
                         onClick={() => onRowClick?.(row.original)}
+                        onMouseEnter={(e) => handleRowMouseEnter(e, row.original)}
+                        onMouseLeave={handleRowMouseLeave}
                       >
                         {row.getVisibleCells().map((cell) => {
                           // Skip rendering if this column should be hidden on mobile/tablet
@@ -384,6 +424,8 @@ export function EnhancedDataTable<TData, TValue>({
         )}
       </div>
 
+
+
       {/* Advanced Pagination */}
       <AdvancedPagination
         currentPage={pageIndex + 1}
@@ -398,6 +440,22 @@ export function EnhancedDataTable<TData, TValue>({
         }}
         loading={loading}
       />
+
+      {/* Floating Row Actions */}
+      {floatingRowActions && hoveredRowData && floatingPos && createPortal(
+        <div
+          className="fixed z-50 transform -translate-y-1/2 bg-background border rounded-md shadow-lg p-1 animate-in fade-in zoom-in-95 duration-100"
+          style={{
+            top: floatingPos.top,
+            left: floatingPos.left,
+          }}
+          onMouseEnter={handleFloatingMouseEnter}
+          onMouseLeave={handleFloatingMouseLeave}
+        >
+          {floatingRowActions(hoveredRowData)}
+        </div>,
+        document.body
+      )}
     </div>
   )
 }
