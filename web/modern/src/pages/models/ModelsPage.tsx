@@ -130,7 +130,9 @@ export function ModelsPage() {
   }
 
   const renderChannelModels = (channelName: string, channelInfo: ChannelInfo) => {
-    const models = Object.keys(channelInfo.models).map(modelName => ({
+    const models = Object.keys(channelInfo.models)
+      .sort()
+      .map(modelName => ({
       model: modelName,
       inputPrice: channelInfo.models[modelName].input_price,
       cachedInputPrice: channelInfo.models[modelName].cached_input_price ?? channelInfo.models[modelName].input_price,

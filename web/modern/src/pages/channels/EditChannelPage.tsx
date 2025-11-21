@@ -510,7 +510,9 @@ export function EditChannelPage() {
   }, [modelsCatalog, normalizedChannelType])
 
   const availableModels = useMemo<Model[]>(() => {
-    return currentCatalogModels.map((model) => ({ id: model, name: model }))
+    return currentCatalogModels
+      .map((model) => ({ id: model, name: model }))
+      .sort((a, b) => a.name.localeCompare(b.name))
   }, [currentCatalogModels])
 
   const parsedToolingConfig = useMemo<NormalizedToolingConfig | null>(() => {
@@ -2088,7 +2090,7 @@ export function EditChannelPage() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {selectedModels.map((model) => (
+                          {selectedModels.slice().sort().map((model) => (
                             <Badge
                               key={model}
                               variant="secondary"

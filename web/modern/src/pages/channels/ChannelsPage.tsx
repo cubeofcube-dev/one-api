@@ -415,6 +415,7 @@ export function ChannelsPage() {
           .split(',')
           .map((m) => m.trim())
           .filter(Boolean)
+          .sort()
         const value = ch.testing_model ?? '' // empty => Auto (cheapest)
         return (
           <div className="w-[140px] md:w-[160px] max-w-[220px]">

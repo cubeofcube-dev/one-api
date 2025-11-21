@@ -132,7 +132,7 @@ export function EditTokenPage() {
       const { success, message, data } = response.data
 
       if (success && data) {
-        const options = data.map((model: string) => ({
+        const options = data.sort().map((model: string) => ({
           key: model,
           text: model,
           value: model,
@@ -350,7 +350,7 @@ export function EditTokenPage() {
                       ))}
                     </div>
                     <div className="flex flex-wrap gap-1">
-                      {selectedModels.map((model) => (
+                      {selectedModels.slice().sort().map((model) => (
                         <Badge
                           key={model}
                           variant="secondary"
