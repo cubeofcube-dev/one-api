@@ -241,19 +241,22 @@ func GeminiToolingDefaults() adaptor.ChannelToolConfig {
 }
 
 const (
-	ModalityText  = "TEXT"
+	// ModalityText is the text modality.
+	ModalityText = "TEXT"
+	// ModalityImage is the image modality.
 	ModalityImage = "IMAGE"
 )
 
 // GetModelModalities returns the modalities of the model.
 func GetModelModalities(model string) []string {
-	if strings.Contains(model, "-image-generation") {
+	if strings.Contains(model, "-image") {
 		return []string{ModalityText, ModalityImage}
 	}
 
 	// Until 2025-03-26, the following models do not accept the responseModalities field
 	if model == "aqa" ||
 		strings.HasPrefix(model, "gemini-2.5") ||
+		// strings.HasPrefix(model, "gemini-3") ||
 		strings.HasPrefix(model, "gemma") ||
 		strings.HasPrefix(model, "text-embed") {
 		return nil
