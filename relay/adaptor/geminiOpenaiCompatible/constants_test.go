@@ -39,3 +39,16 @@ func TestGeminiEmbeddingConfig(t *testing.T) {
 	require.True(t, ok, "gemini-embedding-001 missing from pricing map")
 	require.InDelta(t, 0.15*ratio.MilliTokensUsd, cfg.Ratio, 1e-12)
 }
+
+func TestGemini3ProImagePreviewPricing(t *testing.T) {
+	cfg, ok := ModelRatios["gemini-3-pro-image-preview"]
+	require.True(t, ok, "gemini-3-pro-image-preview missing from pricing map")
+	require.InDelta(t, 2.0*ratio.MilliTokensUsd, cfg.Ratio, 1e-12)
+	require.NotNil(t, cfg.Image, "expected image pricing metadata for gemini-3-pro-image-preview")
+	require.InDelta(t, gemini3ProImageBasePrice, cfg.Image.PricePerImageUsd, 1e-12)
+	require.Len(t, cfg.Tiers, 1, "expected large-context tier to be defined")
+	require.Contains(t, cfg.Image.SizeMultipliers, "1024x1024")
+	require.Contains(t, cfg.Image.SizeMultipliers, "2048x2048")
+	require.Contains(t, cfg.Image.SizeMultipliers, "4096x4096")
+	require.InDelta(t, gemini3ProImage4KPrice/gemini3ProImageBasePrice, cfg.Image.SizeMultipliers["4096x4096"], 1e-12)
+}

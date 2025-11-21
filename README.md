@@ -1189,7 +1189,7 @@ claude-opus-4-0 / claude-opus-4-1 / claude-sonnet-4-0 / claude-sonnet-4-5 / clau
 
 #### Support gemini-3 family
 
-Support gemini-3-pro-preview
+Support gemini-3-pro-preview, gemini-3-pro-image-preview
 
 ### OpenCode Support
 

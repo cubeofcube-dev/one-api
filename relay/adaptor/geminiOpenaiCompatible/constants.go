@@ -20,6 +20,27 @@ func geminiImageConfig(pricePerImage float64) *adaptor.ImagePricingConfig {
 	}
 }
 
+// gemini3ProImageConfig encodes the multi-tier pricing Google published for Gemini 3 Pro Image Preview.
+// 1K/2K renders cost $0.134 per image, while 4K outputs are billed at $0.24 per image.
+const (
+	gemini3ProImageBasePrice = 0.134
+	gemini3ProImage4KPrice   = 0.24
+)
+
+func gemini3ProImageConfig() *adaptor.ImagePricingConfig {
+	return &adaptor.ImagePricingConfig{
+		PricePerImageUsd: gemini3ProImageBasePrice,
+		DefaultSize:      "1024x1024",
+		DefaultQuality:   "standard",
+		MinImages:        1,
+		SizeMultipliers: map[string]float64{
+			"1024x1024": 1,
+			"2048x2048": 1,
+			"4096x4096": gemini3ProImage4KPrice / gemini3ProImageBasePrice,
+		},
+	}
+}
+
 var (
 	gemini25ProPricing = adaptor.ModelConfig{
 		Ratio:             1.25 * ratio.MilliTokensUsd,
@@ -90,18 +111,45 @@ var ModelRatios = map[string]adaptor.ModelConfig{
 			},
 		},
 	},
+	"gemini-3-pro-image-preview": {
+		Ratio:             2.0 * ratio.MilliTokensUsd,
+		CompletionRatio:   12.0 / 2.0,
+		CacheWrite5mRatio: 0.20 * ratio.MilliTokensUsd,
+		CacheWrite1hRatio: 0.20 * ratio.MilliTokensUsd,
+		Image:             gemini3ProImageConfig(),
+		Tiers: []adaptor.ModelRatioTier{
+			{
+				Ratio:               4.0 * ratio.MilliTokensUsd,
+				CompletionRatio:     18.0 / 4.0,
+				CacheWrite5mRatio:   0.40 * ratio.MilliTokensUsd,
+				CacheWrite1hRatio:   0.40 * ratio.MilliTokensUsd,
+				InputTokenThreshold: 200001,
+			},
+		},
+	},
 
 	// Gemini 2.5 Pro & Computer Use Models
-	"gemini-2.5-pro":                  gemini25ProPricing,
-	"gemini-2.5-pro-preview":          gemini25ProPricing,
-	"gemini-2.5-computer-use-preview": gemini25ProPricing,
+	"gemini-2.5-pro":                          gemini25ProPricing,
+	"gemini-2.5-pro-preview":                  gemini25ProPricing,
+	"gemini-2.5-computer-use-preview":         gemini25ProPricing,
+	"gemini-2.5-computer-use-preview-10-2025": gemini25ProPricing,
 
 	// Gemini 2.5 Flash Family
-	"gemini-2.5-flash":              gemini25FlashPricing,
-	"gemini-2.5-flash-preview":      gemini25FlashPricing,
-	"gemini-2.5-flash-lite":         gemini25FlashLitePricing,
-	"gemini-2.5-flash-lite-preview": gemini25FlashLitePricing,
+	"gemini-2.5-flash":                      gemini25FlashPricing,
+	"gemini-2.5-flash-preview":              gemini25FlashPricing,
+	"gemini-2.5-flash-preview-09-2025":      gemini25FlashPricing,
+	"gemini-2.5-flash-lite":                 gemini25FlashLitePricing,
+	"gemini-2.5-flash-lite-preview":         gemini25FlashLitePricing,
+	"gemini-2.5-flash-lite-preview-09-2025": gemini25FlashLitePricing,
 	"gemini-2.5-flash-native-audio": {
+		Ratio:           0.50 * ratio.MilliTokensUsd,
+		CompletionRatio: 2.0 / 0.50,
+		Audio: &adaptor.AudioPricingConfig{
+			PromptRatio:     3.0 / 0.50,
+			CompletionRatio: 1,
+		},
+	},
+	"gemini-2.5-flash-native-audio-preview-09-2025": {
 		Ratio:           0.50 * ratio.MilliTokensUsd,
 		CompletionRatio: 2.0 / 0.50,
 		Audio: &adaptor.AudioPricingConfig{
@@ -158,17 +206,18 @@ const geminiWebSearchUsdPerCall = 35.0 / 1000.0
 // geminiWebSearchModels enumerates Gemini models with grounded web search pricing in Google documentation.
 // Source: https://ai.google.dev/gemini-api/docs/pricing (retrieved via https://r.jina.ai/https://ai.google.dev/gemini-api/docs/pricing)
 var geminiWebSearchModels = map[string]struct{}{
-	"gemini-3-pro-preview":            {},
-	"gemini-2.5-pro":                  {},
-	"gemini-2.5-pro-preview":          {},
-	"gemini-2.5-computer-use-preview": {},
-	"gemini-2.5-flash":                {},
-	"gemini-2.5-flash-preview":        {},
-	"gemini-2.5-flash-lite":           {},
-	"gemini-2.5-flash-lite-preview":   {},
-	"gemini-2.0-flash":                {},
-	"gemini-2.0-flash-lite":           {},
-	"gemini-robotics-er-1.5-preview":  {},
+	"gemini-3-pro-preview":                    {},
+	"gemini-2.5-pro":                          {},
+	"gemini-2.5-pro-preview":                  {},
+	"gemini-2.5-computer-use-preview":         {},
+	"gemini-2.5-computer-use-preview-10-2025": {},
+	"gemini-2.5-flash":                        {},
+	"gemini-2.5-flash-preview":                {},
+	"gemini-2.5-flash-lite":                   {},
+	"gemini-2.5-flash-lite-preview":           {},
+	"gemini-2.0-flash":                        {},
+	"gemini-2.0-flash-lite":                   {},
+	"gemini-robotics-er-1.5-preview":          {},
 }
 
 var geminiToolingDefaults = buildGeminiToolingDefaults()
