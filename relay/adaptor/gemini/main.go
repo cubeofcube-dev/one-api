@@ -243,11 +243,13 @@ func ConvertRequest(textRequest model.GeneralOpenAIRequest) *ChatRequest {
 		}
 	}
 
-	// remove temperature & top_p for some models
-	if strings.Contains(textRequest.Model, "-image") {
+	// remove temperature & top_p for Gemini image models; only enforce response modalities when allowed
+	if strings.Contains(strings.ToLower(textRequest.Model), "-image") {
 		geminiRequest.GenerationConfig.Temperature = nil
 		geminiRequest.GenerationConfig.TopP = nil
-		geminiRequest.GenerationConfig.ResponseModalities = []string{"TEXT", "IMAGE"}
+		if geminiRequest.GenerationConfig.ResponseModalities != nil {
+			geminiRequest.GenerationConfig.ResponseModalities = []string{"TEXT", "IMAGE"}
+		}
 	}
 
 	// FIX(https://github.com/Laisky/one-api/issues/60):

@@ -52,3 +52,46 @@ func TestGemini3ProImagePreviewPricing(t *testing.T) {
 	require.Contains(t, cfg.Image.SizeMultipliers, "4096x4096")
 	require.InDelta(t, gemini3ProImage4KPrice/gemini3ProImageBasePrice, cfg.Image.SizeMultipliers["4096x4096"], 1e-12)
 }
+
+func TestGetModelModalitiesGeminiVersionCutoff(t *testing.T) {
+	testCases := []struct {
+		name     string
+		model    string
+		expected []string
+	}{
+		{name: "LegacyGeminiText", model: "gemini-2.4-flash", expected: []string{ModalityText}},
+		{name: "CutoffGemini", model: "gemini-2.5-flash", expected: nil},
+		{name: "FutureGemini", model: "gemini-3-pro-preview", expected: nil},
+		{name: "FutureGemini", model: "gemini-3.0-pro-preview", expected: nil},
+		{name: "MixedCaseGemini", model: "Gemini-2.5-Flash", expected: nil},
+		{name: "RoboticsNoVersion", model: "gemini-robotics-er-1.5-preview", expected: []string{ModalityText}},
+		{name: "ImageBeforeCutoff", model: "gemini-2.0-flash-image", expected: []string{ModalityText, ModalityImage}},
+		{name: "ImageAfterCutoff", model: "gemini-2.5-flash-image", expected: nil},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			modalities := GetModelModalities(tc.model)
+			require.Equal(t, tc.expected, modalities)
+		})
+	}
+}
+
+func TestGeminiVersionAtLeast(t *testing.T) {
+	testCases := []struct {
+		model    string
+		min      float64
+		expected bool
+	}{
+		{model: "gemini-2.5-flash", min: 2.5, expected: true},
+		{model: "Gemini-3-Pro-Preview", min: 2.5, expected: true},
+		{model: "Gemini-3.0-Pro-Preview", min: 2.5, expected: true},
+		{model: "gemini-2.4-flash", min: 2.5, expected: false},
+		{model: "not-gemini", min: 2.5, expected: false},
+		{model: "", min: 2.5, expected: false},
+	}
+
+	for _, tc := range testCases {
+		require.Equal(t, tc.expected, GeminiVersionAtLeast(tc.model, tc.min), tc.model)
+	}
+}

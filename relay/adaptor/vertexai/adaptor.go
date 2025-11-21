@@ -7,8 +7,6 @@ import (
 	"io"
 	"maps"
 	"net/http"
-	"regexp"
-	"strconv"
 	"strings"
 
 	"github.com/Laisky/errors/v2"
@@ -39,26 +37,11 @@ const channelName = "vertexai"
 //
 //   - https://cloud.google.com/vertex-ai/generative-ai/docs/models/gemini/2-5-pro
 //   - https://cloud.google.com/vertex-ai/generative-ai/docs/learn/locations#global-preview
-var geminiVersionPattern = regexp.MustCompile(`^gemini-([0-9]+(?:\.[0-9]+)?)`)
-
+//
 // IsRequireGlobalEndpoint determines if the given model requires a global endpoint
 // by checking whether its numeric version is at least 2.5.
 func IsRequireGlobalEndpoint(model string) bool {
-	if model == "" {
-		return false
-	}
-
-	matches := geminiVersionPattern.FindStringSubmatch(model)
-	if len(matches) < 2 {
-		return false
-	}
-
-	version, err := strconv.ParseFloat(matches[1], 64)
-	if err != nil {
-		return false
-	}
-
-	return version >= 2.5
+	return geminiOpenaiCompatible.GeminiVersionAtLeast(model, 2.5)
 }
 
 type Adaptor struct {

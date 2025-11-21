@@ -1,6 +1,8 @@
 package geminiOpenaiCompatible
 
 import (
+	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/songquanpeng/one-api/relay/adaptor"
@@ -247,20 +249,63 @@ const (
 	ModalityImage = "IMAGE"
 )
 
+var (
+	geminiVersionPattern           = regexp.MustCompile(`^gemini-(\d+(?:\.\d+)?)(?:-|$)`)
+	geminiResponseModalitiesCutoff = 2.5
+)
+
 // GetModelModalities returns the modalities of the model.
 func GetModelModalities(model string) []string {
-	if strings.Contains(model, "-image") {
-		return []string{ModalityText, ModalityImage}
-	}
-
-	// Until 2025-03-26, the following models do not accept the responseModalities field
-	if model == "aqa" ||
-		strings.HasPrefix(model, "gemini-2.5") ||
-		// strings.HasPrefix(model, "gemini-3") ||
-		strings.HasPrefix(model, "gemma") ||
-		strings.HasPrefix(model, "text-embed") {
+	normalized := strings.ToLower(model)
+	if shouldOmitResponseModalities(normalized) {
 		return nil
 	}
 
+	if strings.Contains(normalized, "-image") {
+		return []string{ModalityText, ModalityImage}
+	}
+
 	return []string{ModalityText}
+}
+
+// shouldOmitResponseModalities reports whether the request should skip responseModalities.
+func shouldOmitResponseModalities(model string) bool {
+	if model == "aqa" || strings.HasPrefix(model, "gemma") || strings.HasPrefix(model, "text-embed") {
+		return true
+	}
+
+	if GeminiVersionAtLeast(model, geminiResponseModalitiesCutoff) {
+		return true
+	}
+
+	return false
+}
+
+// GeminiVersion returns the numeric Gemini version parsed from the model name along with a success flag.
+// When the model name does not match the expected pattern, the flag is false.
+func GeminiVersion(model string) (float64, bool) {
+	if model == "" {
+		return 0, false
+	}
+
+	matches := geminiVersionPattern.FindStringSubmatch(strings.ToLower(model))
+	if len(matches) != 2 {
+		return 0, false
+	}
+
+	version, err := strconv.ParseFloat(matches[1], 64)
+	if err != nil {
+		return 0, false
+	}
+
+	return version, true
+}
+
+// GeminiVersionAtLeast reports whether the Gemini model name encodes a version greater than or equal to minVersion.
+func GeminiVersionAtLeast(model string, minVersion float64) bool {
+	version, ok := GeminiVersion(model)
+	if !ok {
+		return false
+	}
+	return version >= minVersion
 }

@@ -21,6 +21,7 @@ import (
 	"github.com/songquanpeng/one-api/common/helper"
 	"github.com/songquanpeng/one-api/common/random"
 	channelhelper "github.com/songquanpeng/one-api/relay/adaptor"
+	"github.com/songquanpeng/one-api/relay/adaptor/geminiOpenaiCompatible"
 	"github.com/songquanpeng/one-api/relay/adaptor/openai"
 	"github.com/songquanpeng/one-api/relay/billing/ratio"
 	"github.com/songquanpeng/one-api/relay/meta"
@@ -36,9 +37,9 @@ func (a *Adaptor) Init(meta *meta.Meta) {
 
 func (a *Adaptor) GetRequestURL(meta *meta.Meta) (string, error) {
 	defaultVersion := config.GeminiVersion
-	if strings.Contains(meta.ActualModelName, "gemini-2") ||
-		strings.Contains(meta.ActualModelName, "gemini-1.5") ||
-		strings.Contains(meta.ActualModelName, "gemma-3") {
+	modelName := strings.ToLower(meta.ActualModelName)
+	if geminiOpenaiCompatible.GeminiVersionAtLeast(modelName, 1.5) ||
+		strings.Contains(modelName, "gemma-3") {
 		defaultVersion = "v1beta"
 	}
 
