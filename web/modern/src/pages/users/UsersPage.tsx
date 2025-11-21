@@ -14,9 +14,9 @@ import { cn, renderQuota } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, CheckCircle, CreditCard, Settings, Trash2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as z from 'zod'
 
 interface UserRow {
@@ -33,11 +33,12 @@ interface UserRow {
 
 export function UsersPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const { notify } = useNotifications()
   const [data, setData] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -47,6 +48,7 @@ export function UsersPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [openCreate, setOpenCreate] = useState(false)
   const [openTopup, setOpenTopup] = useState<{ open: boolean, userId?: number, username?: string }>({ open: false })
+  const mounted = useRef(false)
 
   const load = async (p = 0, size = pageSize) => {
     setLoading(true)
@@ -105,6 +107,11 @@ export function UsersPage() {
   }
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      load(pageIndex, pageSize)
+      return
+    }
     if (searchKeyword.trim()) {
       search()
     } else {
@@ -256,6 +263,10 @@ export function UsersPage() {
 
   // Handlers for page change and page size change
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
+    setSearchParams(prev => {
+      prev.set('p', (newPageIndex + 1).toString())
+      return prev
+    })
     load(newPageIndex, newPageSize)
   }
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from '@/components/ui/data-table'
 import { ResponsivePageContainer } from '@/components/ui/responsive-container'
@@ -39,10 +39,11 @@ const renderStatus = (status: number) => {
 
 export function RedemptionsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const [data, setData] = useState<RedemptionRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -50,6 +51,7 @@ export function RedemptionsPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
   const [open, setOpen] = useState(false)
   const [generatedKeys, setGeneratedKeys] = useState<string[] | null>(null)
+  const mounted = useRef(false)
 
   const schema = z.object({
     name: z.string().min(1, 'Name is required').max(20, 'Max 20 chars'),
@@ -80,9 +82,12 @@ export function RedemptionsPage() {
     }
   }
 
-  useEffect(() => { load(0, pageSize) }, [])
-
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      load(pageIndex, pageSize)
+      return
+    }
     if (searchKeyword.trim()) {
       search()
     } else {
@@ -170,6 +175,10 @@ export function RedemptionsPage() {
 
   // Handlers for page change and page size change
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
+    setSearchParams(prev => {
+      prev.set('p', (newPageIndex + 1).toString())
+      return prev
+    })
     load(newPageIndex, newPageSize)
   }
 

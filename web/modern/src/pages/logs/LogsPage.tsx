@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useRef } from 'react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
 import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
@@ -17,6 +17,7 @@ import { RefreshCw, Eye, EyeOff, Copy, FileDown, Filter } from 'lucide-react'
 import { LogDetailsModal } from '@/components/LogDetailsModal'
 import { LOG_TYPES, LOG_TYPE_OPTIONS, getLogTypeLabel } from '@/lib/constants/logs'
 import type { LogEntry, LogMetadata } from '@/types/log'
+import { useSearchParams } from 'react-router-dom'
 
 type LogRow = LogEntry
 
@@ -76,11 +77,13 @@ const getCacheWriteSummaries = (metadata?: LogMetadata) => {
 
 export function LogsPage() {
   const { user } = useAuthStore()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<LogRow[]>([])
   const [loading, setLoading] = useState(false)
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
+  const mounted = useRef(false)
 
   // Determine if user is admin/root
   // Use strict equality for admin (10) and root (100)
@@ -254,6 +257,11 @@ export function LogsPage() {
   }
 
   useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true
+      load(pageIndex, pageSize)
+      return
+    }
     load(0, pageSize)
   }, [pageSize])
 
@@ -446,6 +454,10 @@ export function LogsPage() {
   ]
 
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
+    setSearchParams(prev => {
+      prev.set('p', (newPageIndex + 1).toString())
+      return prev
+    })
     if (searchKeyword.trim()) {
       setPageIndex(newPageIndex)
     } else {

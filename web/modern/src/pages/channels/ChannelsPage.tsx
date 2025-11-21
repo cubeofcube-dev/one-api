@@ -13,7 +13,7 @@ import { cn, formatTimestamp } from '@/lib/utils'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, CheckCircle, Plus, RefreshCw, Settings, TestTube, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 interface Channel {
   id: number
@@ -107,11 +107,12 @@ const formatResponseTime = (time?: number) => {
 
 export function ChannelsPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const { notify } = useNotifications()
   const [data, setData] = useState<Channel[]>([])
   const [loading, setLoading] = useState(false)
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -217,7 +218,7 @@ export function ChannelsPage() {
 
   // Load initial data
   useEffect(() => {
-    load(0, pageSize)
+    load(pageIndex, pageSize)
     initializedRef.current = true
   }, [])
 
@@ -498,6 +499,10 @@ export function ChannelsPage() {
   ]
 
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
+    setSearchParams(prev => {
+      prev.set('p', (newPageIndex + 1).toString())
+      return prev
+    })
     load(newPageIndex, newPageSize)
   }
 

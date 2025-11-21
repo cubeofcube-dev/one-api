@@ -15,7 +15,7 @@ import { cn, renderQuota } from '@/lib/utils'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, Check, CheckCircle, Copy, Eye, EyeOff, Plus, Settings, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useClipboardManager } from './useClipboardManager'
 
 export interface Token {
@@ -76,11 +76,12 @@ export const shouldHighlightTokenQuota = (token: Token, userQuota: number | null
  */
 export function TokensPage() {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const userQuota = useAuthStore(state => state.user?.quota ?? null)
   const [data, setData] = useState<Token[]>([])
   const [loading, setLoading] = useState(false)
-  const [pageIndex, setPageIndex] = useState(0)
+  const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
   const [pageSize, setPageSize] = useState(10)
   const [total, setTotal] = useState(0)
   const [searchKeyword, setSearchKeyword] = useState('')
@@ -125,7 +126,7 @@ export function TokensPage() {
 
   // Load initial data
   useEffect(() => {
-    load(0, pageSize)
+    load(pageIndex, pageSize)
     initializedRef.current = true
   }, [])
 
@@ -440,6 +441,10 @@ export function TokensPage() {
   ]
 
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
+    setSearchParams(prev => {
+      prev.set('p', (newPageIndex + 1).toString())
+      return prev
+    })
     load(newPageIndex, newPageSize)
   }
 
