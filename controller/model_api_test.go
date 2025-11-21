@@ -9,9 +9,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay"
+	"github.com/songquanpeng/one-api/relay/channeltype"
 )
 
 // func min(a, b int) int {
@@ -221,6 +223,52 @@ func TestDeepSeekModelsInDashboard(t *testing.T) {
 	}
 
 	t.Logf("✓ DeepSeek channel type %d has %d models: %v", DeepSeekChannelType, len(deepSeekModels), deepSeekModels)
+}
+
+func TestListAllModelsIncludesCustomChannelModels(t *testing.T) {
+	model.InitDB()
+	gin.SetMode(gin.TestMode)
+	channel := &model.Channel{
+		Name:   "list-all-custom",
+		Type:   channeltype.OpenAI,
+		Status: model.ChannelStatusEnabled,
+		Models: "",
+		Group:  "default",
+	}
+	overrides := map[string]model.ModelConfigLocal{
+		"custom-alpha": {
+			Ratio:           0.0000025,
+			CompletionRatio: 1.6,
+			MaxTokens:       4096,
+		},
+	}
+	require.NoError(t, channel.SetModelPriceConfigs(overrides))
+	require.NoError(t, model.DB.Create(channel).Error)
+
+	router := gin.New()
+	router.GET("/v1/models", ListAllModels)
+	req, _ := http.NewRequest("GET", "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp struct {
+		Object string `json:"object"`
+		Data   []struct {
+			Id      string `json:"id"`
+			OwnedBy string `json:"owned_by"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, "list", resp.Object)
+	found := false
+	for _, m := range resp.Data {
+		if m.Id == "custom-alpha" {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "expected custom-alpha to be listed in /v1/models response")
 }
 
 func TestChannelDefaultPricing(t *testing.T) {

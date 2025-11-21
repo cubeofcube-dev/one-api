@@ -248,6 +248,127 @@ func TestGetModelsDisplay_GptImageShowsTokenPrice(t *testing.T) {
 	require.InDelta(t, pricingCfg.Image.PricePerImageUsd, modelInfo.ImagePrice, 1e-9)
 }
 
+// TestGetModelsDisplay_AnonymousIncludesModelConfigOnlyEntries ensures channels that only declare models via
+// model_configs still expose them on the models display endpoint.
+func TestGetModelsDisplay_AnonymousIncludesModelConfigOnlyEntries(t *testing.T) {
+	setupModelsDisplayTestEnv(t)
+	gin.SetMode(gin.TestMode)
+	channel := &model.Channel{
+		Name:   "Config-Only Channel",
+		Type:   channeltype.OpenAI,
+		Status: model.ChannelStatusEnabled,
+		Models: "",
+		Group:  "public",
+	}
+	overrideRatio := 0.0000025
+	configErr := channel.SetModelPriceConfigs(map[string]model.ModelConfigLocal{
+		"custom-alpha": {
+			Ratio:           overrideRatio,
+			CompletionRatio: 2.2,
+			MaxTokens:       8192,
+		},
+	})
+	require.NoError(t, configErr)
+	require.NoError(t, model.DB.Create(channel).Error)
+
+	router := gin.New()
+	router.GET("/api/models/display", func(c *gin.Context) {
+		GetModelsDisplay(c)
+	})
+	req := httptest.NewRequest("GET", "/api/models/display", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp ModelsDisplayResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.True(t, resp.Success)
+
+	key := fmt.Sprintf("%s:%s", channeltype.IdToName(channel.Type), channel.Name)
+	info, ok := resp.Data[key]
+	require.True(t, ok, "expected channel %s in response", key)
+	modelInfo, ok := info.Models["custom-alpha"]
+	require.True(t, ok, "expected custom-alpha in channel listing")
+
+	convertRatioToPrice := func(r float64) float64 {
+		if r <= 0 {
+			return 0
+		}
+		if r < 0.001 {
+			return r * 1_000_000
+		}
+		return (r * 1_000_000) / ratio.QuotaPerUsd
+	}
+	expectedInput := convertRatioToPrice(overrideRatio)
+	require.InDelta(t, expectedInput, modelInfo.InputPrice, 1e-6)
+	require.InDelta(t, expectedInput, modelInfo.CachedInputPrice, 1e-6)
+	expectedOutput := expectedInput * 2.2
+	require.InDelta(t, expectedOutput, modelInfo.OutputPrice, 1e-6)
+	require.Equal(t, int32(8192), modelInfo.MaxTokens)
+}
+
+// TestGetModelsDisplay_CustomModelPricingOverrides verifies that custom pricing overrides are honored, including
+// alias models defined through model mapping.
+func TestGetModelsDisplay_CustomModelPricingOverrides(t *testing.T) {
+	setupModelsDisplayTestEnv(t)
+	gin.SetMode(gin.TestMode)
+	mapping := map[string]string{"custom-pro": "gpt-3.5-turbo"}
+	mappingRaw, err := json.Marshal(mapping)
+	require.NoError(t, err)
+	mappingStr := string(mappingRaw)
+	channel := &model.Channel{
+		Name:         "Override Channel",
+		Type:         channeltype.OpenAI,
+		Status:       model.ChannelStatusEnabled,
+		Models:       "gpt-3.5-turbo,custom-pro",
+		Group:        "public",
+		ModelMapping: &mappingStr,
+	}
+	customCfg := map[string]model.ModelConfigLocal{
+		"custom-pro": {
+			Ratio:           0.0000031,
+			CompletionRatio: 3.5,
+			MaxTokens:       2048,
+		},
+	}
+	require.NoError(t, channel.SetModelPriceConfigs(customCfg))
+	require.NoError(t, model.DB.Create(channel).Error)
+
+	router := gin.New()
+	router.GET("/api/models/display", func(c *gin.Context) {
+		GetModelsDisplay(c)
+	})
+	req := httptest.NewRequest("GET", "/api/models/display", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var resp ModelsDisplayResponse
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.True(t, resp.Success)
+	key := fmt.Sprintf("%s:%s", channeltype.IdToName(channel.Type), channel.Name)
+	info, ok := resp.Data[key]
+	require.True(t, ok, "expected channel %s in response", key)
+	modelInfo, ok := info.Models["custom-pro"]
+	require.True(t, ok, "expected custom-pro pricing entry")
+
+	convertRatioToPrice := func(r float64) float64 {
+		if r <= 0 {
+			return 0
+		}
+		if r < 0.001 {
+			return r * 1_000_000
+		}
+		return (r * 1_000_000) / ratio.QuotaPerUsd
+	}
+	inputExpected := convertRatioToPrice(customCfg["custom-pro"].Ratio)
+	require.InDelta(t, inputExpected, modelInfo.InputPrice, 1e-6)
+	require.InDelta(t, inputExpected, modelInfo.CachedInputPrice, 1e-6)
+	outputExpected := inputExpected * customCfg["custom-pro"].CompletionRatio
+	require.InDelta(t, outputExpected, modelInfo.OutputPrice, 1e-6)
+	require.Equal(t, int32(2048), modelInfo.MaxTokens)
+}
+
 // TestGetModelsDisplay_LoggedInFiltersUnsupportedModels ensures logged-in users don't see models outside their allowed set
 func TestGetModelsDisplay_LoggedInFiltersUnsupportedModels(t *testing.T) {
 	setupModelsDisplayTestEnv(t)
