@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
-import { api } from '@/lib/api'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { TimestampDisplay } from '@/components/ui/timestamp'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useResponsive } from '@/hooks/useResponsive'
 import { useNotifications } from '@/components/ui/notifications'
-import { RefreshCw, Activity, Clock, Calendar, Zap, AlertCircle, CheckCircle, XCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { useResponsive } from '@/hooks/useResponsive'
+import { api } from '@/lib/api'
+import { Activity, AlertCircle, Calendar, CheckCircle, ChevronLeft, ChevronRight, Clock, RefreshCw, XCircle, Zap } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ChannelStatus {
   name: string
@@ -29,6 +30,7 @@ interface StatusResponse {
 }
 
 function StatusPageImpl() {
+  const { t } = useTranslation()
   const { isMobile } = useResponsive()
   const { notify } = useNotifications()
   const [channelsData, setChannelsData] = useState<ChannelStatus[]>([])
@@ -58,14 +60,23 @@ function StatusPageImpl() {
         setTotalCount(total || 0)
         setTotalPages(Math.ceil((total || 0) / size))
       } else {
-        notify({ message: `Failed to fetch channel status: ${message}`, type: 'error' })
+        notify({
+          message: t('status.notifications.fetch_failed', {
+            reason: message || t('status.notifications.unknown_error')
+          }),
+          type: 'error'
+        })
       }
     } catch (error) {
-      notify({ message: `Error fetching channel status: ${error}`, type: 'error' })
+      const reason = error instanceof Error ? error.message : String(error)
+      notify({
+        message: t('status.notifications.fetch_error', { reason }),
+        type: 'error'
+      })
     } finally {
       setLoading(false)
     }
-  }, [notify])
+  }, [notify, t])
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -105,7 +116,7 @@ function StatusPageImpl() {
   }, [currentPage, pageSize, fetchStatusData])
 
   const formatResponseTime = (responseTime: number): string => {
-    if (responseTime === 0) return 'N/A'
+    if (responseTime === 0) return t('status.labels.not_available')
     if (responseTime < 1000) return `${responseTime}ms`
     return `${(responseTime / 1000).toFixed(2)}s`
   }
@@ -115,28 +126,28 @@ function StatusPageImpl() {
       return (
         <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200 dark:bg-green-900 dark:text-green-200">
           <CheckCircle className="w-3 h-3 mr-1" />
-          Enabled
+          {t('status.badges.enabled')}
         </Badge>
       )
     } else if (status === 'manually_disabled') {
       return (
         <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 dark:bg-yellow-900 dark:text-yellow-200">
           <AlertCircle className="w-3 h-3 mr-1" />
-          Manually Disabled
+          {t('status.badges.manually_disabled')}
         </Badge>
       )
     } else if (status === 'auto_disabled') {
       return (
         <Badge variant="destructive" className="bg-red-100 text-red-800 hover:bg-red-200 dark:bg-red-900 dark:text-red-200">
           <XCircle className="w-3 h-3 mr-1" />
-          Auto Disabled
+          {t('status.badges.auto_disabled')}
         </Badge>
       )
     } else {
       return (
         <Badge variant="outline" className="bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200">
           <AlertCircle className="w-3 h-3 mr-1" />
-          Unknown
+          {t('status.badges.unknown')}
         </Badge>
       )
     }
@@ -144,13 +155,13 @@ function StatusPageImpl() {
 
   const getResponseTimeBadge = (responseTime: number) => {
     if (responseTime === 0) {
-      return <Badge variant="outline">N/A</Badge>
+      return <Badge variant="outline">{t('status.labels.not_available')}</Badge>
     } else if (responseTime < 1000) {
-      return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">Fast</Badge>
+      return <Badge variant="default" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">{t('status.speed.fast')}</Badge>
     } else if (responseTime < 3000) {
-      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">Normal</Badge>
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">{t('status.speed.normal')}</Badge>
     } else {
-      return <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">Slow</Badge>
+      return <Badge variant="destructive" className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">{t('status.speed.slow')}</Badge>
     }
   }
 
@@ -177,7 +188,7 @@ function StatusPageImpl() {
             <div className="animate-spin mx-auto w-8 h-8">
               <RefreshCw className="w-8 h-8" />
             </div>
-            <p className="text-muted-foreground">Loading channel status...</p>
+            <p className="text-muted-foreground">{t('status.loading')}</p>
           </div>
         </div>
       </div>
@@ -190,7 +201,7 @@ function StatusPageImpl() {
         {/* Header */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Channel Status</h1>
+            <h1 className="text-3xl font-bold">{t('status.title')}</h1>
             <Button
               onClick={handleRefresh}
               disabled={refreshing}
@@ -199,11 +210,11 @@ function StatusPageImpl() {
               className="flex items-center gap-2"
             >
               <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-              {refreshing ? 'Refreshing...' : 'Refresh'}
+              {refreshing ? t('status.refreshing') : t('status.refresh')}
             </Button>
           </div>
           <p className="text-muted-foreground">
-            Monitor the status and performance of all channels
+            {t('status.subtitle')}
           </p>
         </div>
 
@@ -215,7 +226,7 @@ function StatusPageImpl() {
                 <CheckCircle className="w-5 h-5 text-green-600" />
                 <div>
                   <p className="text-2xl font-bold text-green-600">{enabledChannels}</p>
-                  <p className="text-sm text-muted-foreground">Enabled</p>
+                  <p className="text-sm text-muted-foreground">{t('status.stats.enabled')}</p>
                 </div>
               </div>
             </CardContent>
@@ -226,7 +237,7 @@ function StatusPageImpl() {
                 <XCircle className="w-5 h-5 text-red-600" />
                 <div>
                   <p className="text-2xl font-bold text-red-600">{disabledChannels}</p>
-                  <p className="text-sm text-muted-foreground">Disabled</p>
+                  <p className="text-sm text-muted-foreground">{t('status.stats.disabled')}</p>
                 </div>
               </div>
             </CardContent>
@@ -237,7 +248,7 @@ function StatusPageImpl() {
                 <Activity className="w-5 h-5 text-blue-600" />
                 <div>
                   <p className="text-2xl font-bold text-blue-600">{searchTerm ? displayedChannels : totalCount}</p>
-                  <p className="text-sm text-muted-foreground">{searchTerm ? 'Found' : 'Total Channels'}</p>
+                  <p className="text-sm text-muted-foreground">{searchTerm ? t('status.stats.found') : t('status.stats.total')}</p>
                 </div>
               </div>
             </CardContent>
@@ -248,7 +259,7 @@ function StatusPageImpl() {
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <Input
-              placeholder="Search channels by name or status..."
+              placeholder={t('status.search.placeholder')}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full"
@@ -256,7 +267,7 @@ function StatusPageImpl() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
             <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
-              <span className="text-sm text-muted-foreground whitespace-nowrap">Items per page</span>
+              <span className="text-sm text-muted-foreground whitespace-nowrap">{t('status.controls.items_per_page')}</span>
               <Select value={pageSize.toString()} onValueChange={handlePageSizeChange}>
                 <SelectTrigger className={isMobile ? 'w-full' : 'w-28'}>
                   <SelectValue />
@@ -276,7 +287,7 @@ function StatusPageImpl() {
                 onClick={() => setSearchTerm('')}
                 className="whitespace-nowrap"
               >
-                Clear Search
+                {t('status.search.clear')}
               </Button>
             )}
           </div>
@@ -288,11 +299,11 @@ function StatusPageImpl() {
             <Card>
               <CardContent className="p-8 text-center">
                 <Activity className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-                <h3 className="text-lg font-semibold mb-2">No Channels Found</h3>
+                <h3 className="text-lg font-semibold mb-2">{t('status.empty.title')}</h3>
                 <p className="text-muted-foreground">
                   {searchTerm
-                    ? `No channels match your search "${searchTerm}"`
-                    : 'No channels are configured in the system'
+                    ? t('status.empty.search', { term: searchTerm })
+                    : t('status.empty.none')
                   }
                 </p>
               </CardContent>
@@ -312,7 +323,7 @@ function StatusPageImpl() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Clock className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Response Time</span>
+                        <span className="text-sm text-muted-foreground">{t('status.details.response_time')}</span>
                       </div>
                       <div className="flex items-center space-x-2">
                         <span className="font-mono text-sm">{formatResponseTime(channel.response.response_time_ms)}</span>
@@ -324,12 +335,12 @@ function StatusPageImpl() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Zap className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Last Test</span>
+                        <span className="text-sm text-muted-foreground">{t('status.details.last_test')}</span>
                       </div>
                       <TimestampDisplay
                         timestamp={channel.response.test_time || null}
                         className="text-sm font-mono"
-                        fallback="Never"
+                        fallback={t('status.labels.never')}
                       />
                     </div>
 
@@ -337,12 +348,12 @@ function StatusPageImpl() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <Calendar className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Created</span>
+                        <span className="text-sm text-muted-foreground">{t('status.details.created')}</span>
                       </div>
                       <TimestampDisplay
                         timestamp={channel.response.created_time || null}
                         className="text-sm font-mono"
-                        fallback="Never"
+                        fallback={t('status.labels.never')}
                       />
                     </div>
                   </CardContent>
@@ -363,7 +374,7 @@ function StatusPageImpl() {
               className="flex items-center gap-2"
             >
               <ChevronLeft className="w-4 h-4" />
-              Previous
+              {t('status.pagination.previous')}
             </Button>
 
             <div className="flex items-center space-x-2">
@@ -400,7 +411,7 @@ function StatusPageImpl() {
               disabled={currentPage >= totalPages - 1}
               className="flex items-center gap-2"
             >
-              Next
+              {t('status.pagination.next')}
               <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
@@ -410,9 +421,18 @@ function StatusPageImpl() {
         {filteredChannels.length > 0 && (
           <div className="text-center text-sm text-muted-foreground">
             {searchTerm ? (
-              `Showing ${filteredChannels.length} of ${totalCount} channels (filtered)`
+              t('status.pagination.showing_filtered', {
+                displayed: filteredChannels.length,
+                total: totalCount
+              })
             ) : (
-              `Showing ${channelsData.length} of ${totalCount} channels${totalPages > 1 ? ` (Page ${currentPage + 1} of ${totalPages})` : ''}`
+              `${t('status.pagination.showing', {
+                displayed: channelsData.length,
+                total: totalCount
+              })}${totalPages > 1 ? t('status.pagination.page_info', {
+                page: currentPage + 1,
+                pages: totalPages
+              }) : ''}`
             )}
           </div>
         )}

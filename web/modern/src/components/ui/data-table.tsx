@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button'
 import { AdvancedPagination } from '@/components/ui/advanced-pagination'
 import { ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 export interface DataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -38,6 +39,7 @@ export function DataTable<TData, TValue>({
   onSortChange,
   loading = false,
 }: DataTableProps<TData, TValue>) {
+  const { t } = useTranslation()
   // Client-side sorting state (for display only when no server-side sorting)
   const [sorting, setSorting] = React.useState<SortingState>([])
 
@@ -119,7 +121,7 @@ export function DataTable<TData, TValue>({
         {/* Loading overlay to prevent repeated actions */}
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm">
-            <div className="text-sm text-muted-foreground">Loading...</div>
+            <div className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
           </div>
         )}
         <Table className={loading ? 'pointer-events-none opacity-60' : ''}>
@@ -154,7 +156,7 @@ export function DataTable<TData, TValue>({
             ) : (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  {loading ? 'Loading...' : 'No results.'}
+                  {loading ? t('common.loading', 'Loading...') : t('common.no_data', 'No results.')}
                 </TableCell>
               </TableRow>
             )}

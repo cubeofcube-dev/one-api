@@ -1,12 +1,15 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { api } from '@/lib/api'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 export function AboutPage() {
   const [about, setAbout] = useState('')
   const [aboutLoaded, setAboutLoaded] = useState(false)
+  const { t } = useTranslation()
+  const defaultFeatures = t('about.default.features', { returnObjects: true }) as string[]
 
   const loadAbout = async () => {
     try {
@@ -32,13 +35,13 @@ export function AboutPage() {
       } else {
         console.error('Failed to load about content')
         if (!about) {
-          setAbout('About content failed to load.')
+          setAbout(t('about.fallback_error'))
         }
       }
     } catch (error) {
       console.error('Error loading about content:', error)
       if (!about) {
-        setAbout('About content failed to load.')
+        setAbout(t('about.fallback_error'))
       }
     } finally {
       setAboutLoaded(true)
@@ -47,7 +50,8 @@ export function AboutPage() {
 
   useEffect(() => {
     loadAbout()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t])
 
   // If about is a URL, render as iframe
   if (about.startsWith('https://')) {
@@ -55,7 +59,7 @@ export function AboutPage() {
       <iframe
         src={about}
         className="w-full h-screen border-0"
-        title="About"
+        title={t('about.iframe_title')}
       />
     )
   }
@@ -66,38 +70,33 @@ export function AboutPage() {
       <div className="container mx-auto px-4 py-8">
         <Card>
           <CardHeader>
-            <CardTitle>About</CardTitle>
+            <CardTitle>{t('about.title')}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <h2 className="text-xl font-semibold mb-4">Welcome to One API</h2>
+              <h2 className="text-xl font-semibold mb-4">{t('about.default.heading')}</h2>
               <p className="text-muted-foreground mb-4">
-                One API provides a unified interface for accessing multiple AI models and services.
-                This platform allows you to integrate with various AI providers through a single,
-                consistent API.
+                {t('about.default.description')}
               </p>
             </div>
 
             <div className="flex gap-4">
               <Button asChild>
-                <Link to="/models">View Supported Models</Link>
+                <Link to="/models">{t('about.cta_models')}</Link>
               </Button>
               <Button variant="outline" asChild>
                 <a href="https://github.com/Laisky/one-api" target="_blank" rel="noopener noreferrer">
-                  GitHub Repository
+                  {t('about.cta_repo')}
                 </a>
               </Button>
             </div>
 
             <div className="border-t pt-6">
-              <h3 className="font-semibold mb-2">Features</h3>
+              <h3 className="font-semibold mb-2">{t('about.default.features_title')}</h3>
               <ul className="space-y-1 text-sm text-muted-foreground">
-                <li>• Unified API for multiple AI providers</li>
-                <li>• Token-based usage tracking and billing</li>
-                <li>• User management and role-based access</li>
-                <li>• Channel management for different providers</li>
-                <li>• Comprehensive logging and monitoring</li>
-                <li>• Quota management and top-up system</li>
+                {defaultFeatures.map((feature) => (
+                  <li key={feature}>• {feature}</li>
+                ))}
               </ul>
             </div>
           </CardContent>
@@ -112,9 +111,9 @@ export function AboutPage() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>About</CardTitle>
+            <CardTitle>{t('about.title')}</CardTitle>
             <Button asChild>
-              <Link to="/models">View Supported Models</Link>
+              <Link to="/models">{t('about.cta_models')}</Link>
             </Button>
           </div>
         </CardHeader>

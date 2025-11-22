@@ -1,22 +1,23 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
-import type { ColumnDef } from '@tanstack/react-table'
-import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
-import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
-import { api } from '@/lib/api'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { TimestampDisplay } from '@/components/ui/timestamp'
-import { formatTimestamp, fromDateTimeLocal, toDateTimeLocal, renderQuota, cn } from '@/lib/utils'
-import { useAuthStore } from '@/lib/stores/auth'
-import { RefreshCw, Eye, EyeOff, Copy, FileDown, Filter } from 'lucide-react'
 import { LogDetailsModal } from '@/components/LogDetailsModal'
-import { LOG_TYPES, LOG_TYPE_OPTIONS, getLogTypeLabel } from '@/lib/constants/logs'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { EnhancedDataTable } from '@/components/ui/enhanced-data-table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { SearchableDropdown, type SearchOption } from '@/components/ui/searchable-dropdown'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { TimestampDisplay } from '@/components/ui/timestamp'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
+import { LOG_TYPES, LOG_TYPE_OPTIONS } from '@/lib/constants/logs'
+import { useAuthStore } from '@/lib/stores/auth'
+import { cn, formatTimestamp, fromDateTimeLocal, renderQuota, toDateTimeLocal } from '@/lib/utils'
 import type { LogEntry, LogMetadata } from '@/types/log'
+import type { ColumnDef } from '@tanstack/react-table'
+import { Copy, Eye, EyeOff, FileDown, Filter, RefreshCw } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 
 type LogRow = LogEntry
@@ -27,26 +28,17 @@ interface LogStatistics {
   request_count?: number
 }
 
-const getLogTypeBadge = (type: number) => {
-  const label = getLogTypeLabel(type)
-  switch (type) {
-    case LOG_TYPES.TOPUP:
-      return <Badge className="bg-green-100 text-green-800">{label}</Badge>
-    case LOG_TYPES.CONSUME:
-      return <Badge className="bg-blue-100 text-blue-800">{label}</Badge>
-    case LOG_TYPES.MANAGE:
-      return <Badge className="bg-purple-100 text-purple-800">{label}</Badge>
-    case LOG_TYPES.SYSTEM:
-      return <Badge className="bg-gray-100 text-gray-800">{label}</Badge>
-    case LOG_TYPES.TEST:
-      return <Badge className="bg-yellow-100 text-yellow-800">{label}</Badge>
-    default:
-      return <Badge variant="outline">{label}</Badge>
-  }
+const LOG_TYPE_TRANSLATION_KEYS: Record<number, string> = {
+  [LOG_TYPES.ALL]: 'all',
+  [LOG_TYPES.TOPUP]: 'topup',
+  [LOG_TYPES.CONSUME]: 'consume',
+  [LOG_TYPES.MANAGE]: 'manage',
+  [LOG_TYPES.SYSTEM]: 'system',
+  [LOG_TYPES.TEST]: 'test'
 }
 
-const formatLatency = (ms?: number) => {
-  if (!ms) return '-'
+const formatLatency = (ms?: number, fallback: string = '-') => {
+  if (!ms) return fallback
   if (ms < 1000) return `${ms}ms`
   return `${(ms / 1000).toFixed(1)}s`
 }
@@ -76,6 +68,7 @@ const getCacheWriteSummaries = (metadata?: LogMetadata) => {
 }
 
 export function LogsPage() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const [data, setData] = useState<LogRow[]>([])
@@ -119,6 +112,26 @@ export function LogsPage() {
   // Tracing modal
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [selectedLog, setSelectedLog] = useState<LogRow | null>(null)
+
+  const getLogTypeLabelText = (typeValue: number) => t(`logs.types.${LOG_TYPE_TRANSLATION_KEYS[typeValue] ?? 'unknown'}`)
+
+  const renderLogTypeBadge = (typeValue: number) => {
+    const label = getLogTypeLabelText(typeValue)
+    switch (typeValue) {
+      case LOG_TYPES.TOPUP:
+        return <Badge className="bg-green-100 text-green-800">{label}</Badge>
+      case LOG_TYPES.CONSUME:
+        return <Badge className="bg-blue-100 text-blue-800">{label}</Badge>
+      case LOG_TYPES.MANAGE:
+        return <Badge className="bg-purple-100 text-purple-800">{label}</Badge>
+      case LOG_TYPES.SYSTEM:
+        return <Badge className="bg-gray-100 text-gray-800">{label}</Badge>
+      case LOG_TYPES.TEST:
+        return <Badge className="bg-yellow-100 text-yellow-800">{label}</Badge>
+      default:
+        return <Badge variant="outline">{label}</Badge>
+    }
+  }
 
   // (removed duplicate isAdmin declaration)
 
@@ -204,8 +217,8 @@ export function LogsPage() {
       if (success && Array.isArray(responseData)) {
         const options: SearchOption[] = responseData.slice(0, 10).map((log: LogRow) => ({
           key: log.id.toString(),
-          value: log.content || log.model_name || 'Log Entry',
-          text: log.content || log.model_name || 'Log Entry',
+          value: log.content || log.model_name || t('logs.search.log_entry'),
+          text: log.content || log.model_name || t('logs.search.log_entry'),
           content: (
             <div className="flex flex-col">
               <div className="font-medium">{log.model_name}</div>
@@ -215,9 +228,9 @@ export function LogsPage() {
                   className="font-mono text-xs"
                 />
                 <span>•</span>
-                {getLogTypeBadge(log.type)}
+                {renderLogTypeBadge(log.type)}
                 <span>•</span>
-                <span>Quota: {renderQuota(log.quota)}</span>
+                <span>{t('logs.search.quota', { value: renderQuota(log.quota) })}</span>
               </div>
             </div>
           )
@@ -281,7 +294,7 @@ export function LogsPage() {
 
   const handleClearLogs = async () => {
     const ts = fromDateTimeLocal(filters.end_timestamp)
-    const confirmed = window.confirm('Delete logs before ' + filters.end_timestamp + ' ?')
+    const confirmed = window.confirm(t('logs.confirm.delete_before', { timestamp: filters.end_timestamp }))
     if (!confirmed) return
 
     try {
@@ -295,7 +308,22 @@ export function LogsPage() {
 
   const handleExportLogs = () => {
     // Implementation for exporting logs to CSV
-    const csvHeaders = ['Time', 'Type', 'Model', 'Token', 'Username', 'Quota', 'Prompt Tokens', 'Completion Tokens', 'Cached Prompt Tokens', 'Cached Completion Tokens', 'Cache Write 5m Tokens', 'Cache Write 1h Tokens', 'Latency', 'Content']
+    const csvHeaders = [
+      t('logs.export.headers.time'),
+      t('logs.export.headers.type'),
+      t('logs.export.headers.model'),
+      t('logs.export.headers.token'),
+      t('logs.export.headers.username'),
+      t('logs.export.headers.quota'),
+      t('logs.export.headers.prompt_tokens'),
+      t('logs.export.headers.completion_tokens'),
+      t('logs.export.headers.cached_prompt_tokens'),
+      t('logs.export.headers.cached_completion_tokens'),
+      t('logs.export.headers.cache_write_5m'),
+      t('logs.export.headers.cache_write_1h'),
+      t('logs.export.headers.latency'),
+      t('logs.export.headers.content')
+    ]
     const csvData = data.map(log => {
       const { fiveMinute, oneHour } = getCacheWriteSummaries(log.metadata)
       return [
@@ -340,7 +368,7 @@ export function LogsPage() {
   const columns: ColumnDef<LogRow>[] = [
     {
       accessorKey: 'created_at',
-      header: 'Time',
+      header: t('logs.table.time'),
       cell: ({ row }) => (
         <div className="flex items-center gap-2">
           <TimestampDisplay
@@ -354,19 +382,19 @@ export function LogsPage() {
     },
     ...(isAdminOrRoot ? [{
       accessorKey: 'channel',
-      header: 'Channel',
+      header: t('logs.table.channel'),
       cell: ({ row }: { row: any }) => (
-        <span className="font-mono text-sm">{row.original.channel || '-'}</span>
+        <span className="font-mono text-sm">{row.original.channel || t('logs.labels.missing')}</span>
       ),
     } as ColumnDef<LogRow>] : []),
     {
       accessorKey: 'type',
-      header: 'Type',
-      cell: ({ row }) => getLogTypeBadge(row.original.type),
+      header: t('logs.table.type'),
+      cell: ({ row }) => renderLogTypeBadge(row.original.type),
     },
     {
       accessorKey: 'model_name',
-      header: 'Model',
+      header: t('logs.table.model'),
       cell: ({ row }) => (
         <span className="font-medium">{row.original.model_name}</span>
       ),
@@ -375,21 +403,21 @@ export function LogsPage() {
       // Always show user column; for non-admins fall back to current user if username missing
       {
         accessorKey: 'username',
-        header: 'User',
+        header: t('logs.table.user'),
         cell: ({ row }) => (
-          <span className="text-sm">{row.original.username || user?.username || '-'}</span>
+          <span className="text-sm">{row.original.username || user?.username || t('logs.labels.missing')}</span>
         ),
       } as ColumnDef<LogRow>,
       {
         accessorKey: 'token_name',
-        header: 'Token',
+        header: t('logs.table.token'),
         cell: ({ row }) => (
-          <span className="text-sm">{row.original.token_name || '-'}</span>
+          <span className="text-sm">{row.original.token_name || t('logs.labels.missing')}</span>
         ),
       },
       {
         accessorKey: 'prompt_tokens',
-        header: 'Prompt',
+        header: t('logs.table.prompt'),
         cell: ({ row }) => (
           <TooltipProvider>
             <Tooltip>
@@ -400,8 +428,8 @@ export function LogsPage() {
               </TooltipTrigger>
               <TooltipContent>
                 <div className="flex flex-col gap-1">
-                  <div>Input tokens: {row.original.prompt_tokens ?? 0}</div>
-                  <div>Cached tokens: {row.original.cached_prompt_tokens ?? 0}</div>
+                  <div>{t('logs.tooltip.input_tokens', { value: row.original.prompt_tokens ?? 0 })}</div>
+                  <div>{t('logs.tooltip.cached_tokens', { value: row.original.cached_prompt_tokens ?? 0 })}</div>
                 </div>
               </TooltipContent>
             </Tooltip>
@@ -410,7 +438,7 @@ export function LogsPage() {
       },
       {
         accessorKey: 'completion_tokens',
-        header: 'Completion',
+        header: t('logs.table.completion'),
         cell: ({ row }) => {
           const { fiveMinute, oneHour } = getCacheWriteSummaries(row.original.metadata)
           return (
@@ -421,10 +449,10 @@ export function LogsPage() {
                 </TooltipTrigger>
                 <TooltipContent>
                   <div className="flex flex-col gap-1">
-                    <div>Output tokens: {row.original.completion_tokens ?? 0}</div>
-                    <div>Cached tokens: {row.original.cached_completion_tokens ?? 0}</div>
-                    <div>Cache write 5m: {fiveMinute}</div>
-                    <div>Cache write 1h: {oneHour}</div>
+                    <div>{t('logs.tooltip.output_tokens', { value: row.original.completion_tokens ?? 0 })}</div>
+                    <div>{t('logs.tooltip.cached_tokens', { value: row.original.cached_completion_tokens ?? 0 })}</div>
+                    <div>{t('logs.tooltip.cache_write_5m', { value: fiveMinute })}</div>
+                    <div>{t('logs.tooltip.cache_write_1h', { value: oneHour })}</div>
                   </div>
                 </TooltipContent>
               </Tooltip>
@@ -434,7 +462,7 @@ export function LogsPage() {
       },
       {
         accessorKey: 'quota',
-        header: 'Cost',
+        header: t('logs.table.cost'),
         cell: ({ row }) => (
           <span className="font-mono text-sm" title={row.original.content || ''}>
             {renderQuota(row.original.quota)}
@@ -443,10 +471,10 @@ export function LogsPage() {
       },
       {
         accessorKey: 'elapsed_time',
-        header: 'Latency',
+        header: t('logs.table.latency'),
         cell: ({ row }) => (
           <span className={cn('font-mono text-sm', getLatencyColor(row.original.elapsed_time))}>
-            {formatLatency(row.original.elapsed_time)}
+            {formatLatency(row.original.elapsed_time, t('logs.labels.not_available'))}
           </span>
         ),
       },
@@ -507,10 +535,10 @@ export function LogsPage() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                Logs
+                {t('logs.title')}
                 {showStat && (
                   <div className="text-sm font-normal text-muted-foreground">
-                    (Total Quota: {renderQuota(stat.quota)}
+                    ({t('logs.stats.total_quota', { value: renderQuota(stat.quota) })}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -525,7 +553,7 @@ export function LogsPage() {
                 )}
               </CardTitle>
               <CardDescription>
-                View and analyze API request logs with advanced filtering
+                {t('logs.description')}
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
@@ -535,15 +563,15 @@ export function LogsPage() {
                 className="gap-2"
               >
                 {showStat ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {showStat ? 'Hide' : 'Show'} Stats
+                {showStat ? t('logs.actions.hide_stats') : t('logs.actions.show_stats')}
               </Button>
               <Button variant="outline" onClick={handleExportLogs} className="gap-2">
                 <FileDown className="h-4 w-4" />
-                Export
+                {t('logs.actions.export')}
               </Button>
               {isAdmin && (
                 <Button variant="destructive" onClick={handleClearLogs}>
-                  Clear Logs
+                  {t('logs.actions.clear')}
                 </Button>
               )}
             </div>
@@ -554,29 +582,29 @@ export function LogsPage() {
           <div className="grid grid-cols-1 md:grid-cols-7 gap-3 md:gap-4 mb-6 p-4 border rounded-lg bg-muted/10">
             <div className="md:col-span-7 flex items-center gap-2 mb-1">
               <Filter className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Filters</span>
+              <span className="text-sm font-medium">{t('logs.filters.title')}</span>
             </div>
             <div>
-              <Label className="text-xs">Type</Label>
+              <Label className="text-xs">{t('logs.filters.type')}</Label>
               <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
                 <SelectTrigger className="h-9">
-                  <SelectValue />
+                  <SelectValue placeholder={t('logs.filters.type_placeholder')} />
                 </SelectTrigger>
                 <SelectContent>
                   {LOG_TYPE_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.label}
+                      {getLogTypeLabelText(Number(option.value))}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label className="text-xs">Model</Label>
+              <Label className="text-xs">{t('logs.filters.model')}</Label>
               <SearchableDropdown
                 value={filters.model_name}
-                placeholder="Model"
-                searchPlaceholder="Model"
+                placeholder={t('logs.filters.model_placeholder')}
+                searchPlaceholder={t('logs.filters.model_placeholder')}
                 options={[]}
                 searchEndpoint="/api/models/display" // SearchableDropdown uses fetch() directly, needs /api prefix
                 transformResponse={(data) => {
@@ -598,11 +626,11 @@ export function LogsPage() {
               />
             </div>
             <div>
-              <Label className="text-xs">Token</Label>
+              <Label className="text-xs">{t('logs.filters.token')}</Label>
               <SearchableDropdown
                 value={filters.token_name}
-                placeholder="Token"
-                searchPlaceholder="Token"
+                placeholder={t('logs.filters.token_placeholder')}
+                searchPlaceholder={t('logs.filters.token_placeholder')}
                 options={[]}
                 searchEndpoint="/api/token/search" // SearchableDropdown uses fetch() directly, needs /api prefix
                 transformResponse={(data) => (Array.isArray(data) ? data.map((t: any) => ({ key: String(t.id), value: t.name, text: t.name })) : [])}
@@ -611,11 +639,11 @@ export function LogsPage() {
               />
             </div>
             <div>
-              <Label className="text-xs">Username</Label>
+              <Label className="text-xs">{t('logs.filters.username')}</Label>
               <SearchableDropdown
                 value={filters.username}
-                placeholder="Username"
-                searchPlaceholder="Username"
+                placeholder={t('logs.filters.username_placeholder')}
+                searchPlaceholder={t('logs.filters.username_placeholder')}
                 options={[]}
                 searchEndpoint="/api/user/search" // SearchableDropdown uses fetch() directly, needs /api prefix
                 transformResponse={(data) => (Array.isArray(data) ? data.map((u: any) => ({ key: String(u.id), value: u.username, text: u.username })) : [])}
@@ -626,11 +654,11 @@ export function LogsPage() {
             {isAdmin && (
               <>
                 <div>
-                  <Label className="text-xs">Channel ID</Label>
+                  <Label className="text-xs">{t('logs.filters.channel')}</Label>
                   <Input
                     value={filters.channel}
                     onChange={(e) => setFilters({ ...filters, channel: e.target.value })}
-                    placeholder="Channel ID"
+                    placeholder={t('logs.filters.channel_placeholder')}
                     className="h-9"
                   />
                 </div>
@@ -638,7 +666,7 @@ export function LogsPage() {
             )}
             <div className="md:col-span-2 grid grid-cols-2 gap-3">
               <div>
-                <Label className="text-xs">Start</Label>
+                <Label className="text-xs">{t('logs.filters.start')}</Label>
                 <Input
                   type="datetime-local"
                   value={filters.start_timestamp}
@@ -647,7 +675,7 @@ export function LogsPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs">End</Label>
+                <Label className="text-xs">{t('logs.filters.end')}</Label>
                 <Input
                   type="datetime-local"
                   value={filters.end_timestamp}
@@ -659,7 +687,7 @@ export function LogsPage() {
             <div className="flex items-end md:justify-end md:col-span-1">
               <Button onClick={handleFilterSubmit} disabled={loading} className="w-full md:w-auto gap-2 px-4">
                 <Filter className="h-4 w-4" />
-                Apply
+                {t('logs.filters.apply')}
               </Button>
             </div>
           </div>
@@ -678,7 +706,7 @@ export function LogsPage() {
             onRowClick={handleRowClick}
             onRefresh={refresh}
             loading={loading}
-            emptyMessage="No logs found. Adjust your filters or search criteria."
+            emptyMessage={t('logs.table.empty')}
           />
         </CardContent>
       </Card>

@@ -10,6 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { useTranslation } from 'react-i18next'
 
 interface AdvancedPaginationProps {
   currentPage: number
@@ -36,6 +37,7 @@ export function AdvancedPagination({
   className,
   loading = false,
 }: AdvancedPaginationProps) {
+  const { t } = useTranslation()
   const { isMobile, isTablet } = useResponsive()
   // Calculate page range to show - responsive version
   const getPageNumbers = () => {
@@ -115,7 +117,7 @@ export function AdvancedPagination({
           "text-muted-foreground",
           isMobile ? "text-xs order-1" : "text-sm"
         )}>
-          Showing {startItem}-{endItem} of {totalItems} items
+          {t('common.pagination.showing', 'Showing {{start}}-{{end}} of {{total}} items', { start: startItem, end: endItem, total: totalItems })}
         </div>
 
         {showPageSizeSelector && onPageSizeChange && (
@@ -130,7 +132,7 @@ export function AdvancedPagination({
                 isMobile ? "text-xs" : "text-sm"
               )}
             >
-              {isMobile ? "Per page:" : "Rows per page:"}
+              {isMobile ? t('common.pagination.per_page', 'Per page:') : t('common.pagination.rows_per_page', 'Rows per page:')}
             </span>
             <Select
               value={pageSize.toString()}
@@ -174,7 +176,7 @@ export function AdvancedPagination({
               className="h-8 w-8 p-0 touch-target"
             >
               <ChevronsLeft className="h-4 w-4" />
-              <span className="sr-only">First page</span>
+              <span className="sr-only">{t('common.pagination.first_page', 'First page')}</span>
             </Button>
           )}
 
@@ -190,7 +192,7 @@ export function AdvancedPagination({
             )}
           >
             <ChevronLeft className="h-4 w-4" />
-            <span className="sr-only">Previous page</span>
+            <span className="sr-only">{t('common.pagination.previous_page', 'Previous page')}</span>
           </Button>
 
           {/* Page numbers */}
@@ -209,7 +211,7 @@ export function AdvancedPagination({
                   size="sm"
                   onClick={() => handlePageChange(page)}
                   disabled={loading}
-                  aria-label={`Page ${page}`}
+                  aria-label={t('common.pagination.page_num', 'Page {{page}}', { page })}
                   className={cn(
                     "h-8 p-0 touch-target",
                     isMobile ? "w-10 text-sm" : "w-8"
@@ -233,7 +235,7 @@ export function AdvancedPagination({
             )}
           >
             <ChevronRight className="h-4 w-4" />
-            <span className="sr-only">Next page</span>
+            <span className="sr-only">{t('common.pagination.next_page', 'Next page')}</span>
           </Button>
 
           {/* Last page - Hide on mobile if too many controls */}
@@ -246,7 +248,7 @@ export function AdvancedPagination({
               className="h-8 w-8 p-0 touch-target"
             >
               <ChevronsRight className="h-4 w-4" />
-              <span className="sr-only">Last page</span>
+              <span className="sr-only">{t('common.pagination.last_page', 'Last page')}</span>
             </Button>
           )}
         </div>

@@ -14,8 +14,9 @@ import { cn, renderQuota } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, CheckCircle, CreditCard, Settings, Trash2 } from 'lucide-react'
-import { useEffect, useState, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import * as z from 'zod'
 
@@ -36,6 +37,12 @@ export function UsersPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const { notify } = useNotifications()
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`users.page.${key}`, { defaultValue, ...options }),
+    [t]
+  )
   const [data, setData] = useState<UserRow[]>([])
   const [loading, setLoading] = useState(false)
   const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
@@ -49,6 +56,26 @@ export function UsersPage() {
   const [openCreate, setOpenCreate] = useState(false)
   const [openTopup, setOpenTopup] = useState<{ open: boolean, userId?: number, username?: string }>({ open: false })
   const mounted = useRef(false)
+  const getRoleLabel = useCallback((role: number) => {
+    if (role >= 10) {
+      return tr('table.role.super_admin', 'Super Admin')
+    }
+    if (role === 1) {
+      return tr('table.role.admin', 'Admin')
+    }
+    return tr('table.role.user', 'User')
+  }, [tr])
+  const getStatusLabel = useCallback((status: number) =>
+    status === 1
+      ? tr('table.status.enabled', 'Enabled')
+      : tr('table.status.disabled', 'Disabled')
+  , [tr])
+  const formatRemainingQuota = useCallback((quota: number) => {
+    if (quota === -1) {
+      return tr('table.quota.unlimited', 'Unlimited')
+    }
+    return renderQuota(quota)
+  }, [tr])
 
   const load = async (p = 0, size = pageSize) => {
     setLoading(true)
@@ -65,8 +92,8 @@ export function UsersPage() {
         setPageSize(size)
       }
     } catch (error) {
-      const message = (error as any)?.response?.data?.message || 'Failed to load users.'
-      notify({ type: 'error', title: 'Access denied', message })
+      const message = (error as any)?.response?.data?.message || tr('notifications.load_failed_message', 'Failed to load users.')
+      notify({ type: 'error', title: tr('notifications.load_failed_title', 'Access denied'), message })
     } finally {
       setLoading(false)
     }
@@ -91,8 +118,10 @@ export function UsersPage() {
           content: (
             <div className="flex flex-col">
               <div className="font-medium">{user.username}</div>
-              <div className="text-sm text-muted-foreground">
-                ID: {user.id} • Role: {user.role === 1 ? 'Admin' : user.role === 10 ? 'Super Admin' : 'User'} • Status: {user.status === 1 ? 'Enabled' : 'Disabled'}
+              <div className="text-sm text-muted-foreground flex flex-wrap gap-2">
+                <span>{tr('search.id_label', 'ID: {{id}}', { id: user.id })}</span>
+                <span>{tr('search.role_label', 'Role: {{role}}', { role: getRoleLabel(user.role) })}</span>
+                <span>{tr('search.status_label', 'Status: {{status}}', { status: getStatusLabel(user.status) })}</span>
               </div>
             </div>
           )
@@ -134,44 +163,50 @@ export function UsersPage() {
         setPageIndex(0)
       }
     } catch (error) {
-      const message = (error as any)?.response?.data?.message || 'Search failed.'
-      notify({ type: 'error', title: 'Search failed', message })
+      const message = (error as any)?.response?.data?.message || tr('notifications.search_failed_message', 'Search failed.')
+      notify({ type: 'error', title: tr('notifications.search_failed_title', 'Search failed'), message })
     } finally {
       setLoading(false)
     }
   }
 
   const columns: ColumnDef<UserRow>[] = [
-    { header: 'ID', accessorKey: 'id' },
-    { header: 'Username', accessorKey: 'username' },
-    { header: 'Display Name', accessorKey: 'display_name' },
-    { header: 'Role', cell: ({ row }) => (row.original.role >= 10 ? 'Admin' : 'Normal') },
-    { header: 'Status', cell: ({ row }) => (row.original.status === 1 ? 'Enabled' : 'Disabled') },
-    { header: 'Group', accessorKey: 'group' },
+    { header: tr('columns.id', 'ID'), accessorKey: 'id' },
+    { header: tr('columns.username', 'Username'), accessorKey: 'username' },
+    { header: tr('columns.display_name', 'Display Name'), accessorKey: 'display_name' },
+    { header: tr('columns.role', 'Role'), cell: ({ row }) => getRoleLabel(row.original.role) },
+    { header: tr('columns.status', 'Status'), cell: ({ row }) => getStatusLabel(row.original.status) },
+    { header: tr('columns.group', 'Group'), accessorKey: 'group' },
     {
-      header: 'Used Quota',
+      header: tr('columns.used_quota', 'Used Quota'),
       accessorKey: 'used_quota',
-      cell: ({ row }) => (
-        <span className="font-mono text-sm" title={`Used: ${renderQuota(row.original.used_quota || 0)}`}>
-          {row.original.used_quota ? renderQuota(row.original.used_quota) : renderQuota(0)}
-        </span>
-      )
+      cell: ({ row }) => {
+        const quotaLabel = renderQuota(row.original.used_quota || 0)
+        return (
+          <span className="font-mono text-sm" title={tr('table.used_quota_title', 'Used: {{quota}}', { quota: quotaLabel })}>
+            {quotaLabel}
+          </span>
+        )
+      }
     },
     {
-      header: 'Remaining Quota',
+      header: tr('columns.remaining_quota', 'Remaining Quota'),
       accessorKey: 'quota',
-      cell: ({ row }) => (
-        <span className="font-mono text-sm" title={`Remaining: ${renderQuota(row.original.quota)}`}>
-          {row.original.quota === -1 ? (
-            <span className="text-green-600 font-semibold">Unlimited</span>
-          ) : (
-            renderQuota(row.original.quota)
-          )}
-        </span>
-      )
+      cell: ({ row }) => {
+        const quotaLabel = formatRemainingQuota(row.original.quota)
+        return (
+          <span className="font-mono text-sm" title={tr('table.remaining_quota_title', 'Remaining: {{quota}}', { quota: quotaLabel })}>
+            {row.original.quota === -1 ? (
+              <span className="text-green-600 font-semibold">{quotaLabel}</span>
+            ) : (
+              quotaLabel
+            )}
+          </span>
+        )
+      }
     },
     {
-      header: 'Actions',
+      header: tr('columns.actions', 'Actions'),
       cell: ({ row }) => (
         <ResponsiveActionGroup justify="start">
           <Button
@@ -179,17 +214,17 @@ export function UsersPage() {
             size="sm"
             onClick={() => navigate(`/users/edit/${row.original.id}`)}
           >
-            Edit
+            {tr('actions.edit', 'Edit')}
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => manage(row.original.id, row.original.status === 1 ? 'disable' : 'enable', row.index)}
           >
-            {row.original.status === 1 ? 'Disable' : 'Enable'}
+            {row.original.status === 1 ? tr('actions.disable', 'Disable') : tr('actions.enable', 'Enable')}
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => manage(row.original.id, 'delete', row.index)}>Delete</Button>
-          <Button variant="outline" size="sm" onClick={() => setOpenTopup({ open: true, userId: row.original.id, username: row.original.username })}>Top Up</Button>
+          <Button variant="destructive" size="sm" onClick={() => manage(row.original.id, 'delete', row.index)}>{tr('actions.delete', 'Delete')}</Button>
+          <Button variant="outline" size="sm" onClick={() => setOpenTopup({ open: true, userId: row.original.id, username: row.original.username })}>{tr('actions.topup', 'Top Up')}</Button>
         </ResponsiveActionGroup>
       ),
     },
@@ -217,8 +252,8 @@ export function UsersPage() {
         setData(next)
       }
     } catch (error) {
-      const message = (error as any)?.response?.data?.message || 'Unable to apply change.'
-      notify({ type: 'error', title: 'Action failed', message })
+      const message = (error as any)?.response?.data?.message || tr('notifications.action_failed_message', 'Unable to apply change.')
+      notify({ type: 'error', title: tr('notifications.action_failed_title', 'Action failed'), message })
     }
   }
 
@@ -233,7 +268,7 @@ export function UsersPage() {
           isMobile ? "w-full touch-target" : ""
         )}
       >
-        Add User
+        {tr('toolbar.add_user', 'Add User')}
       </Button>
       <select
         className={cn(
@@ -243,12 +278,12 @@ export function UsersPage() {
         value={sortBy}
         onChange={(e) => { setSortBy(e.target.value); setSortOrder('desc') }}
       >
-        <option value="">Default</option>
-        <option value="quota">Remaining Quota</option>
-        <option value="used_quota">Used Quota</option>
-        <option value="username">Username</option>
-        <option value="id">ID</option>
-        <option value="created_time">Created Time</option>
+        <option value="">{tr('toolbar.sort.default', 'Default')}</option>
+        <option value="quota">{tr('toolbar.sort.quota', 'Remaining Quota')}</option>
+        <option value="used_quota">{tr('toolbar.sort.used_quota', 'Used Quota')}</option>
+        <option value="username">{tr('toolbar.sort.username', 'Username')}</option>
+        <option value="id">{tr('toolbar.sort.id', 'ID')}</option>
+        <option value="created_time">{tr('toolbar.sort.created_time', 'Created Time')}</option>
       </select>
       <Button
         variant="outline"
@@ -256,7 +291,9 @@ export function UsersPage() {
         onClick={() => setSortOrder(o => o === 'asc' ? 'desc' : 'asc')}
         className={cn(isMobile ? "w-full touch-target" : "")}
       >
-        {sortOrder.toUpperCase()}
+        {sortOrder === 'asc'
+          ? tr('toolbar.sort_order.asc', 'ASC')
+          : tr('toolbar.sort_order.desc', 'DESC')}
       </Button>
     </div>
   )
@@ -278,8 +315,8 @@ export function UsersPage() {
 
   return (
     <ResponsivePageContainer
-      title="Users"
-      description="Manage users"
+      title={tr('title', 'Users')}
+      description={tr('description', 'Manage users')}
       actions={toolbarActions}
     >
       <Card>
@@ -295,7 +332,7 @@ export function UsersPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => navigate(`/users/edit/${row.id}`)}
-                  title="Edit"
+                  title={tr('actions.edit', 'Edit')}
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -306,7 +343,7 @@ export function UsersPage() {
                     const idx = data.findIndex(u => u.id === row.id)
                     manage(row.id, row.status === 1 ? 'disable' : 'enable', idx)
                   }}
-                  title={row.status === 1 ? 'Disable' : 'Enable'}
+                  title={row.status === 1 ? tr('actions.disable', 'Disable') : tr('actions.enable', 'Enable')}
                   className={row.status === 1 ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
                 >
                   {row.status === 1 ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -315,7 +352,7 @@ export function UsersPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => setOpenTopup({ open: true, userId: row.id, username: row.username })}
-                  title="Top Up"
+                  title={tr('actions.topup', 'Top Up')}
                 >
                   <CreditCard className="h-4 w-4" />
                 </Button>
@@ -326,7 +363,7 @@ export function UsersPage() {
                     const idx = data.findIndex(u => u.id === row.id)
                     manage(row.id, 'delete', idx)
                   }}
-                  title="Delete"
+                  title={tr('actions.delete', 'Delete')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -350,11 +387,11 @@ export function UsersPage() {
             onSearchChange={searchUsers}
             onSearchValueChange={setSearchKeyword}
             onSearchSubmit={search}
-            searchPlaceholder="Search users by username..."
+            searchPlaceholder={tr('search.placeholder', 'Search users by username...')}
             allowSearchAdditions={true}
             onRefresh={() => load(pageIndex, pageSize)}
             loading={loading}
-            emptyMessage="No users found. Add your first user to get started."
+            emptyMessage={tr('empty', 'No users found. Add your first user to get started.')}
             mobileCardLayout={true}
             hideColumnsOnMobile={['created_time', 'accessed_time']}
             compactMode={isMobile}
@@ -379,10 +416,16 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean, on
   })
   type FormT = z.infer<typeof schema>
   const form = useForm<FormT>({ resolver: zodResolver(schema), defaultValues: { username: '', password: '', display_name: '' } })
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`users.dialogs.create.${key}`, { defaultValue, ...options }),
+    [t]
+  )
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Create User</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>{tr('title', 'Create User')}</DialogTitle></DialogHeader>
         <Form {...form}>
           <form className="space-y-3" onSubmit={form.handleSubmit(async (values) => {
             // Unified API call - complete URL with /api prefix
@@ -395,28 +438,28 @@ function CreateUserDialog({ open, onOpenChange, onCreated }: { open: boolean, on
           })}>
             <FormField control={form.control} name="username" render={({ field }) => (
               <FormItem>
-                <FormLabel>Username</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormLabel>{tr('fields.username.label', 'Username')}</FormLabel>
+                <FormControl><Input placeholder={tr('fields.username.placeholder', 'Enter username')} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="password" render={({ field }) => (
               <FormItem>
-                <FormLabel>Password</FormLabel>
-                <FormControl><Input type="password" {...field} /></FormControl>
+                <FormLabel>{tr('fields.password.label', 'Password')}</FormLabel>
+                <FormControl><Input type="password" placeholder={tr('fields.password.placeholder', 'Enter password')} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="display_name" render={({ field }) => (
               <FormItem>
-                <FormLabel>Display Name</FormLabel>
-                <FormControl><Input {...field} /></FormControl>
+                <FormLabel>{tr('fields.display_name.label', 'Display Name')}</FormLabel>
+                <FormControl><Input placeholder={tr('fields.display_name.placeholder', 'Enter display name')} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-              <Button type="submit">Create</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tr('actions.close', 'Close')}</Button>
+              <Button type="submit">{tr('actions.create', 'Create')}</Button>
             </div>
           </form>
         </Form>
@@ -430,10 +473,20 @@ function TopUpDialog({ open, onOpenChange, userId, username, onDone }: { open: b
   const schema = z.object({ quota: z.coerce.number().int(), remark: z.string().optional() })
   type FormT = z.infer<typeof schema>
   const form = useForm<FormT>({ resolver: zodResolver(schema), defaultValues: { quota: 0, remark: '' } })
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`users.dialogs.topup.${key}`, { defaultValue, ...options }),
+    [t]
+  )
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Top Up {username ? `@${username}` : ''}</DialogTitle></DialogHeader>
+        <DialogHeader>
+          <DialogTitle>
+            {tr('title', 'Top Up {{username}}', { username: username ? `@${username}` : '' })}
+          </DialogTitle>
+        </DialogHeader>
         <Form {...form}>
           <form className="space-y-3" onSubmit={form.handleSubmit(async (values) => {
             if (!userId) return
@@ -447,21 +500,21 @@ function TopUpDialog({ open, onOpenChange, userId, username, onDone }: { open: b
           })}>
             <FormField control={form.control} name="quota" render={({ field }) => (
               <FormItem>
-                <FormLabel>Quota</FormLabel>
-                <FormControl><Input type="number" {...field} /></FormControl>
+                <FormLabel>{tr('fields.quota.label', 'Quota')}</FormLabel>
+                <FormControl><Input type="number" placeholder={tr('fields.quota.placeholder', 'Enter quota change')} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <FormField control={form.control} name="remark" render={({ field }) => (
               <FormItem>
-                <FormLabel>Remark</FormLabel>
-                <FormControl><Input placeholder="Optional" {...field} /></FormControl>
+                <FormLabel>{tr('fields.remark.label', 'Remark')}</FormLabel>
+                <FormControl><Input placeholder={tr('fields.remark.placeholder', 'Optional')} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
             <div className="pt-2 flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-              <Button type="submit">Submit</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>{tr('actions.close', 'Close')}</Button>
+              <Button type="submit">{tr('actions.submit', 'Submit')}</Button>
             </div>
           </form>
         </Form>

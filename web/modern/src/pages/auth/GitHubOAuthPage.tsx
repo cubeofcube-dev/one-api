@@ -1,16 +1,18 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { useAuthStore } from '@/lib/stores/auth'
 import { api } from '@/lib/api'
+import { useAuthStore } from '@/lib/stores/auth'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 
 export function GitHubOAuthPage() {
   const [searchParams] = useSearchParams()
-  const [prompt, setPrompt] = useState('Processing GitHub authentication...')
+  const { t } = useTranslation()
+  const [prompt, setPrompt] = useState(() => t('auth.oauth.github.prompt.processing'))
   const navigate = useNavigate()
   const { login } = useAuthStore()
 
-  const sendCode = async (code: string, state: string, retryCount = 0): Promise<void> => {
+  const sendCode = useCallback(async (code: string, state: string, retryCount = 0): Promise<void> => {
     try {
       // Unified API call - complete URL with /api prefix
       const response = await api.get(`/api/oauth/github?code=${code}&state=${state}`)
@@ -20,7 +22,7 @@ export function GitHubOAuthPage() {
         if (message === 'bind') {
           // Show success toast
           navigate('/settings', {
-            state: { message: 'GitHub account bound successfully!' }
+            state: { message: t('auth.oauth.github.bind_success') }
           })
         } else {
           login(data, '')
@@ -35,7 +37,7 @@ export function GitHubOAuthPage() {
               const decodedPath = decodeURIComponent(redirectTo);
               if (decodedPath.startsWith("/")) {
                 navigate(decodedPath, {
-                  state: { message: 'GitHub login successful!' }
+                  state: { message: t('auth.oauth.github.login_success') }
                 });
                 return;
               }
@@ -45,25 +47,25 @@ export function GitHubOAuthPage() {
           }
 
           navigate('/', {
-            state: { message: 'GitHub login successful!' }
+            state: { message: t('auth.oauth.github.login_success') }
           })
         }
       } else {
-        throw new Error(message || 'GitHub authentication failed')
+        throw new Error(message || t('auth.oauth.github.failed'))
       }
     } catch (error) {
       if (retryCount >= 3) {
-        setPrompt('Authentication failed, redirecting...')
+        setPrompt(t('auth.oauth.github.prompt.failed'))
         setTimeout(() => {
           navigate('/login', {
-            state: { message: 'GitHub authentication failed. Please try again.' }
+            state: { message: t('auth.oauth.github.failed_redirect') }
           })
         }, 2000)
         return
       }
 
       const nextRetry = retryCount + 1
-      setPrompt(`Authentication error, retrying ${nextRetry}/3...`)
+      setPrompt(t('auth.oauth.github.prompt.retry', { retry: nextRetry }))
 
       // Exponential backoff
       const delay = nextRetry * 2000
@@ -71,7 +73,7 @@ export function GitHubOAuthPage() {
         sendCode(code, state, nextRetry)
       }, delay)
     }
-  }
+  }, [login, navigate, t])
 
   useEffect(() => {
     const code = searchParams.get('code')
@@ -79,20 +81,20 @@ export function GitHubOAuthPage() {
 
     if (!code || !state) {
       navigate('/login', {
-        state: { message: 'Invalid GitHub authentication parameters' }
+        state: { message: t('auth.oauth.github.invalid_params') }
       })
       return
     }
 
     sendCode(code, state)
-  }, [searchParams, navigate])
+  }, [searchParams, navigate, sendCode, t])
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">GitHub Authentication</CardTitle>
-          <CardDescription>Processing your GitHub login...</CardDescription>
+          <CardTitle className="text-2xl">{t('auth.oauth.github.title')}</CardTitle>
+          <CardDescription>{t('auth.oauth.github.description')}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">

@@ -1,21 +1,22 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { api } from '@/lib/api'
-import { logEditPageLayout } from '@/dev/layout-debug'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
 import { useNotifications } from '@/components/ui/notifications'
-import { toDateTimeLocal, fromDateTimeLocal } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { logEditPageLayout } from '@/dev/layout-debug'
+import { api } from '@/lib/api'
+import { fromDateTimeLocal, toDateTimeLocal } from '@/lib/utils'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Info } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useParams } from 'react-router-dom'
+import * as z from 'zod'
 
 // Helper function to render quota with USD conversion (USD only)
 const renderQuotaWithPrompt = (quota: number): string => {
@@ -55,6 +56,12 @@ export function EditTokenPage() {
   const tokenId = params.id
   const isEdit = tokenId !== undefined
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`tokens.edit.${key}`, { defaultValue, ...options }),
+    [t]
+  )
 
   const [loading, setLoading] = useState(isEdit)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -196,8 +203,12 @@ export function EditTokenPage() {
       if (payload.expired_time) {
         const timestamp = fromDateTimeLocal(payload.expired_time)
         if (!timestamp || timestamp <= 0) {
-          form.setError('expired_time', { message: 'Invalid expiration time' })
-          notify({ type: 'error', title: 'Validation error', message: 'Invalid expiration time' })
+          form.setError('expired_time', { message: tr('validation.invalid_expiration', 'Invalid expiration time') })
+          notify({
+            type: 'error',
+            title: tr('validation.error_title', 'Validation error'),
+            message: tr('validation.invalid_expiration', 'Invalid expiration time'),
+          })
           return
         }
         payload.expired_time = timestamp as any
@@ -235,18 +246,29 @@ export function EditTokenPage() {
       if (success) {
         navigate('/tokens', {
           state: {
-            message: isEdit ? 'Token updated successfully' : 'Token created successfully'
+            message: isEdit
+              ? tr('notifications.update_success', 'Token updated successfully')
+              : tr('notifications.create_success', 'Token created successfully')
           }
         })
       } else {
-        form.setError('root', { message: message || 'Operation failed' })
-        notify({ type: 'error', title: 'Request failed', message: message || 'Operation failed' })
+        const fallback = tr('errors.operation_failed', 'Operation failed')
+        form.setError('root', { message: message || fallback })
+        notify({
+          type: 'error',
+          title: tr('errors.request_failed_title', 'Request failed'),
+          message: message || fallback,
+        })
       }
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Operation failed'
+        message: error instanceof Error ? error.message : tr('errors.operation_failed', 'Operation failed')
       })
-      notify({ type: 'error', title: 'Unexpected error', message: error instanceof Error ? error.message : 'Operation failed' })
+      notify({
+        type: 'error',
+        title: tr('errors.unexpected_title', 'Unexpected error'),
+        message: error instanceof Error ? error.message : tr('errors.operation_failed', 'Operation failed'),
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -255,8 +277,13 @@ export function EditTokenPage() {
   // RHF invalid handler
   const onInvalid = (errors: any) => {
     const firstKey = Object.keys(errors)[0]
-    const firstMsg = errors[firstKey]?.message || 'Please correct the highlighted fields.'
-    notify({ type: 'error', title: 'Validation error', message: String(firstMsg) })
+    const fallbackMessage = tr('validation.fix_fields', 'Please correct the highlighted fields.')
+    const firstMsg = errors[firstKey]?.message || fallbackMessage
+    notify({
+      type: 'error',
+      title: tr('validation.error_title', 'Validation error'),
+      message: String(firstMsg || fallbackMessage),
+    })
     const el = document.querySelector(`[name="${firstKey}"]`) as HTMLElement | null
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -267,6 +294,39 @@ export function EditTokenPage() {
   // Error highlighting
   const hasError = (path: string): boolean => !!(form.formState.errors as any)?.[path]
   const errorClass = (path: string) => (hasError(path) ? 'border-destructive focus-visible:ring-destructive' : '')
+  const LabelWithHelp = ({
+    labelKey,
+    defaultLabel,
+    helpKey,
+    defaultHelp,
+    as = 'form',
+    htmlFor,
+  }: {
+    labelKey: string
+    defaultLabel: string
+    helpKey: string
+    defaultHelp: string
+    as?: 'form' | 'label'
+    htmlFor?: string
+  }) => {
+    const labelText = tr(labelKey, defaultLabel)
+    const helpText = tr(helpKey, defaultHelp)
+    const LabelComponent = as === 'form' ? FormLabel : Label
+    return (
+      <div className="flex items-center gap-1">
+        <LabelComponent htmlFor={htmlFor}>{labelText}</LabelComponent>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Info
+              className="h-4 w-4 text-muted-foreground cursor-help"
+              aria-label={tr('aria.help_label', 'Help: {{label}}', { label: labelText })}
+            />
+          </TooltipTrigger>
+          <TooltipContent className="max-w-xs whitespace-pre-line">{helpText}</TooltipContent>
+        </Tooltip>
+      </div>
+    )
+  }
 
   if (loading) {
     return (
@@ -274,7 +334,7 @@ export function EditTokenPage() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3">Loading token...</span>
+            <span className="ml-3">{tr('loading', 'Loading token...')}</span>
           </CardContent>
         </Card>
       </div>
@@ -290,9 +350,9 @@ export function EditTokenPage() {
         <TooltipProvider>
           <Card>
             <CardHeader>
-              <CardTitle>{isEdit ? 'Edit Token' : 'Create Token'}</CardTitle>
+              <CardTitle>{isEdit ? tr('title.edit', 'Edit Token') : tr('title.create', 'Create Token')}</CardTitle>
               <CardDescription>
-                {isEdit ? 'Update token settings' : 'Create a new API token'}
+                {isEdit ? tr('description.edit', 'Update token settings') : tr('description.create', 'Create a new API token')}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -303,17 +363,18 @@ export function EditTokenPage() {
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1">
-                          <FormLabel>Token Name</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Token Name" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Human‑readable identifier for this token.</TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <LabelWithHelp
+                          labelKey="fields.name.label"
+                          defaultLabel="Token Name"
+                          helpKey="fields.name.help"
+                          defaultHelp="Human-readable identifier for this token."
+                        />
                         <FormControl>
-                          <Input placeholder="Enter token name" className={errorClass('name')} {...field} />
+                          <Input
+                            placeholder={tr('fields.name.placeholder', 'Enter token name')}
+                            className={errorClass('name')}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -321,17 +382,15 @@ export function EditTokenPage() {
                   />
 
                   <div className="space-y-4">
-                    <div className="flex items-center gap-1">
-                      <Label>Allowed Models</Label>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Allowed Models" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">Restrict this token to specific models. Leave empty to allow all models available to the user/group.</TooltipContent>
-                      </Tooltip>
-                    </div>
+                    <LabelWithHelp
+                      labelKey="models.label"
+                      defaultLabel="Allowed Models"
+                      helpKey="models.help"
+                      defaultHelp="Restrict this token to specific models. Leave empty to allow all models available to the user/group."
+                      as="label"
+                    />
                     <Input
-                      placeholder="Search models..."
+                      placeholder={tr('models.search_placeholder', 'Search models...')}
                       value={modelSearchTerm}
                       onChange={(e) => setModelSearchTerm(e.target.value)}
                     />
@@ -368,18 +427,15 @@ export function EditTokenPage() {
                     name="subnet"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1">
-                          <FormLabel>IP Restriction (Optional)</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: IP Restriction" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Allow requests only from these IPs or CIDR ranges (e.g., 192.168.1.0/24). Multiple entries are comma‑separated.</TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <LabelWithHelp
+                          labelKey="fields.subnet.label"
+                          defaultLabel="IP Restriction (Optional)"
+                          helpKey="fields.subnet.help"
+                          defaultHelp="Allow requests only from these IPs or CIDR ranges (e.g., 192.168.1.0/24). Multiple entries are comma-separated."
+                        />
                         <FormControl>
                           <Input
-                            placeholder="e.g., 192.168.1.0/24 or 10.0.0.1"
+                            placeholder={tr('fields.subnet.placeholder', 'e.g., 192.168.1.0/24 or 10.0.0.1')}
                             className={errorClass('subnet')}
                             {...field}
                           />
@@ -394,15 +450,12 @@ export function EditTokenPage() {
                     name="expired_time"
                     render={({ field }) => (
                       <FormItem>
-                        <div className="flex items-center gap-1">
-                          <FormLabel>Expiration Time</FormLabel>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Expiration Time" />
-                            </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Set when this token expires. Leave empty for never. Use quick buttons for common durations.</TooltipContent>
-                          </Tooltip>
-                        </div>
+                        <LabelWithHelp
+                          labelKey="fields.expired_time.label"
+                          defaultLabel="Expiration Time"
+                          helpKey="fields.expired_time.help"
+                          defaultHelp="Set when this token expires. Leave empty for never. Use quick buttons for common durations."
+                        />
                         <FormControl>
                           <Input type="datetime-local" className={errorClass('expired_time')} {...field} />
                         </FormControl>
@@ -417,35 +470,35 @@ export function EditTokenPage() {
                       variant="outline"
                       onClick={() => setExpiredTime(0, 0, 0, 0)}
                     >
-                      Never Expire
+                      {tr('fields.expired_time.never', 'Never Expire')}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setExpiredTime(1, 0, 0, 0)}
                     >
-                      1 Month
+                      {tr('fields.expired_time.month', '1 Month')}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setExpiredTime(0, 1, 0, 0)}
                     >
-                      1 Day
+                      {tr('fields.expired_time.day', '1 Day')}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setExpiredTime(0, 0, 1, 0)}
                     >
-                      1 Hour
+                      {tr('fields.expired_time.hour', '1 Hour')}
                     </Button>
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setExpiredTime(0, 0, 0, 1)}
                     >
-                      1 Minute
+                      {tr('fields.expired_time.minute', '1 Minute')}
                     </Button>
                   </div>
 
@@ -458,13 +511,13 @@ export function EditTokenPage() {
                       />
                     </FormControl>
                     <div className="flex items-center gap-1 space-y-0">
-                      <FormLabel htmlFor="unlimited_quota">Unlimited Quota</FormLabel>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Unlimited Quota" />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs">If enabled, this token ignores remaining quota checks.</TooltipContent>
-                      </Tooltip>
+                      <LabelWithHelp
+                        labelKey="fields.unlimited.label"
+                        defaultLabel="Unlimited Quota"
+                        helpKey="fields.unlimited.help"
+                        defaultHelp="If enabled, this token ignores remaining quota checks."
+                        htmlFor="unlimited_quota"
+                      />
                     </div>
                   </div>
 
@@ -480,16 +533,14 @@ export function EditTokenPage() {
                       console.log(`[QUOTA_DEBUG] remainQuota raw=${String(raw)} fallback=${String(fallback)} current=${String(current)} numeric=${String(numeric)} usd=${usdLabel} type=${typeof raw}`)
                       return (
                         <FormItem>
-                          <div className="flex items-center gap-1">
-                            <FormLabel>
-                              Remaining Quota ({usdLabel})
-                            </FormLabel>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Remaining Quota" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">Quota is measured in tokens. USD is an estimate based on admin‑configured per‑unit pricing.</TooltipContent>
-                            </Tooltip>
+                          <LabelWithHelp
+                            labelKey="fields.remain_quota.label"
+                            defaultLabel="Remaining Quota"
+                            helpKey="fields.remain_quota.help"
+                            defaultHelp="Quota is measured in tokens. USD is an estimate based on admin-configured per-unit pricing."
+                          />
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {tr('fields.remain_quota.usd_hint', 'Approx. {{usd}} USD remaining', { usd: usdLabel })}
                           </div>
                           <FormControl>
                             <Input
@@ -520,8 +571,8 @@ export function EditTokenPage() {
                   <div className="flex gap-2">
                     <Button type="submit" disabled={isSubmitting}>
                       {isSubmitting
-                        ? (isEdit ? 'Updating...' : 'Creating...')
-                        : (isEdit ? 'Update Token' : 'Create Token')
+                        ? (isEdit ? tr('actions.updating', 'Updating...') : tr('actions.creating', 'Creating...'))
+                        : (isEdit ? tr('actions.update', 'Update Token') : tr('actions.create', 'Create Token'))
                       }
                     </Button>
                     <Button
@@ -529,7 +580,7 @@ export function EditTokenPage() {
                       variant="outline"
                       onClick={() => navigate('/tokens')}
                     >
-                      Cancel
+                      {tr('actions.cancel', 'Cancel')}
                     </Button>
                   </div>
                 </form>

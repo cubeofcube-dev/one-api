@@ -13,6 +13,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, RotateCcw, Search } from 'lucide-react'
 import * as React from 'react'
 import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 
 export interface EnhancedDataTableProps<TData, TValue> {
   columns: ColumnDef<TData, TValue>[]
@@ -73,7 +74,7 @@ export function EnhancedDataTable<TData, TValue>({
   onSearchChange,
   onSearchValueChange,
   onSearchSubmit,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder,
   allowSearchAdditions = true,
   toolbarActions,
   onRefresh,
@@ -84,11 +85,16 @@ export function EnhancedDataTable<TData, TValue>({
   compactMode = false,
   loading = false,
   className,
-  emptyMessage = 'No results found.',
+  emptyMessage,
 }: EnhancedDataTableProps<TData, TValue>) {
+  const { t } = useTranslation()
   const { isMobile, isTablet } = useResponsive()
   // Client-side sorting state (for display only when no server-side sorting)
   const [sorting, setSorting] = React.useState<SortingState>([])
+
+  // Default values with translation
+  const effectiveSearchPlaceholder = searchPlaceholder || t('common.search_placeholder', 'Search...')
+  const effectiveEmptyMessage = emptyMessage || t('common.no_data', 'No results found.')
 
   // Floating actions state
   const [hoveredRowData, setHoveredRowData] = React.useState<TData | null>(null)
@@ -235,15 +241,15 @@ export function EnhancedDataTable<TData, TValue>({
                 )}>
                   <SearchableDropdown
                     value={searchValue}
-                    placeholder={searchPlaceholder}
-                    searchPlaceholder={searchPlaceholder}
+                    placeholder={effectiveSearchPlaceholder}
+                    searchPlaceholder={effectiveSearchPlaceholder}
                     options={searchOptions}
                     onSearchChange={onSearchChange}
                     onChange={onSearchValueChange}
                     onAddItem={allowSearchAdditions ? handleSearchAddition : undefined}
                     loading={searchLoading}
-                    noResultsMessage="No results found"
-                    additionLabel="Search for: "
+                    noResultsMessage={t('common.no_results', 'No results found')}
+                    additionLabel={t('common.search_for', 'Search for: ')}
                     allowAdditions={allowSearchAdditions}
                     clearable={true}
                   />
@@ -259,7 +265,7 @@ export function EnhancedDataTable<TData, TValue>({
                     )}
                   >
                     <Search className="h-4 w-4" />
-                    {!isMobile && 'Search'}
+                    {!isMobile && t('common.search', 'Search')}
                   </Button>
                 )}
               </>
@@ -282,7 +288,7 @@ export function EnhancedDataTable<TData, TValue>({
                 )}
               >
                 <RotateCcw className="h-4 w-4" />
-                {!compactMode && !isMobile && 'Refresh'}
+                {!compactMode && !isMobile && t('common.refresh', 'Refresh')}
               </Button>
             )}
             <div className={cn(
@@ -299,7 +305,7 @@ export function EnhancedDataTable<TData, TValue>({
         {/* Loading overlay */}
         {loading && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/60 backdrop-blur-sm rounded-md">
-            <div className="text-sm text-muted-foreground">Loading...</div>
+            <div className="text-sm text-muted-foreground">{t('common.loading', 'Loading...')}</div>
           </div>
         )}
 
@@ -341,7 +347,7 @@ export function EnhancedDataTable<TData, TValue>({
             ) : (
               <div className="bg-card border rounded-lg p-8 text-center">
                 <div className="text-muted-foreground">
-                  {loading ? 'Loading...' : emptyMessage}
+                  {loading ? t('common.loading', 'Loading...') : effectiveEmptyMessage}
                 </div>
               </div>
             )}
@@ -413,7 +419,7 @@ export function EnhancedDataTable<TData, TValue>({
                   ) : (
                     <TableRow>
                       <TableCell colSpan={visibleColumns.length} className="h-24 text-center">
-                        {loading ? 'Loading...' : emptyMessage}
+                        {loading ? t('common.loading', 'Loading...') : effectiveEmptyMessage}
                       </TableCell>
                     </TableRow>
                   )}

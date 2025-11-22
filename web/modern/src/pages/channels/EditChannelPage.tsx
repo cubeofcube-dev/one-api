@@ -15,6 +15,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { AlertCircle, Info } from 'lucide-react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import * as z from 'zod'
 
@@ -447,6 +448,19 @@ export function EditChannelPage() {
   const isEdit = channelId !== undefined
   const navigate = useNavigate()
   const { notify } = useNotifications()
+  const { t } = useTranslation()
+  const tr = useCallback(
+      (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`channels.edit.${key}`, { defaultValue, ...options }),
+    [t]
+  )
+  const showToolingJSONError = useCallback(() => {
+    notify({
+      type: 'error',
+      title: tr('tooling.errors.invalid_json_title', 'Invalid JSON'),
+      message: tr('tooling.errors.invalid_json_message', 'Fix tooling JSON before editing the whitelist.'),
+    })
+  }, [notify, tr])
 
   const [loading, setLoading] = useState(isEdit)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -609,7 +623,7 @@ export function EditChannelPage() {
 
   const mutateToolWhitelist = useCallback((transform: (config: NormalizedToolingConfig) => NormalizedToolingConfig | null) => {
     if (parsedToolingConfig === null) {
-      notify({ type: 'error', title: 'Invalid JSON', message: 'Fix tooling JSON before editing the whitelist.' })
+      showToolingJSONError()
       return
     }
     const raw = watchTooling ?? ''
@@ -622,7 +636,7 @@ export function EditChannelPage() {
         configs = normalizeToolingConfigShape(parsed)
       }
     } catch (error) {
-      notify({ type: 'error', title: 'Invalid JSON', message: 'Fix tooling JSON before editing the whitelist.' })
+      showToolingJSONError()
       return
     }
 
@@ -636,7 +650,7 @@ export function EditChannelPage() {
     const prepared = prepareToolingConfigForSet(normalizedResult)
 
     form.setValue('tooling', stringifyToolingConfig(prepared), { shouldDirty: true, shouldValidate: true })
-  }, [form, notify, parsedToolingConfig, watchTooling])
+  }, [form, notify, parsedToolingConfig, showToolingJSONError, watchTooling])
 
   const addToolToWhitelist = useCallback((toolName: string, options?: { isCustom?: boolean }) => {
     if (!toolName || parsedToolingConfig === null) {
@@ -1061,14 +1075,22 @@ export function EditChannelPage() {
       // Require key only on create (after provider-specific construction)
       if (!isEdit && (!payload.key || payload.key.trim() === '')) {
         form.setError('key', { message: 'API key is required' })
-        notify({ type: 'error', title: 'Validation error', message: 'API key is required.' })
+        notify({
+          type: 'error',
+          title: tr('validation.error_title', 'Validation error'),
+          message: tr('validation.api_key_required', 'API key is required.'),
+        })
         return
       }
 
       // Validate JSON fields
       if (data.model_mapping && !isValidJSON(data.model_mapping)) {
         form.setError('model_mapping', { message: 'Invalid JSON format in model mapping' })
-        notify({ type: 'error', title: 'Invalid JSON', message: 'Model Mapping has invalid JSON.' })
+        notify({
+          type: 'error',
+          title: tr('validation.invalid_json_title', 'Invalid JSON'),
+          message: tr('validation.model_mapping_invalid', 'Model Mapping has invalid JSON.'),
+        })
         return
       }
 
@@ -1076,7 +1098,11 @@ export function EditChannelPage() {
         const validation = validateModelConfigs(data.model_configs)
         if (!validation.valid) {
           form.setError('model_configs', { message: validation.error || 'Invalid model configs format' })
-          notify({ type: 'error', title: 'Invalid configs', message: validation.error || 'Model Configs are invalid.' })
+          notify({
+            type: 'error',
+            title: tr('validation.model_configs_title', 'Invalid configs'),
+            message: validation.error || tr('validation.model_configs_message', 'Model Configs are invalid.'),
+          })
           return
         }
       }
@@ -1087,7 +1113,11 @@ export function EditChannelPage() {
 
       if (data.inference_profile_arn_map && !isValidJSON(data.inference_profile_arn_map)) {
         form.setError('inference_profile_arn_map', { message: 'Invalid JSON format in inference profile ARN map' })
-        notify({ type: 'error', title: 'Invalid JSON', message: 'Inference Profile ARN Map has invalid JSON.' })
+        notify({
+          type: 'error',
+          title: tr('validation.invalid_json_title', 'Invalid JSON'),
+          message: tr('validation.inference_profile_invalid', 'Inference Profile ARN Map has invalid JSON.'),
+        })
         return
       }
 
@@ -1095,7 +1125,11 @@ export function EditChannelPage() {
       if (watchType === 34 && watchConfig.auth_type === 'oauth_jwt') {
         if (!isValidJSON(data.key)) {
           form.setError('key', { message: 'Invalid JSON format for OAuth JWT configuration' })
-          notify({ type: 'error', title: 'Invalid JSON', message: 'OAuth JWT configuration JSON is invalid.' })
+          notify({
+            type: 'error',
+            title: tr('validation.invalid_json_title', 'Invalid JSON'),
+            message: tr('validation.oauth_invalid_json', 'OAuth JWT configuration JSON is invalid.'),
+          })
           return
         }
 
@@ -1106,13 +1140,21 @@ export function EditChannelPage() {
           for (const field of requiredFields) {
             if (!oauthConfig.hasOwnProperty(field)) {
               form.setError('key', { message: `Missing required field: ${field}` })
-              notify({ type: 'error', title: 'Missing field', message: `OAuth JWT configuration missing: ${field}` })
+              notify({
+                type: 'error',
+                title: tr('validation.oauth_missing_field_title', 'Missing field'),
+                message: tr('validation.oauth_missing_field_message', 'OAuth JWT configuration missing: {{field}}', { field }),
+              })
               return
             }
           }
         } catch (error) {
           form.setError('key', { message: `OAuth config parse error: ${(error as Error).message}` })
-          notify({ type: 'error', title: 'Parse error', message: `OAuth JWT parse error: ${(error as Error).message}` })
+          notify({
+            type: 'error',
+            title: tr('validation.oauth_parse_title', 'Parse error'),
+            message: tr('validation.oauth_parse_message', 'OAuth JWT parse error: {{error}}', { error: (error as Error).message }),
+          })
           return
         }
       }
@@ -1143,7 +1185,11 @@ export function EditChannelPage() {
 
       if (baseURLRequired && !trimmedBaseURL) {
         form.setError('base_url', { message: 'Base URL is required for this channel type' })
-        notify({ type: 'error', title: 'Validation error', message: 'Base URL is required for this channel type.' })
+        notify({
+          type: 'error',
+          title: tr('validation.error_title', 'Validation error'),
+          message: tr('validation.base_url_required', 'Base URL is required for this channel type.'),
+        })
         return
       }
 
@@ -1189,13 +1235,21 @@ export function EditChannelPage() {
         })
       } else {
         form.setError('root', { message: message || 'Operation failed' })
-        notify({ type: 'error', title: 'Request failed', message: message || 'Operation failed' })
+        notify({
+          type: 'error',
+          title: tr('errors.request_failed_title', 'Request failed'),
+          message: message || tr('errors.operation_failed', 'Operation failed'),
+        })
       }
     } catch (error) {
       form.setError('root', {
         message: error instanceof Error ? error.message : 'Operation failed'
       })
-      notify({ type: 'error', title: 'Unexpected error', message: error instanceof Error ? error.message : 'Operation failed' })
+      notify({
+        type: 'error',
+        title: tr('errors.unexpected_title', 'Unexpected error'),
+        message: error instanceof Error ? error.message : tr('errors.operation_failed', 'Operation failed'),
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -1217,7 +1271,11 @@ export function EditChannelPage() {
     }
     const firstKey = Object.keys(errors)[0]
     const firstMsg = errors[firstKey]?.message || 'Please correct the highlighted fields.'
-    notify({ type: 'error', title: 'Validation error', message: String(firstMsg) })
+    notify({
+      type: 'error',
+      title: tr('validation.error_title', 'Validation error'),
+      message: String(firstMsg),
+    })
     const el = document.querySelector(`[name="${firstKey}"]`) as HTMLElement | null
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -1343,8 +1401,8 @@ export function EditChannelPage() {
     } catch (error) {
       notify({
         type: 'error',
-        title: 'Invalid JSON',
-        message: `Unable to format model_configs: ${(error as Error).message}`,
+        title: tr('validation.invalid_json_title', 'Invalid JSON'),
+        message: tr('model_configs.format_error', 'Unable to format model_configs: {{error}}', { error: (error as Error).message }),
       })
     }
   }
@@ -1367,8 +1425,8 @@ export function EditChannelPage() {
     } catch (error) {
       notify({
         type: 'error',
-        title: 'Invalid JSON',
-        message: `Unable to format tooling config: ${(error as Error).message}`,
+        title: tr('validation.invalid_json_title', 'Invalid JSON'),
+        message: tr('tooling.format_error', 'Unable to format tooling config: {{error}}', { error: (error as Error).message }),
       })
     }
   }
@@ -1397,19 +1455,21 @@ export function EditChannelPage() {
       case 3: // Azure OpenAI
         return (
           <div className="space-y-4 p-4 border rounded-lg bg-blue-50/50">
-            <h4 className="font-medium text-blue-900">Azure OpenAI Configuration</h4>
+            <h4 className="font-medium text-blue-900">{tr('azure.heading', 'Azure OpenAI Configuration')}</h4>
             <FormField
               control={form.control}
               name="base_url"
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="Azure OpenAI Endpoint *"
-                    help={'Your resource endpoint, e.g., https://your-resource.openai.azure.com'}
+                    label={tr('azure.endpoint.label', 'Azure OpenAI Endpoint *')}
+                    help={tr('azure.endpoint.help', 'Your resource endpoint, e.g., https://your-resource.openai.azure.com')}
                   />
                   <FormControl>
                     <Input
-                      placeholder={defaultBaseURL || 'https://your-resource.openai.azure.com'}
+                      placeholder={
+                        defaultBaseURL || tr('azure.endpoint.placeholder', 'https://your-resource.openai.azure.com')
+                      }
                       className={errorClass('base_url')}
                       required
                       {...field}
@@ -1425,18 +1485,24 @@ export function EditChannelPage() {
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="API Version"
-                    help={'Default API version used when the request does not specify one (e.g., 2024-03-01-preview).'}
+                    label={tr('azure.version.label', 'API Version')}
+                    help={tr(
+                      'azure.version.help',
+                      'Default API version used when the request does not specify one (e.g., 2024-03-01-preview).'
+                    )}
                   />
                   <FormControl>
                     <Input
-                      placeholder="2024-03-01-preview"
+                      placeholder={tr('azure.version.placeholder', '2024-03-01-preview')}
                       className={errorClass('other')}
                       {...field}
                     />
                   </FormControl>
                   <span className="text-xs text-muted-foreground">
-                    Default: 2024-03-01-preview. This can be overridden by request query parameters.
+                    {tr(
+                      'azure.version.note',
+                      'Default: 2024-03-01-preview. This can be overridden by request query parameters.'
+                    )}
                   </span>
                   <FormMessage />
                 </FormItem>
@@ -1446,7 +1512,11 @@ export function EditChannelPage() {
               <div className="flex items-center gap-2">
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
                 <span className="text-sm text-yellow-800">
-                  <strong>Important:</strong> The model name should be your deployment name, not the original model name.
+                  <strong>{tr('azure.version.warning_label', 'Important:')}</strong>{' '}
+                  {tr(
+                    'azure.version.warning_text',
+                    'The model name should be your deployment name, not the original model name.'
+                  )}
                 </span>
               </div>
             </div>
@@ -1456,7 +1526,7 @@ export function EditChannelPage() {
       case 33: // AWS Bedrock
         return (
           <div className="space-y-4 p-4 border rounded-lg bg-orange-50/50">
-            <h4 className="font-medium text-orange-900">AWS Bedrock Configuration</h4>
+            <h4 className="font-medium text-orange-900">{tr('aws.heading', 'AWS Bedrock Configuration')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -1464,11 +1534,11 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Region *"
-                      help={'AWS region for Bedrock (e.g., us-east-1). Must match where your models/profiles reside.'}
+                      label={tr('aws.region.label', 'Region *')}
+                      help={tr('aws.region.help', 'AWS region for Bedrock (e.g., us-east-1). Must match where your models/profiles reside.')}
                     />
                     <FormControl>
-                      <Input placeholder="us-east-1" className={errorClass('config.region')} {...field} />
+                      <Input placeholder={tr('aws.region.placeholder', 'us-east-1')} className={errorClass('config.region')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1480,11 +1550,11 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Access Key *"
-                      help={'AWS Access Key ID with permissions to call Bedrock.'}
+                      label={tr('aws.ak.label', 'Access Key *')}
+                      help={tr('aws.ak.help', 'AWS Access Key ID with permissions to call Bedrock.')}
                     />
                     <FormControl>
-                      <Input placeholder="AKIA..." className={errorClass('config.ak')} {...field} />
+                      <Input placeholder={tr('aws.ak.placeholder', 'AKIA...')} className={errorClass('config.ak')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1496,11 +1566,11 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Secret Key *"
-                      help={'AWS Secret Access Key for the above Access Key ID.'}
+                      label={tr('aws.sk.label', 'Secret Key *')}
+                      help={tr('aws.sk.help', 'AWS Secret Access Key for the above Access Key ID.')}
                     />
                     <FormControl>
-                      <Input type="password" placeholder="Secret Key" className={errorClass('config.sk')} {...field} />
+                      <Input type="password" placeholder={tr('aws.sk.placeholder', 'Secret Key')} className={errorClass('config.sk')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1508,7 +1578,7 @@ export function EditChannelPage() {
               />
             </div>
             <div className="text-xs text-muted-foreground">
-              The final API key will be constructed as: AK|SK|Region
+              {tr('aws.note', 'The final API key will be constructed as: AK|SK|Region')}
             </div>
           </div>
         )
@@ -1516,15 +1586,15 @@ export function EditChannelPage() {
       case 34: // Coze
         return (
           <div className="space-y-4 p-4 border rounded-lg bg-blue-50/50">
-            <h4 className="font-medium text-blue-900">Coze Configuration</h4>
+            <h4 className="font-medium text-blue-900">{tr('coze.heading', 'Coze Configuration')}</h4>
             <Controller
               name="config.auth_type"
               control={form.control}
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="Authentication Type"
-                    help={'Choose how to authenticate to Coze: Personal Access Token or OAuth JWT.'}
+                    label={tr('coze.auth_type.label', 'Authentication Type')}
+                    help={tr('coze.auth_type.help', 'Choose how to authenticate to Coze: Personal Access Token or OAuth JWT.')}
                   />
                   <Select
                     value={field.value ?? ''}
@@ -1532,7 +1602,7 @@ export function EditChannelPage() {
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select authentication type" />
+                        <SelectValue placeholder={tr('coze.auth_type.placeholder', 'Select authentication type')} />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -1554,11 +1624,11 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Personal Access Token *"
-                      help={'Your Coze Personal Access Token (pat_...).'}
+                      label={tr('coze.pat.label', 'Personal Access Token *')}
+                      help={tr('coze.pat.help', 'Your Coze Personal Access Token (pat_...).')}
                     />
                     <FormControl>
-                      <Input type="password" placeholder="pat_..." className={errorClass('key')} {...field} />
+                      <Input type="password" placeholder={tr('coze.pat.placeholder', 'pat_...')} className={errorClass('key')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1571,18 +1641,27 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="OAuth JWT Configuration *"
-                      help={'JSON configuration for Coze OAuth JWT: client_type, client_id, coze_www_base, coze_api_base, private_key, public_key_id.'}
+                      label={tr('coze.jwt.label', 'OAuth JWT Configuration *')}
+                      help={tr(
+                        'coze.jwt.help',
+                        'JSON configuration for Coze OAuth JWT: client_type, client_id, coze_www_base, coze_api_base, private_key, public_key_id.'
+                      )}
                     />
                     <FormControl>
                       <Textarea
-                        placeholder={`OAuth JWT configuration in JSON format:\n${JSON.stringify(OAUTH_JWT_CONFIG_EXAMPLE, null, 2)}`}
+                        placeholder={tr(
+                          'coze.jwt.placeholder',
+                          `OAuth JWT configuration in JSON format:\n${JSON.stringify(OAUTH_JWT_CONFIG_EXAMPLE, null, 2)}`
+                        )}
                         className={`font-mono text-sm min-h-[120px] ${errorClass('key')}`}
                         {...field}
                       />
                     </FormControl>
                     <div className="text-xs text-muted-foreground">
-                      Required fields: client_type, client_id, coze_www_base, coze_api_base, private_key, public_key_id
+                      {tr(
+                        'coze.jwt.required',
+                        'Required fields: client_type, client_id, coze_www_base, coze_api_base, private_key, public_key_id'
+                      )}
                     </div>
                     <FormMessage />
                   </FormItem>
@@ -1595,11 +1674,11 @@ export function EditChannelPage() {
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="User ID"
-                    help={'Optional Coze user ID used for bot operations (if required by your setup).'}
+                    label={tr('coze.user.label', 'User ID')}
+                    help={tr('coze.user.help', 'Optional Coze user ID used for bot operations (if required by your setup).')}
                   />
                   <FormControl>
-                    <Input placeholder="User ID for bot operations" className={errorClass('config.user_id')} {...field} />
+                    <Input placeholder={tr('coze.user.placeholder', 'User ID for bot operations')} className={errorClass('config.user_id')} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -1611,7 +1690,7 @@ export function EditChannelPage() {
       case 42: // Vertex AI
         return (
           <div className="space-y-4 p-4 border rounded-lg bg-green-50/50">
-            <h4 className="font-medium text-green-900">Vertex AI Configuration</h4>
+            <h4 className="font-medium text-green-900">{tr('vertex.heading', 'Vertex AI Configuration')}</h4>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -1619,11 +1698,11 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Region *"
-                      help={'Google Cloud region for Vertex AI (e.g., us-central1).'}
+                      label={tr('vertex.region.label', 'Region *')}
+                      help={tr('vertex.region.help', 'Google Cloud region for Vertex AI (e.g., us-central1).')}
                     />
                     <FormControl>
-                      <Input placeholder="us-central1" className={errorClass('config.region')} {...field} />
+                      <Input placeholder={tr('vertex.region.placeholder', 'us-central1')} className={errorClass('config.region')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1635,11 +1714,15 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Project ID *"
-                      help={'Your GCP Project ID hosting Vertex AI resources.'}
+                      label={tr('vertex.project.label', 'Project ID *')}
+                      help={tr('vertex.project.help', 'Your GCP Project ID hosting Vertex AI resources.')}
                     />
                     <FormControl>
-                      <Input placeholder="my-project-id" className={errorClass('config.vertex_ai_project_id')} {...field} />
+                      <Input
+                        placeholder={tr('vertex.project.placeholder', 'my-project-id')}
+                        className={errorClass('config.vertex_ai_project_id')}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -1651,12 +1734,12 @@ export function EditChannelPage() {
                 render={({ field }) => (
                   <FormItem>
                     <LabelWithHelp
-                      label="Service Account Credentials *"
-                      help={'Paste the JSON of a service account with Vertex AI permissions.'}
+                      label={tr('vertex.credentials.label', 'Service Account Credentials *')}
+                      help={tr('vertex.credentials.help', 'Paste the JSON of a service account with Vertex AI permissions.')}
                     />
                     <FormControl>
                       <Textarea
-                        placeholder="Google service account JSON credentials"
+                        placeholder={tr('vertex.credentials.placeholder', 'Google service account JSON credentials')}
                         className={`font-mono text-xs ${errorClass('config.vertex_ai_adc')}`}
                         {...field}
                       />
@@ -1677,13 +1760,13 @@ export function EditChannelPage() {
             render={({ field }) => (
               <FormItem>
                 <LabelWithHelp
-                  label="Spark Version"
-                  help={'Select the API version for iFlytek Spark (e.g., v3.5).'}
+                  label={tr('spark.version.label', 'Spark Version')}
+                  help={tr('spark.version.help', 'Select the API version for iFlytek Spark (e.g., v3.5).')}
                 />
                 <Select value={field.value ?? ''} onValueChange={(v) => field.onChange(v)}>
                   <FormControl>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select Spark version" />
+                      <SelectValue placeholder={tr('spark.version.placeholder', 'Select Spark version')} />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -1707,11 +1790,11 @@ export function EditChannelPage() {
             render={({ field }) => (
               <FormItem>
                 <LabelWithHelp
-                  label="Knowledge ID"
-                  help={'Knowledge base identifier for AI Proxy knowledge retrieval.'}
+                  label={tr('ai_proxy.knowledge.label', 'Knowledge ID')}
+                  help={tr('ai_proxy.knowledge.help', 'Knowledge base identifier for AI Proxy knowledge retrieval.')}
                 />
                 <FormControl>
-                  <Input placeholder="Knowledge base ID" {...field} />
+                  <Input placeholder={tr('ai_proxy.knowledge.placeholder', 'Knowledge base ID')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1727,11 +1810,11 @@ export function EditChannelPage() {
             render={({ field }) => (
               <FormItem>
                 <LabelWithHelp
-                  label="Plugin Parameters"
-                  help={'Provider/plugin‑specific parameters if required.'}
+                  label={tr('plugin.params.label', 'Plugin Parameters')}
+                  help={tr('plugin.params.help', 'Provider/plugin-specific parameters if required.')}
                 />
                 <FormControl>
-                  <Input placeholder="Plugin-specific parameters" {...field} />
+                  <Input placeholder={tr('plugin.params.placeholder', 'Plugin-specific parameters')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1747,11 +1830,11 @@ export function EditChannelPage() {
             render={({ field }) => (
               <FormItem>
                 <LabelWithHelp
-                  label="Account ID"
-                  help={'Your Cloudflare account ID for the AI gateway.'}
+                  label={tr('cloudflare.account.label', 'Account ID')}
+                  help={tr('cloudflare.account.help', 'Your Cloudflare account ID for the AI gateway.')}
                 />
                 <FormControl>
-                  <Input placeholder="d8d7c61dbc334c32d3ced580e4bf42b4" {...field} />
+                  <Input placeholder={tr('cloudflare.account.placeholder', 'd8d7c61dbc334c32d3ced580e4bf42b4')} {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -1762,19 +1845,24 @@ export function EditChannelPage() {
       case 50: // OpenAI Compatible
         return (
           <div className="space-y-4 p-4 border rounded-lg bg-purple-50/50">
-            <h4 className="font-medium text-purple-900">OpenAI Compatible Configuration</h4>
+            <h4 className="font-medium text-purple-900">{tr('openai_compatible.heading', 'OpenAI Compatible Configuration')}</h4>
             <FormField
               control={form.control}
               name="base_url"
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="Base URL *"
-                    help={'Base URL of the OpenAI-compatible endpoint, e.g., https://api.your-provider.com. /v1 is appended automatically when required.'}
+                    label={tr('openai_compatible.base_url.label', 'Base URL *')}
+                    help={tr(
+                      'openai_compatible.base_url.help',
+                      'Base URL of the OpenAI-compatible endpoint, e.g., https://api.your-provider.com. /v1 is appended automatically when required.'
+                    )}
                   />
                   <FormControl>
                     <Input
-                      placeholder={defaultBaseURL || 'https://api.your-provider.com'}
+                      placeholder={
+                        defaultBaseURL || tr('openai_compatible.base_url.placeholder', 'https://api.your-provider.com')
+                      }
                       className={errorClass('base_url')}
                       required
                       {...field}
@@ -1790,18 +1878,21 @@ export function EditChannelPage() {
               render={({ field }) => (
                 <FormItem>
                   <LabelWithHelp
-                    label="Upstream API Format *"
-                    help={'Select which upstream API surface should handle requests. ChatCompletion is the historical default; choose Response when the upstream expects OpenAI Response API payloads.'}
+                    label={tr('openai_compatible.api_format.label', 'Upstream API Format *')}
+                    help={tr(
+                      'openai_compatible.api_format.help',
+                      'Select which upstream API surface should handle requests. ChatCompletion is the historical default; choose Response when the upstream expects OpenAI Response API payloads.'
+                    )}
                   />
                   <FormControl>
                     <Select value={field.value ?? 'chat_completion'} onValueChange={field.onChange}>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select upstream API format" />
+                        <SelectValue placeholder={tr('openai_compatible.api_format.placeholder', 'Select upstream API format')} />
                       </SelectTrigger>
                       <SelectContent>
                         {OPENAI_COMPATIBLE_API_FORMAT_OPTIONS.map(option => (
                           <SelectItem key={option.value} value={option.value}>
-                            {option.label}
+                            {tr(`openai_compatible.api_format.option.${option.value}`, option.label)}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -1848,7 +1939,7 @@ export function EditChannelPage() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3">Loading channel...</span>
+            <span className="ml-3">{tr('loading', 'Loading channel...')}</span>
           </CardContent>
         </Card>
       </div>
@@ -1862,20 +1953,39 @@ export function EditChannelPage() {
       <TooltipProvider>
         <Card>
           <CardHeader>
-            <CardTitle>{isEdit ? 'Edit Channel' : 'Create Channel'}</CardTitle>
+            <CardTitle>
+              {isEdit
+                ? tr('title.edit', 'Edit Channel')
+                : tr('title.create', 'Create Channel')}
+            </CardTitle>
             <CardDescription>
-              {isEdit ? 'Update channel configuration' : 'Create a new API channel'}
+              {isEdit
+                ? tr('description.edit', 'Update channel configuration')
+                : tr('description.create', 'Create a new API channel')}
             </CardDescription>
             {selectedChannelType?.description && (
               <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <Info className="h-4 w-4 text-blue-600" />
-                <span className="text-sm text-blue-800">{selectedChannelType.description}</span>
+                <span className="text-sm text-blue-800">
+                  {tr(
+                    `channel_type.${selectedChannelType.value}.description`,
+                    selectedChannelType.description
+                  )}
+                </span>
               </div>
             )}
             {selectedChannelType?.tip && (
               <div className="flex items-center gap-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <AlertCircle className="h-4 w-4 text-yellow-600" />
-                <span className="text-sm text-yellow-800" dangerouslySetInnerHTML={{ __html: selectedChannelType.tip }} />
+                <span
+                  className="text-sm text-yellow-800"
+                  dangerouslySetInnerHTML={{
+                    __html: tr(
+                      `channel_type.${selectedChannelType.value}.tip`,
+                      selectedChannelType.tip
+                    )
+                  }}
+                />
               </div>
             )}
           </CardHeader>
@@ -1890,11 +2000,18 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="Channel Name *"
-                          help={'Human‑readable identifier. Use provider/environment in the name, for example "OpenAI GPT‑4 Production".'}
+                          label={tr('fields.name.label', 'Channel Name *')}
+                          help={tr(
+                            'fields.name.help',
+                            'Human-readable identifier. Use provider/environment in the name, for example "OpenAI GPT-4 Production".'
+                          )}
                         />
                         <FormControl>
-                          <Input placeholder="Enter channel name" className={errorClass('name')} {...field} />
+                          <Input
+                            placeholder={tr('fields.name.placeholder', 'Enter channel name')}
+                            className={errorClass('name')}
+                            {...field}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -1910,8 +2027,11 @@ export function EditChannelPage() {
                       return (
                         <FormItem>
                           <LabelWithHelp
-                            label="Channel Type *"
-                            help={'Select the upstream provider. This determines models, auth method, and default Base URL.'}
+                            label={tr('fields.type.label', 'Channel Type *')}
+                            help={tr(
+                              'fields.type.help',
+                              'Select the upstream provider. This determines models, auth method, and default Base URL.'
+                            )}
                           />
                           <Select
                             value={stringValue}
@@ -1926,7 +2046,7 @@ export function EditChannelPage() {
                           >
                             <FormControl>
                               <SelectTrigger className={errorClass('type')}>
-                                <SelectValue placeholder="Select channel type" />
+                                <SelectValue placeholder={tr('fields.type.placeholder', 'Select channel type')} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="max-h-96 overflow-y-auto">
@@ -1951,20 +2071,30 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="API Key"
-                          help={'Credentials for the selected provider. Stored encrypted. Leave empty on edit to keep existing.'}
+                          label={tr('fields.api_key.label', 'API Key')}
+                          help={tr(
+                            'fields.api_key.help',
+                            'Credentials for the selected provider. Stored encrypted. Leave empty on edit to keep existing.'
+                          )}
                         />
                         <FormControl>
                           <Input
                             type="password"
-                            placeholder={isEdit ? "Leave empty to keep existing key" : "Enter API key"}
+                            placeholder={
+                              isEdit
+                                ? tr('fields.api_key.placeholder_edit', 'Leave empty to keep existing key')
+                                : tr('fields.api_key.placeholder_create', 'Enter API key')
+                            }
                             className={errorClass('key')}
                             {...field}
                           />
                         </FormControl>
                         {isEdit && (
                           <div className="text-xs text-muted-foreground">
-                            Current API key is hidden for security. Enter a new key only if you want to update it.
+                            {tr(
+                              'fields.api_key.note',
+                              'Current API key is hidden for security. Enter a new key only if you want to update it.'
+                            )}
                           </div>
                         )}
                         <FormMessage />
@@ -1980,12 +2110,17 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="Base URL (Optional)"
-                          help={'Provider API endpoint (e.g., https://api.openai.com). Leave empty to use the default for the chosen provider.'}
+                          label={tr('fields.base_url.label', 'Base URL (Optional)')}
+                          help={tr(
+                            'fields.base_url.help',
+                            'Provider API endpoint (e.g., https://api.openai.com). Leave empty to use the default for the chosen provider.'
+                          )}
                         />
                         <FormControl>
                           <Input
-                            placeholder={defaultBaseURL || 'e.g., https://api.openai.com'}
+                            placeholder={
+                              defaultBaseURL || tr('fields.base_url.placeholder', 'e.g., https://api.openai.com')
+                            }
                             className={errorClass('base_url')}
                             {...field}
                           />
@@ -2000,7 +2135,7 @@ export function EditChannelPage() {
 
                 {(!isEdit && !hasSelectedType) ? (
                   <div className="p-4 border rounded-lg bg-muted/30 text-muted-foreground">
-                    Select a channel type to configure Supported Models.
+                    {tr('models.select_type_notice', 'Select a channel type to configure Supported Models.')}
                   </div>
                 ) : (
                   <FormField
@@ -2009,8 +2144,11 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="Supported Models *"
-                          help={'Models available through this channel. Leave empty to allow all provider models. Use the buttons to fill related/all models; duplicates are removed.'}
+                          label={tr('models.label', 'Supported Models *')}
+                          help={tr(
+                            'models.help',
+                            'Models available through this channel. Leave empty to allow all provider models. Use the buttons to fill related/all models; duplicates are removed.'
+                          )}
                         />
                         <div className="flex gap-2 mb-3">
                           <Button
@@ -2020,7 +2158,7 @@ export function EditChannelPage() {
                             disabled={currentCatalogModels.length === 0}
                             size="sm"
                           >
-                            Fill Related Models ({currentCatalogModels.length})
+                            {tr('models.fill_related', 'Fill Related Models ({{count}})', { count: currentCatalogModels.length })}
                           </Button>
                           <Button
                             type="button"
@@ -2029,7 +2167,7 @@ export function EditChannelPage() {
                             size="sm"
                             disabled={availableModels.length === 0}
                           >
-                            Fill All Supported Models ({availableModels.length})
+                            {tr('models.fill_all', 'Fill All Supported Models ({{count}})', { count: availableModels.length })}
                           </Button>
                           <Button
                             type="button"
@@ -2037,12 +2175,12 @@ export function EditChannelPage() {
                             onClick={clearModels}
                             size="sm"
                           >
-                            Clear All
+                            {tr('models.clear_all', 'Clear All')}
                           </Button>
                         </div>
                         <div className="mb-2">
                           <Input
-                            placeholder="Search models..."
+                            placeholder={tr('models.search_placeholder', 'Search models...')}
                             value={modelSearchTerm}
                             onChange={(e) => setModelSearchTerm(e.target.value)}
                           />
@@ -2059,7 +2197,7 @@ export function EditChannelPage() {
                                 htmlFor={model.id}
                                 className="flex-1 cursor-pointer text-sm"
                                 onClick={() => navigator.clipboard.writeText(model.id)}
-                                title="Click to copy model name"
+                                title={tr('models.copy_title', 'Click to copy model name')}
                               >
                                 {model.name}
                               </Label>
@@ -2069,7 +2207,7 @@ export function EditChannelPage() {
                         <div className="mt-2">
                           <div className="flex gap-2 mb-2">
                             <Input
-                              placeholder="Add custom model..."
+                              placeholder={tr('models.custom_placeholder', 'Add custom model...')}
                               value={customModel}
                               onChange={(e) => setCustomModel(e.target.value)}
                               onKeyDown={(e) => {
@@ -2085,7 +2223,7 @@ export function EditChannelPage() {
                               disabled={!customModel.trim()}
                               size="sm"
                             >
-                              Add
+                              {tr('models.add_custom', 'Add')}
                             </Button>
                           </div>
                         </div>
@@ -2113,8 +2251,11 @@ export function EditChannelPage() {
                   render={({ field }) => (
                     <FormItem>
                       <LabelWithHelp
-                        label="Groups *"
-                        help={'Restrict access to specific user groups. Empty means all users can access. The default group is always kept.'}
+                        label={tr('groups.label', 'Groups *')}
+                        help={tr(
+                          'groups.help',
+                          'Restrict access to specific user groups. Empty means all users can access. The default group is always kept.'
+                        )}
                       />
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-2">
@@ -2169,8 +2310,8 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="Priority"
-                          help={'Lower numbers are tried first when multiple channels support a model.'}
+                          label={tr('fields.priority.label', 'Priority')}
+                          help={tr('fields.priority.help', 'Lower numbers are tried first when multiple channels support a model.')}
                         />
                         <FormControl>
                           <Input
@@ -2190,8 +2331,8 @@ export function EditChannelPage() {
                     render={({ field }) => (
                       <FormItem>
                         <LabelWithHelp
-                          label="Weight"
-                          help={'Load balancing weight among channels with the same priority. Higher weight receives more requests.'}
+                          label={tr('fields.weight.label', 'Weight')}
+                          help={tr('fields.weight.help', 'Load balancing weight among channels with the same priority. Higher weight receives more requests.')}
                         />
                         <FormControl>
                           <Input
@@ -2213,8 +2354,11 @@ export function EditChannelPage() {
                     <FormItem>
                       <div className="flex items-center gap-2">
                         <LabelWithHelp
-                          label="Model Mapping (JSON)"
-                          help={'Map external/legacy model names to this provider\'s actual model names. JSON object: { "from": "to" }.'}
+                          label={tr('model_mapping.label', 'Model Mapping (JSON)')}
+                          help={tr(
+                            'model_mapping.help',
+                            'Map external/legacy model names to this provider\'s actual model names. JSON object: { "from": "to" }.'
+                          )}
                         />
                         <Button
                           type="button"
@@ -2222,7 +2366,7 @@ export function EditChannelPage() {
                           size="sm"
                           onClick={formatModelMapping}
                         >
-                          Format JSON
+                          {tr('buttons.format_json', 'Format JSON')}
                         </Button>
                         <Button
                           type="button"
@@ -2233,12 +2377,15 @@ export function EditChannelPage() {
                             form.setValue('model_mapping', example)
                           }}
                         >
-                          Fill Template
+                          {tr('buttons.fill_template', 'Fill Template')}
                         </Button>
                       </div>
                       <FormControl>
                         <Textarea
-                          placeholder={`Model name mapping in JSON format:\n${JSON.stringify(MODEL_MAPPING_EXAMPLE, null, 2)}`}
+                          placeholder={tr(
+                            'model_mapping.placeholder',
+                            `Model name mapping in JSON format:\n${JSON.stringify(MODEL_MAPPING_EXAMPLE, null, 2)}`
+                          )}
                           className={`font-mono text-sm min-h-[100px] ${errorClass('model_mapping')}`}
                           {...field}
                           onBlur={() => {
@@ -2251,7 +2398,7 @@ export function EditChannelPage() {
                                 return
                               }
                               if (!isValidJSON(val)) {
-                                form.setError('model_mapping', { message: 'Invalid JSON format' })
+                                form.setError('model_mapping', { message: tr('validation.invalid_json', 'Invalid JSON format') })
                               } else {
                                 form.clearErrors('model_mapping')
                               }
@@ -2263,12 +2410,14 @@ export function EditChannelPage() {
                       </FormControl>
                       <div className="flex justify-between items-center text-sm">
                         <span className="text-muted-foreground">
-                          Map model names for this channel (optional)
+                          {tr('model_mapping.note', 'Map model names for this channel (optional)')}
                         </span>
                         {field.value && field.value.trim() !== '' && (
                           <span className={`font-bold text-xs ${isValidJSON(field.value) ? 'text-green-600' : 'text-red-600'
                             }`}>
-                            {isValidJSON(field.value) ? '✓ Valid JSON' : '✗ Invalid JSON'}
+                            {isValidJSON(field.value)
+                              ? tr('validation.valid_json', '✓ Valid JSON')
+                              : tr('validation.invalid_json_short', '✗ Invalid JSON')}
                           </span>
                         )}
                       </div>
@@ -2279,7 +2428,7 @@ export function EditChannelPage() {
 
                 {(!isEdit && !hasSelectedType) ? (
                   <div className="p-4 border rounded-lg bg-muted/30 text-muted-foreground">
-                    Select a channel type to configure Model Configs.
+                    {tr('model_configs.select_type_notice', 'Select a channel type to configure Model Configs.')}
                   </div>
                 ) : (
                   <FormField
@@ -2289,8 +2438,11 @@ export function EditChannelPage() {
                       <FormItem>
                         <div className="flex items-center gap-2">
                           <LabelWithHelp
-                            label="Model Configs (JSON)"
-                            help={'Unified per‑model settings. Fields: ratio (input pricing multiplier), completion_ratio (output multiplier), max_tokens (limit).'}
+                            label={tr('model_configs.label', 'Model Configs (JSON)')}
+                            help={tr(
+                              'model_configs.help',
+                              'Unified per-model settings. Fields: ratio (input pricing multiplier), completion_ratio (output multiplier), max_tokens (limit).'
+                            )}
                           />
                           <Button
                             type="button"
@@ -2298,7 +2450,7 @@ export function EditChannelPage() {
                             size="sm"
                             onClick={formatModelConfigs}
                           >
-                            Format JSON
+                            {tr('buttons.format_json', 'Format JSON')}
                           </Button>
                           {watchType !== 3 && (
                             <Button
@@ -2308,14 +2460,17 @@ export function EditChannelPage() {
                               onClick={loadDefaultModelConfigs}
                               disabled={!defaultPricing}
                             >
-                              Load Defaults
+                              {tr('buttons.load_defaults', 'Load Defaults')}
                             </Button>
                           )}
                         </div>
                         {/* Default pricing preview removed to reduce distraction; defaults are auto-filled when empty */}
                         <FormControl>
                           <Textarea
-                            placeholder={`Model configurations in JSON format:\n${JSON.stringify(MODEL_CONFIGS_EXAMPLE, null, 2)}`}
+                            placeholder={tr(
+                              'model_configs.placeholder',
+                              `Model configurations in JSON format:\n${JSON.stringify(MODEL_CONFIGS_EXAMPLE, null, 2)}`
+                            )}
                             className={`font-mono text-sm min-h-[120px] ${errorClass('model_configs')}`}
                             {...field}
                             onBlur={() => {
@@ -2328,12 +2483,12 @@ export function EditChannelPage() {
                                   return
                                 }
                                 if (!isValidJSON(val)) {
-                                  form.setError('model_configs', { message: 'Invalid JSON format' })
+                                  form.setError('model_configs', { message: tr('validation.invalid_json', 'Invalid JSON format') })
                                   return
                                 }
                                 const validation = validateModelConfigs(val)
                                 if (!validation.valid) {
-                                  form.setError('model_configs', { message: validation.error || 'Invalid model configs format' })
+                                  form.setError('model_configs', { message: validation.error || tr('model_configs.invalid', 'Invalid model configs format') })
                                 } else {
                                   form.clearErrors('model_configs')
                                 }
@@ -2345,14 +2500,15 @@ export function EditChannelPage() {
                         </FormControl>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">
-                            Configure pricing and limits per model (optional)
+                            {tr('model_configs.note', 'Configure pricing and limits per model (optional)')}
                           </span>
                           {field.value && field.value.trim() !== '' && (
                             <span className={`font-bold text-xs ${isValidJSON(field.value) && validateModelConfigs(field.value).valid
                               ? 'text-green-600' : 'text-red-600'
                               }`}>
                               {isValidJSON(field.value) && validateModelConfigs(field.value).valid
-                                ? '✓ Valid Config' : '✗ Invalid Config'}
+                                ? tr('model_configs.valid', '✓ Valid Config')
+                                : tr('model_configs.invalid_short', '✗ Invalid Config')}
                             </span>
                           )}
                         </div>
@@ -2370,13 +2526,19 @@ export function EditChannelPage() {
                     const jsonValid = trimmed === '' ? true : isValidJSON(rawValue)
                     const toolingValidation = trimmed === '' ? { valid: true } : validateToolingConfig(rawValue)
                     const toolingValid = jsonValid && toolingValidation.valid
+                    const toolingErrorMessage = (!toolingValid && 'error' in toolingValidation)
+                      ? (toolingValidation as { valid: boolean; error?: string }).error
+                      : undefined
 
                     return (
                       <FormItem>
                         <div className="flex items-center gap-2">
                           <LabelWithHelp
-                            label="Tooling Config (JSON)"
-                            help={'Define channel-wide built-in tool policy. Configure the whitelist and per-call pricing for provider built-in tools.'}
+                            label={tr('tooling.label', 'Tooling Config (JSON)')}
+                            help={tr(
+                              'tooling.help',
+                              'Define channel-wide built-in tool policy. Configure the whitelist and per-call pricing for provider built-in tools.'
+                            )}
                           />
                           <Button
                             type="button"
@@ -2384,7 +2546,7 @@ export function EditChannelPage() {
                             size="sm"
                             onClick={formatToolingConfig}
                           >
-                            Format JSON
+                            {tr('buttons.format_json', 'Format JSON')}
                           </Button>
                           <Button
                             type="button"
@@ -2413,12 +2575,15 @@ export function EditChannelPage() {
                             }}
                             disabled={!defaultTooling}
                           >
-                            Load Defaults
+                            {tr('buttons.load_defaults', 'Load Defaults')}
                           </Button>
                         </div>
                         <FormControl>
                           <Textarea
-                            placeholder={`Tooling configuration in JSON format:\n${JSON.stringify(TOOLING_CONFIG_EXAMPLE, null, 2)}`}
+                            placeholder={tr(
+                              'tooling.placeholder',
+                              `Tooling configuration in JSON format:\n${JSON.stringify(TOOLING_CONFIG_EXAMPLE, null, 2)}`
+                            )}
                             className={`font-mono text-sm min-h-[120px] ${errorClass('tooling')}`}
                             {...field}
                             onBlur={() => {
@@ -2429,12 +2594,12 @@ export function EditChannelPage() {
                                   return
                                 }
                                 if (!isValidJSON(field.value ?? '')) {
-                                  form.setError('tooling', { message: 'Invalid JSON format' })
+                                  form.setError('tooling', { message: tr('validation.invalid_json', 'Invalid JSON format') })
                                   return
                                 }
                                 const validation = validateToolingConfig(String(field.value ?? ''))
                                 if (!validation.valid) {
-                                  form.setError('tooling', { message: validation.error || 'Invalid tooling config format' })
+                                  form.setError('tooling', { message: validation.error || tr('tooling.invalid', 'Invalid tooling config format') })
                                 } else {
                                   form.clearErrors('tooling')
                                 }
@@ -2446,7 +2611,7 @@ export function EditChannelPage() {
                         </FormControl>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">
-                            Configure built-in tool allowlists and per-call pricing (optional)
+                            {tr('tooling.note', 'Configure built-in tool allowlists and per-call pricing (optional)')}
                           </span>
                           {trimmed !== '' && (
                             <span className={`font-bold text-xs ${toolingValid ? 'text-green-600' : 'text-red-600'}`}>
@@ -2454,26 +2619,28 @@ export function EditChannelPage() {
                             </span>
                           )}
                         </div>
-                        {!toolingValid && toolingValidation.error && (
+                        {toolingErrorMessage && (
                           <div className="mt-2 text-xs text-destructive">
-                            {toolingValidation.error}
+                            {toolingErrorMessage}
                           </div>
                         )}
                         {parsedToolingConfig === null && trimmed !== '' ? (
                           <div className="mt-3 rounded-md border border-yellow-300 bg-yellow-50 px-3 py-2 text-xs text-yellow-900">
-                            Fix the tooling JSON above to manage the built-in tool whitelist.
+                            {tr('tooling.fix_json_notice', 'Fix the tooling JSON above to manage the built-in tool whitelist.')}
                           </div>
                         ) : (
                           <div className="mt-4 space-y-3 rounded-lg border border-border bg-muted/30 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="text-sm font-medium">Built-in Tool Whitelist</span>
+                              <span className="text-sm font-medium">{tr('tooling.whitelist.title', 'Built-in Tool Whitelist')}</span>
                               <span className="text-xs text-muted-foreground">
-                                Empty whitelist keeps all provider tools available.
+                                {tr('tooling.whitelist.subtitle', 'Empty whitelist keeps all provider tools available.')}
                               </span>
                             </div>
                             {availableDefaultTools.length > 0 && (
                               <div className="flex flex-wrap items-center gap-2">
-                                <span className="text-xs font-medium text-muted-foreground">Known tools:</span>
+                                <span className="text-xs font-medium text-muted-foreground">
+                                  {tr('tooling.whitelist.known', 'Known tools:')}
+                                </span>
                                 {availableDefaultTools.map((tool) => {
                                   const exists = currentToolWhitelist.some((item) => item.toLowerCase() === tool.toLowerCase())
                                   return (
@@ -2493,7 +2660,7 @@ export function EditChannelPage() {
                             <div className="flex min-h-[2.5rem] flex-wrap gap-2">
                               {currentToolWhitelist.length === 0 ? (
                                 <span className="text-xs text-muted-foreground">
-                                  No tools pinned. All built-in tools remain available.
+                                  {tr('tooling.whitelist.empty', 'No tools pinned. All built-in tools remain available.')}
                                 </span>
                               ) : (
                                 currentToolWhitelist.map((tool) => {
@@ -2522,8 +2689,8 @@ export function EditChannelPage() {
                                           {tool} ×
                                         </Badge>
                                       </TooltipTrigger>
-                                      <TooltipContent>
-                                        Set pricing to unblock “{tool}”. Requests remain blocked until pricing is configured.
+                                        <TooltipContent>
+                                          {tr('tooling.whitelist.pricing_required', 'Set pricing to unblock "{{tool}}". Requests remain blocked until pricing is configured.', { tool })}
                                       </TooltipContent>
                                     </Tooltip>
                                   )
@@ -2540,7 +2707,7 @@ export function EditChannelPage() {
                                     addToolToWhitelist(customTool, { isCustom: true })
                                   }
                                 }}
-                                placeholder="Custom tool name"
+                                placeholder={tr('tooling.whitelist.custom_placeholder', 'Custom tool name')}
                                 disabled={toolEditorDisabled}
                                 className="w-56"
                               />
@@ -2550,7 +2717,7 @@ export function EditChannelPage() {
                                 onClick={() => addToolToWhitelist(customTool, { isCustom: true })}
                                 disabled={toolEditorDisabled || customTool.trim() === ''}
                               >
-                                Add tool
+                                {tr('tooling.whitelist.add_tool', 'Add tool')}
                               </Button>
                             </div>
                           </div>
@@ -2566,12 +2733,15 @@ export function EditChannelPage() {
                   render={({ field }) => (
                     <FormItem>
                       <LabelWithHelp
-                        label="System Prompt"
-                        help={'Optional text prepended as a system message to every request sent through this channel. Use for guardrails or style. Clients can still override with their own system messages.'}
+                        label={tr('system_prompt.label', 'System Prompt')}
+                        help={tr(
+                          'system_prompt.help',
+                          'Optional text prepended as a system message to every request sent through this channel. Use for guardrails or style. Clients can still override with their own system messages.'
+                        )}
                       />
                       <FormControl>
                         <Textarea
-                          placeholder="Optional system prompt to prepend to all requests"
+                          placeholder={tr('system_prompt.placeholder', 'Optional system prompt to prepend to all requests')}
                           className={`min-h-[100px] ${errorClass('system_prompt')}`}
                           {...field}
                         />
@@ -2590,8 +2760,11 @@ export function EditChannelPage() {
                       <FormItem>
                         <div className="flex items-center gap-2">
                           <LabelWithHelp
-                            label="Inference Profile ARN Map (AWS Bedrock)"
-                            help={'JSON map of model name → AWS Bedrock Inference Profile ARN. Use to route certain models via specific Bedrock inference profiles.'}
+                            label={tr('inference_profile.label', 'Inference Profile ARN Map (AWS Bedrock)')}
+                            help={tr(
+                              'inference_profile.help',
+                              'JSON map of model name to AWS Bedrock Inference Profile ARN. Use to route certain models via specific Bedrock inference profiles.'
+                            )}
                           />
                           <Button
                             type="button"
@@ -2599,15 +2772,18 @@ export function EditChannelPage() {
                             size="sm"
                             onClick={formatInferenceProfileArnMap}
                           >
-                            Format JSON
+                            {tr('buttons.format_json', 'Format JSON')}
                           </Button>
                         </div>
                         <FormControl>
                           <Textarea
-                            placeholder={`AWS Bedrock inference profile ARN mapping:\n${JSON.stringify({
+                            placeholder={tr(
+                              'inference_profile.placeholder',
+                              `AWS Bedrock inference profile ARN mapping:\n${JSON.stringify({
                               "claude-3-5-sonnet-20241022": "arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-5-sonnet-20241022-v2:0",
                               "claude-3-haiku-20240307": "arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-haiku-20240307-v1:0"
-                            }, null, 2)}`}
+                            }, null, 2)}`
+                            )}
                             className={`font-mono text-sm min-h-[100px] ${errorClass('inference_profile_arn_map')}`}
                             {...field}
                             onBlur={() => {
@@ -2620,7 +2796,7 @@ export function EditChannelPage() {
                                   return
                                 }
                                 if (!isValidJSON(val)) {
-                                  form.setError('inference_profile_arn_map', { message: 'Invalid JSON format' })
+                                  form.setError('inference_profile_arn_map', { message: tr('validation.invalid_json', 'Invalid JSON format') })
                                 } else {
                                   form.clearErrors('inference_profile_arn_map')
                                 }
@@ -2632,12 +2808,14 @@ export function EditChannelPage() {
                         </FormControl>
                         <div className="flex justify-between items-center text-sm">
                           <span className="text-muted-foreground">
-                            Map model names to AWS Bedrock inference profile ARNs (optional)
+                            {tr('inference_profile.note', 'Map model names to AWS Bedrock inference profile ARNs (optional)')}
                           </span>
                           {field.value && field.value.trim() !== '' && (
                             <span className={`font-bold text-xs ${isValidJSON(field.value) ? 'text-green-600' : 'text-red-600'
                               }`}>
-                              {isValidJSON(field.value) ? '✓ Valid JSON' : '✗ Invalid JSON'}
+                              {isValidJSON(field.value)
+                                ? tr('validation.valid_json', '✓ Valid JSON')
+                                : tr('validation.invalid_json_short', '✗ Invalid JSON')}
                             </span>
                           )}
                         </div>
@@ -2656,8 +2834,12 @@ export function EditChannelPage() {
                 <div className="flex gap-2">
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting
-                      ? (isEdit ? 'Updating...' : 'Creating...')
-                      : (isEdit ? 'Update Channel' : 'Create Channel')
+                      ? (isEdit
+                        ? tr('actions.updating', 'Updating...')
+                        : tr('actions.creating', 'Creating...'))
+                      : (isEdit
+                        ? tr('actions.update', 'Update Channel')
+                        : tr('actions.create', 'Create Channel'))
                     }
                   </Button>
                   {isEdit && (
@@ -2667,7 +2849,7 @@ export function EditChannelPage() {
                       onClick={testChannel}
                       disabled={isSubmitting}
                     >
-                      Test Channel
+                      {tr('actions.test_channel', 'Test Channel')}
                     </Button>
                   )}
                   <Button
@@ -2675,7 +2857,7 @@ export function EditChannelPage() {
                     variant="outline"
                     onClick={() => navigate('/channels')}
                   >
-                    Cancel
+                    {tr('actions.cancel', 'Cancel')}
                   </Button>
                 </div>
               </form>

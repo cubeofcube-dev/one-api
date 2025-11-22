@@ -1,14 +1,16 @@
-import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { api } from '@/lib/api'
-import { marked } from 'marked'
 import { ResponsivePageContainer } from '@/components/ui/responsive-container'
 import { useResponsive } from '@/hooks/useResponsive'
+import { api } from '@/lib/api'
+import { marked } from 'marked'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 export function HomePage() {
   const [home, setHome] = useState('') // URL or rendered HTML
   const [loaded, setLoaded] = useState(false)
   const { isMobile } = useResponsive()
+  const { t } = useTranslation()
 
   const loadHome = async () => {
     try {
@@ -54,7 +56,7 @@ export function HomePage() {
       <iframe
         src={home}
         className="w-full h-screen border-0"
-        title="Home"
+        title={t('home.iframe_title')}
       />
     )
   }

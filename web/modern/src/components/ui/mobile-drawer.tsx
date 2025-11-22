@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
 
 interface MobileDrawerProps {
   isOpen: boolean
@@ -30,6 +31,8 @@ export function MobileDrawer({
   closeOnEscape = true
 }: MobileDrawerProps) {
   const drawerRef = useRef<HTMLDivElement>(null)
+  const { t } = useTranslation()
+
 
   // Handle escape key
   useEffect(() => {
@@ -197,14 +200,17 @@ export function NavigationDrawer({
   isOpen,
   onClose,
   navigationItems,
-  title = 'Navigation',
+  title,
   footer
 }: NavigationDrawerProps) {
+  const { t } = useTranslation()
+  const drawerTitle = title || t('header.navigation', 'Navigation')
+
   return (
     <MobileDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title={title}
+      title={drawerTitle}
       position="left"
       size="md"
     >
@@ -251,13 +257,16 @@ export function FilterDrawer({
   children,
   onApply,
   onReset,
-  title = 'Filters'
+  title
 }: FilterDrawerProps) {
+  const { t } = useTranslation()
+  const drawerTitle = title || t('common.filters', 'Filters')
+
   return (
     <MobileDrawer
       isOpen={isOpen}
       onClose={onClose}
-      title={title}
+      title={drawerTitle}
       position="bottom"
       size="lg"
     >
@@ -272,7 +281,7 @@ export function FilterDrawer({
                 onClick={onReset}
                 className="flex-1"
               >
-                Reset
+                {t('common.reset', 'Reset')}
               </Button>
             )}
             {onApply && (
@@ -283,7 +292,7 @@ export function FilterDrawer({
                 }}
                 className="flex-1"
               >
-                Apply Filters
+                {t('common.apply_filters', 'Apply Filters')}
               </Button>
             )}
           </div>

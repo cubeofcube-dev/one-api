@@ -1,32 +1,14 @@
-import { useEffect, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
 import { api } from '@/lib/api'
 import { useAuthStore } from '@/lib/stores/auth'
-
-const topupSchema = z.object({
-  redemption_code: z.string().min(1, 'Redemption code is required'),
-})
-
-type TopUpForm = z.infer<typeof topupSchema>
-
-// Helper function to render quota with USD conversion
-const renderQuotaWithPrompt = (quota: number): string => {
-  const quotaPerUnit = parseFloat(localStorage.getItem('quota_per_unit') || '500000')
-  const displayInCurrency = localStorage.getItem('display_in_currency') === 'true'
-
-  if (displayInCurrency) {
-    const usdValue = (quota / quotaPerUnit).toFixed(6)
-    return `${quota.toLocaleString()} tokens ($${usdValue})`
-  }
-  return `${quota.toLocaleString()} tokens`
-}
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useCallback, useEffect, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import * as z from 'zod'
 
 export function TopUpPage() {
   const { user, updateUser } = useAuthStore()
@@ -34,11 +16,35 @@ export function TopUpPage() {
   const [userQuota, setUserQuota] = useState(user?.quota || 0)
   const [topUpLink, setTopUpLink] = useState('')
   const [userData, setUserData] = useState<any>(null)
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`topup.${key}`, { defaultValue, ...options }),
+    [t]
+  )
+
+  const topupSchema = z.object({
+    redemption_code: z.string().min(1, tr('redeem.required', 'Redemption code is required')),
+  })
+
+  type TopUpForm = z.infer<typeof topupSchema>
 
   const form = useForm<TopUpForm>({
     resolver: zodResolver(topupSchema),
     defaultValues: { redemption_code: '' },
   })
+
+  // Helper function to render quota with USD conversion
+  const renderQuotaWithPrompt = (quota: number): string => {
+    const quotaPerUnit = parseFloat(localStorage.getItem('quota_per_unit') || '500000')
+    const displayInCurrency = localStorage.getItem('display_in_currency') === 'true'
+
+    if (displayInCurrency) {
+      const usdValue = (quota / quotaPerUnit).toFixed(6)
+      return `${quota.toLocaleString()} tokens ($${usdValue})`
+    }
+    return `${quota.toLocaleString()} tokens`
+  }
 
   const loadUserData = async () => {
     try {
@@ -82,16 +88,16 @@ export function TopUpPage() {
         form.reset()
         form.setError('root', {
           type: 'success',
-          message: `Successfully redeemed! Added ${addedQuota.toLocaleString()} tokens.`
+          message: tr('redeem.success', `Successfully redeemed! Added {{value}} tokens.`, { value: addedQuota.toLocaleString() })
         })
         // Reload user data to get updated quota
         loadUserData()
       } else {
-        form.setError('root', { message: message || 'Redemption failed' })
+        form.setError('root', { message: message || tr('redeem.failed', 'Redemption failed') })
       }
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Redemption failed'
+        message: error instanceof Error ? error.message : tr('redeem.failed', 'Redemption failed')
       })
     } finally {
       setIsSubmitting(false)
@@ -132,16 +138,16 @@ export function TopUpPage() {
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">Top Up</h1>
-          <p className="text-muted-foreground">Manage your account balance and redeem codes</p>
+          <h1 className="text-2xl font-bold mb-2">{tr('title', 'Top Up')}</h1>
+          <p className="text-muted-foreground">{tr('description', 'Manage your account balance and redeem codes')}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Current Balance */}
           <Card>
             <CardHeader>
-              <CardTitle>Current Balance</CardTitle>
-              <CardDescription>Your current quota balance</CardDescription>
+              <CardTitle>{tr('balance.title', 'Current Balance')}</CardTitle>
+              <CardDescription>{tr('balance.description', 'Your current quota balance')}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center">
@@ -149,10 +155,10 @@ export function TopUpPage() {
                   {renderQuotaWithPrompt(userQuota)}
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Available quota for API usage
+                  {tr('balance.available', 'Available quota for API usage')}
                 </p>
                 <Button variant="outline" className="mt-4" onClick={loadUserData}>
-                  Refresh Balance
+                  {tr('balance.refresh', 'Refresh Balance')}
                 </Button>
               </div>
             </CardContent>
@@ -161,8 +167,8 @@ export function TopUpPage() {
           {/* Redemption Code */}
           <Card>
             <CardHeader>
-              <CardTitle>Redeem Code</CardTitle>
-              <CardDescription>Enter a redemption code to add quota</CardDescription>
+              <CardTitle>{tr('redeem.title', 'Redeem Code')}</CardTitle>
+              <CardDescription>{tr('redeem.description', 'Enter a redemption code to add quota')}</CardDescription>
             </CardHeader>
             <CardContent>
               <Form {...form}>
@@ -172,10 +178,10 @@ export function TopUpPage() {
                     name="redemption_code"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Redemption Code</FormLabel>
+                        <FormLabel>{tr('redeem.label', 'Redemption Code')}</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Enter your redemption code"
+                            placeholder={tr('redeem.placeholder', 'Enter your redemption code')}
                             {...field}
                           />
                         </FormControl>
@@ -194,7 +200,7 @@ export function TopUpPage() {
                   )}
 
                   <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? 'Redeeming...' : 'Redeem Code'}
+                    {isSubmitting ? tr('redeem.processing', 'Redeeming...') : tr('redeem.button', 'Redeem Code')}
                   </Button>
                 </form>
               </Form>
@@ -206,23 +212,21 @@ export function TopUpPage() {
         {topUpLink && (
           <Card>
             <CardHeader>
-              <CardTitle>Online Payment</CardTitle>
+              <CardTitle>{tr('online.title', 'Online Payment')}</CardTitle>
               <CardDescription>
-                Purchase quota through our external payment system
+                {tr('online.description', 'Purchase quota through our external payment system')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Click the button below to open our secure payment portal where you can
-                  purchase additional quota for your account.
+                  {tr('online.text', 'Click the button below to open our secure payment portal where you can purchase additional quota for your account.')}
                 </p>
                 <Button onClick={openTopUpLink} size="lg">
-                  Open Payment Portal
+                  {tr('online.button', 'Open Payment Portal')}
                 </Button>
                 <p className="text-xs text-muted-foreground">
-                  You will be redirected to an external payment system.
-                  Your account information will be automatically included.
+                  {tr('online.note', 'You will be redirected to an external payment system. Your account information will be automatically included.')}
                 </p>
               </div>
             </CardContent>
@@ -232,15 +236,13 @@ export function TopUpPage() {
         {/* Usage Tips */}
         <Card>
           <CardHeader>
-            <CardTitle>Tips</CardTitle>
+            <CardTitle>{tr('tips.title', 'Tips')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2 text-sm text-muted-foreground">
-              <p>• Quota is consumed based on your API usage and model costs</p>
-              <p>• Different models have different pricing rates</p>
-              <p>• Check the Models page to see pricing for each model</p>
-              <p>• Redemption codes are case-sensitive</p>
-              <p>• Your balance will be automatically updated after successful redemption</p>
+              {(t('topup.tips.content', { returnObjects: true }) as string[]).map((tip, index) => (
+                <p key={index}>• {tip}</p>
+              ))}
             </div>
           </CardContent>
         </Card>

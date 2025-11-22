@@ -1,32 +1,34 @@
-import { useState } from 'react'
-import { useNavigate, Link, useSearchParams } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
+import Turnstile from '@/components/Turnstile'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { api } from '@/lib/api'
-import Turnstile from '@/components/Turnstile'
+import { Input } from '@/components/ui/input'
 import { useSystemStatus } from '@/hooks/useSystemStatus'
+import { api } from '@/lib/api'
 import { buildGitHubOAuthUrl, getOAuthState } from '@/lib/oauth'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import * as z from 'zod'
 
-const registerSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-  password2: z.string().min(8, 'Password confirmation is required'),
-  email: z.string().email('Valid email is required'),
-  verification_code: z.string().min(1, 'Verification code is required'),
+const registerSchema = (t: (key: string) => string) => z.object({
+  username: z.string().min(3, t('auth.register.username_min_length')),
+  password: z.string().min(8, t('auth.register.password_min_length')),
+  password2: z.string().min(8, t('auth.register.password_confirm_required')),
+  email: z.string().email(t('auth.register.email_required')),
+  verification_code: z.string().min(1, t('auth.register.verification_code_required')),
   aff_code: z.string().optional(),
 }).refine((data) => data.password === data.password2, {
-  message: "Passwords don't match",
+  message: t('auth.register.passwords_mismatch'),
   path: ["password2"],
 })
 
-type RegisterForm = z.infer<typeof registerSchema>
+type RegisterForm = z.infer<ReturnType<typeof registerSchema>>
 
 export function RegisterPage() {
+  const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [isEmailSent, setIsEmailSent] = useState(false)
   const [turnstileToken, setTurnstileToken] = useState<string>('')
@@ -38,7 +40,7 @@ export function RegisterPage() {
   const affCodeFromUrl = searchParams.get('aff') || ''
 
   const form = useForm<RegisterForm>({
-    resolver: zodResolver(registerSchema),
+    resolver: zodResolver(registerSchema(t)),
     defaultValues: {
       username: '',
       password: '',
@@ -71,7 +73,7 @@ export function RegisterPage() {
     // Simple email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!email || !emailRegex.test(email)) {
-      form.setError('email', { message: 'Please enter a valid email address' })
+      form.setError('email', { message: t('auth.register.email_invalid') })
       return
     }
 
@@ -88,11 +90,11 @@ export function RegisterPage() {
         // Reset token after successful verification send to encourage a fresh check next action
         if (systemStatus?.turnstile_check) setTurnstileToken('')
       } else {
-        form.setError('email', { message: message || 'Failed to send verification code' })
+        form.setError('email', { message: message || t('auth.register.send_code_failed') })
       }
     } catch (error) {
       form.setError('email', {
-        message: error instanceof Error ? error.message : 'Failed to send verification code'
+        message: error instanceof Error ? error.message : t('auth.register.send_code_failed')
       })
     } finally {
       setIsLoading(false)
@@ -118,14 +120,14 @@ export function RegisterPage() {
 
       if (success) {
         navigate('/login', {
-          state: { message: 'Registration successful! Please login with your credentials.' }
+          state: { message: t('auth.register.success') }
         })
       } else {
-        form.setError('root', { message: message || 'Registration failed' })
+        form.setError('root', { message: message || t('auth.register.failed') })
       }
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Registration failed'
+        message: error instanceof Error ? error.message : t('auth.register.failed')
       })
     } finally {
       setIsLoading(false)
@@ -136,8 +138,8 @@ export function RegisterPage() {
     <div className="min-h-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">Create Account</CardTitle>
-          <CardDescription>Sign up to get started</CardDescription>
+          <CardTitle className="text-2xl">{t('auth.register.title')}</CardTitle>
+          <CardDescription>{t('auth.register.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -147,9 +149,9 @@ export function RegisterPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Username</FormLabel>
+                    <FormLabel>{t('common.username')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter username" {...field} />
+                      <Input placeholder={t('auth.register.enter_username')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -161,9 +163,9 @@ export function RegisterPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel>{t('common.password')}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter password" {...field} />
+                      <Input type="password" placeholder={t('auth.register.enter_password')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -175,9 +177,9 @@ export function RegisterPage() {
                 name="password2"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel>{t('auth.register.confirm_password')}</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Confirm password" {...field} />
+                      <Input type="password" placeholder={t('auth.register.confirm_password')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -189,12 +191,12 @@ export function RegisterPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>{t('common.email')}</FormLabel>
                     <FormControl>
                       <div className="flex gap-2">
                         <Input
                           type="email"
-                          placeholder="Enter email"
+                          placeholder={t('auth.register.enter_email')}
                           {...field}
                           className="flex-1"
                         />
@@ -209,7 +211,7 @@ export function RegisterPage() {
                             (systemStatus?.turnstile_check && !turnstileToken)
                           }
                         >
-                          {isLoading ? 'Sending...' : isEmailSent ? 'Sent' : 'Send Code'}
+                          {isLoading ? t('auth.register.sending') : isEmailSent ? t('auth.register.sent') : t('auth.register.send_code')}
                         </Button>
                       </div>
                     </FormControl>
@@ -223,9 +225,9 @@ export function RegisterPage() {
                 name="verification_code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Verification Code</FormLabel>
+                    <FormLabel>{t('auth.register.verification_code')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter verification code" {...field} />
+                      <Input placeholder={t('auth.register.enter_verification_code')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -237,9 +239,9 @@ export function RegisterPage() {
                 name="aff_code"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Invitation/Affiliate Code (Optional)</FormLabel>
+                    <FormLabel>{t('auth.register.aff_code')}</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter invitation code" {...field} />
+                      <Input placeholder={t('auth.register.enter_invitation_code')} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -257,7 +259,7 @@ export function RegisterPage() {
                 className="w-full"
                 disabled={isLoading || (systemStatus?.turnstile_check && !turnstileToken)}
               >
-                {isLoading ? 'Creating Account...' : 'Create Account'}
+                {isLoading ? t('auth.register.creating') : t('auth.register.title')}
               </Button>
 
               {systemStatus?.turnstile_check && systemStatus?.turnstile_site_key && (
@@ -278,7 +280,7 @@ export function RegisterPage() {
                       <span className="w-full border-t" />
                     </div>
                     <div className="relative flex justify-center text-xs">
-                      <span className="bg-card px-2 text-muted-foreground">Or sign up with</span>
+                      <span className="bg-card px-2 text-muted-foreground">{t('auth.register.or_sign_up_with')}</span>
                     </div>
                   </div>
                   <Button type="button" variant="outline" className="w-full" onClick={onGitHubOAuth}>
@@ -291,9 +293,9 @@ export function RegisterPage() {
               )}
 
               <div className="text-center text-sm">
-                Already have an account?{' '}
+                {t('auth.register.already_have_account')}{' '}
                 <Link to="/login" className="text-primary hover:underline">
-                  Sign in
+                  {t('auth.register.sign_in')}
                 </Link>
               </div>
             </form>

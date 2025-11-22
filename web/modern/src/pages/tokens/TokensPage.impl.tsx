@@ -14,7 +14,8 @@ import { useAuthStore } from '@/lib/stores/auth'
 import { cn, renderQuota } from '@/lib/utils'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, Check, CheckCircle, Copy, Eye, EyeOff, Plus, Settings, Trash2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useClipboardManager } from './useClipboardManager'
 
@@ -41,26 +42,6 @@ const TOKEN_STATUS = {
   EXHAUSTED: 4,
 } as const
 
-const formatQuota = (quota: number, unlimited = false) => {
-  if (unlimited) return 'Unlimited'
-  return renderQuota(quota)
-}
-
-const getStatusBadge = (status: number) => {
-  switch (status) {
-    case TOKEN_STATUS.ENABLED:
-      return <Badge variant="default" className="bg-green-100 text-green-800">Enabled</Badge>
-    case TOKEN_STATUS.DISABLED:
-      return <Badge variant="secondary" className="bg-gray-100 text-gray-800">Disabled</Badge>
-    case TOKEN_STATUS.EXPIRED:
-      return <Badge variant="destructive" className="bg-red-100 text-red-800">Expired</Badge>
-    case TOKEN_STATUS.EXHAUSTED:
-      return <Badge variant="destructive" className="bg-yellow-100 text-yellow-800">Exhausted</Badge>
-    default:
-      return <Badge variant="outline">Unknown</Badge>
-  }
-}
-
 export const shouldHighlightTokenQuota = (token: Token, userQuota: number | null): boolean => {
   if (userQuota === null || userQuota < 0) {
     return false
@@ -79,6 +60,12 @@ export function TokensPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const userQuota = useAuthStore(state => state.user?.quota ?? null)
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`tokens.page.${key}`, { defaultValue, ...options }),
+    [t]
+  )
   const [data, setData] = useState<Token[]>([])
   const [loading, setLoading] = useState(false)
   const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
@@ -98,6 +85,29 @@ export function TokensPage() {
     handleCopyFailure,
     clearManualCopyToken
   } = useClipboardManager()
+  const formatQuotaLabel = useCallback((quota: number, unlimited = false) => {
+    if (unlimited) {
+      return tr('quota.unlimited', 'Unlimited')
+    }
+    return renderQuota(quota)
+  }, [tr])
+  const renderStatusBadge = useCallback((status: number) => {
+    switch (status) {
+      case TOKEN_STATUS.ENABLED:
+        return <Badge variant="default" className="bg-green-100 text-green-800">{tr('status.enabled', 'Enabled')}</Badge>
+      case TOKEN_STATUS.DISABLED:
+        return <Badge variant="secondary" className="bg-gray-100 text-gray-800">{tr('status.disabled', 'Disabled')}</Badge>
+      case TOKEN_STATUS.EXPIRED:
+        return <Badge variant="destructive" className="bg-red-100 text-red-800">{tr('status.expired', 'Expired')}</Badge>
+      case TOKEN_STATUS.EXHAUSTED:
+        return <Badge variant="destructive" className="bg-yellow-100 text-yellow-800">{tr('status.exhausted', 'Exhausted')}</Badge>
+      default:
+        return <Badge variant="outline">{tr('status.unknown', 'Unknown')}</Badge>
+    }
+  }, [tr])
+  const formatTokenLabel = useCallback((token: Token) => {
+    return token.name || tr('table.id_placeholder', '(ID {{id}})', { id: token.id })
+  }, [tr])
 
   const load = async (p = 0, size = pageSize) => {
     setLoading(true)
@@ -160,13 +170,15 @@ export function TokensPage() {
       if (success && Array.isArray(responseData)) {
         const options: SearchOption[] = responseData.map((token: Token) => ({
           key: token.id.toString(),
-          value: token.name || `(ID ${token.id})`,
-          text: token.name || `(ID ${token.id})`,
+          value: formatTokenLabel(token),
+          text: formatTokenLabel(token),
           content: (
             <div className="flex flex-col">
-              <div className="font-medium">{token.name || `(ID ${token.id})`}</div>
-              <div className="text-sm text-muted-foreground">
-                ID: {token.id} • {getStatusBadge(token.status)} • Quota: {formatQuota(token.remain_quota, token.unlimited_quota)}
+              <div className="font-medium">{formatTokenLabel(token)}</div>
+              <div className="text-sm text-muted-foreground flex items-center gap-2 flex-wrap">
+                <span>{tr('search.id_label', 'ID: {{id}}', { id: token.id })}</span>
+                {renderStatusBadge(token.status)}
+                <span>{tr('search.quota_label', 'Quota: {{quota}}', { quota: formatQuotaLabel(token.remain_quota, token.unlimited_quota) })}</span>
               </div>
             </div>
           )
@@ -264,21 +276,21 @@ export function TokensPage() {
   const columns: ColumnDef<Token>[] = [
     {
       accessorKey: 'id',
-      header: 'ID',
+      header: tr('columns.id', 'ID'),
       cell: ({ row }) => (
         <span className="font-mono text-sm">{row.original.id}</span>
       ),
     },
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: tr('columns.name', 'Name'),
       cell: ({ row }) => (
-        <div className="font-medium">{row.original.name || `(ID ${row.original.id})`}</div>
+        <div className="font-medium">{formatTokenLabel(row.original)}</div>
       ),
     },
     {
       accessorKey: 'key',
-      header: 'Key',
+      header: tr('columns.key', 'Key'),
       cell: ({ row }) => {
         const token = row.original
         const isVisible = showKeys[token.id]
@@ -301,7 +313,9 @@ export function TokensPage() {
               onClick={() => copyToClipboard(token)}
               className="h-6 w-6 p-0"
               disabled={!!copiedTokens[token.id]}
-              title={copiedTokens[token.id] ? 'Copied!' : 'Copy token'}
+              title={copiedTokens[token.id]
+                ? tr('key.copied', 'Copied!')
+                : tr('key.copy', 'Copy token')}
             >
               {copiedTokens[token.id] ? (
                 <Check className="h-3 w-3 text-green-600" />
@@ -315,15 +329,15 @@ export function TokensPage() {
     },
     {
       accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => getStatusBadge(row.original.status),
+      header: tr('columns.status', 'Status'),
+      cell: ({ row }) => renderStatusBadge(row.original.status),
     },
     {
       accessorKey: 'remain_quota',
-      header: 'Remaining Quota',
+      header: tr('columns.remaining_quota', 'Remaining Quota'),
       cell: ({ row }) => {
         const token = row.original
-        const quotaLabel = formatQuota(token.remain_quota, token.unlimited_quota)
+        const quotaLabel = formatQuotaLabel(token.remain_quota, token.unlimited_quota)
         const highlight = shouldHighlightTokenQuota(token, userQuota)
         const quotaClasses = cn(
           'font-mono text-sm',
@@ -332,7 +346,10 @@ export function TokensPage() {
 
         if (!highlight) {
           return (
-            <span className={quotaClasses} title={`Remaining: ${quotaLabel}`}>
+            <span
+              className={quotaClasses}
+              title={tr('columns.remaining_title', 'Remaining: {{label}}', { label: quotaLabel })}
+            >
               {quotaLabel}
             </span>
           )
@@ -341,12 +358,15 @@ export function TokensPage() {
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className={quotaClasses} title={`Remaining: ${quotaLabel}`}>
+              <span
+                className={quotaClasses}
+                title={tr('columns.remaining_title', 'Remaining: {{label}}', { label: quotaLabel })}
+              >
                 {quotaLabel}
               </span>
             </TooltipTrigger>
             <TooltipContent>
-              This token retains more quota than your account allocation.
+              {tr('columns.remaining_tooltip', 'This token retains more quota than your account allocation.')}
             </TooltipContent>
           </Tooltip>
         )
@@ -354,48 +374,51 @@ export function TokensPage() {
     },
     {
       accessorKey: 'used_quota',
-      header: 'Used Quota',
+      header: tr('columns.used_quota', 'Used Quota'),
       cell: ({ row }) => (
-        <span className="font-mono text-sm" title={`Used: ${formatQuota(row.original.used_quota)}`}>
-          {formatQuota(row.original.used_quota)}
+        <span
+          className="font-mono text-sm"
+          title={tr('columns.used_title', 'Used: {{label}}', { label: formatQuotaLabel(row.original.used_quota) })}
+        >
+          {formatQuotaLabel(row.original.used_quota)}
         </span>
       ),
     },
     {
       accessorKey: 'created_time',
-      header: 'Created',
+      header: tr('columns.created', 'Created'),
       cell: ({ row }) => (
         <TimestampDisplay
           timestamp={row.original.created_time}
           className="text-sm font-mono"
-          fallback="—"
+          fallback={tr('columns.no_value', '—')}
         />
       ),
     },
     {
       accessorKey: 'accessed_time',
-      header: 'Last Access',
+      header: tr('columns.last_access', 'Last Access'),
       cell: ({ row }) => (
         <TimestampDisplay
           timestamp={row.original.accessed_time > 0 ? row.original.accessed_time : null}
           className="text-sm font-mono"
-          fallback="Never"
+          fallback={tr('columns.never', 'Never')}
         />
       ),
     },
     {
       accessorKey: 'expired_time',
-      header: 'Expires',
+      header: tr('columns.expires', 'Expires'),
       cell: ({ row }) => (
         <TimestampDisplay
           timestamp={row.original.expired_time > 0 ? row.original.expired_time : null}
           className="text-sm font-mono"
-          fallback="Never"
+          fallback={tr('columns.never', 'Never')}
         />
       ),
     },
     {
-      header: 'Actions',
+      header: tr('columns.actions', 'Actions'),
       cell: ({ row }) => {
         const token = row.original
         return (
@@ -406,7 +429,7 @@ export function TokensPage() {
               onClick={() => navigate(`/tokens/edit/${token.id}`)}
               className="touch-target"
             >
-              Edit
+              {tr('actions.edit', 'Edit')}
             </Button>
             <Button
               variant="outline"
@@ -419,20 +442,20 @@ export function TokensPage() {
                   : 'text-green-600 hover:text-green-700'
               )}
             >
-              {token.status === TOKEN_STATUS.ENABLED ? 'Disable' : 'Enable'}
+              {token.status === TOKEN_STATUS.ENABLED ? tr('actions.disable', 'Disable') : tr('actions.enable', 'Enable')}
             </Button>
             <Button
               variant="destructive"
               size="sm"
               onClick={() => {
-                const label = token.name || `ID ${token.id}`
-                if (confirm(`Are you sure you want to delete token "${label}"?`)) {
+                const label = formatTokenLabel(token)
+                if (confirm(tr('confirm.delete', 'Are you sure you want to delete token "{{label}}"?', { label }))) {
                   manage(token.id, 'delete')
                 }
               }}
               className="touch-target"
             >
-              Delete
+              {tr('actions.delete', 'Delete')}
             </Button>
           </ResponsiveActionGroup>
         )
@@ -471,8 +494,8 @@ export function TokensPage() {
   return (
     <TooltipProvider delayDuration={150}>
       <ResponsivePageContainer
-        title="Tokens"
-        description="Manage your API access tokens"
+        title={tr('title', 'Tokens')}
+        description={tr('description', 'Manage your API access tokens')}
         actions={
           <Button
             onClick={() => navigate('/tokens/add')}
@@ -482,7 +505,7 @@ export function TokensPage() {
             )}
           >
             <Plus className="h-4 w-4" />
-            {isMobile ? "Add New Token" : "Add Token"}
+            {isMobile ? tr('actions.add_mobile', 'Add New Token') : tr('actions.add', 'Add Token')}
           </Button>
         }
       >
@@ -499,7 +522,7 @@ export function TokensPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => navigate(`/tokens/edit/${row.id}`)}
-                    title="Edit"
+                    title={tr('actions.edit', 'Edit')}
                   >
                     <Settings className="h-4 w-4" />
                   </Button>
@@ -507,7 +530,7 @@ export function TokensPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => manage(row.id, row.status === TOKEN_STATUS.ENABLED ? 'disable' : 'enable')}
-                    title={row.status === TOKEN_STATUS.ENABLED ? 'Disable' : 'Enable'}
+                    title={row.status === TOKEN_STATUS.ENABLED ? tr('actions.disable', 'Disable') : tr('actions.enable', 'Enable')}
                     className={row.status === TOKEN_STATUS.ENABLED ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
                   >
                     {row.status === TOKEN_STATUS.ENABLED ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -516,12 +539,12 @@ export function TokensPage() {
                     variant="ghost"
                     size="icon"
                     onClick={() => {
-                      const label = row.name || `ID ${row.id}`
-                      if (confirm(`Are you sure you want to delete token "${label}"?`)) {
+                      const label = row.name || tr('table.id_placeholder', '(ID {{id}})', { id: row.id })
+                      if (confirm(tr('confirm.delete', 'Are you sure you want to delete token "{{label}}"?', { label }))) {
                         manage(row.id, 'delete')
                       }
                     }}
-                    title="Delete"
+                    title={tr('actions.delete', 'Delete')}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -541,11 +564,11 @@ export function TokensPage() {
               onSearchChange={searchTokens}
               onSearchValueChange={setSearchKeyword}
               onSearchSubmit={performSearch}
-              searchPlaceholder="Search tokens by name..."
+              searchPlaceholder={tr('search.placeholder', 'Search tokens by name...')}
               allowSearchAdditions={true}
               onRefresh={refresh}
               loading={loading}
-              emptyMessage="No tokens found. Create your first token to get started."
+              emptyMessage={tr('empty', 'No tokens found. Create your first token to get started.')}
               mobileCardLayout={true}
               hideColumnsOnMobile={['created_time', 'accessed_time', 'expired_time']}
               compactMode={isMobile}
@@ -564,9 +587,9 @@ export function TokensPage() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Manual copy required</DialogTitle>
+            <DialogTitle>{tr('dialog.manual_copy_title', 'Manual copy required')}</DialogTitle>
             <DialogDescription>
-              Clipboard access is unavailable. Copy the API key below manually to continue using it.
+              {tr('dialog.manual_copy_description', 'Clipboard access is unavailable. Copy the API key below manually to continue using it.')}
             </DialogDescription>
           </DialogHeader>
           <div className="rounded-md border border-dashed bg-muted/40 p-4">
@@ -576,7 +599,7 @@ export function TokensPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={clearManualCopyToken}>
-              Close
+              {tr('dialog.close', 'Close')}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,15 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  useNavigate,
-  Link,
-  useSearchParams,
-  useLocation,
-} from "react-router-dom";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import Turnstile from "@/components/Turnstile";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -25,27 +15,39 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import { useAuthStore } from "@/lib/stores/auth";
-import { api } from "@/lib/api";
 import { useSystemStatus } from "@/hooks/useSystemStatus";
-import Turnstile from "@/components/Turnstile";
+import { api } from "@/lib/api";
 import { buildGitHubOAuthUrl, getOAuthState } from "@/lib/oauth";
+import { useAuthStore } from "@/lib/stores/auth";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
+import { useTranslation } from "react-i18next";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
+import * as z from "zod";
 
-const loginSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(1, "Password is required"),
+const loginSchema = (t: (key: string) => string) => z.object({
+  username: z.string().min(1, t("auth.login.username_required")),
+  password: z.string().min(1, t("auth.login.password_required")),
   totp_code: z
     .string()
     .optional()
     .refine((val) => !val || val.length === 6, {
-      message: "TOTP code must be 6 digits",
+      message: t("auth.login.totp_invalid"),
     }),
 });
 
-type LoginForm = z.infer<typeof loginSchema>;
+type LoginForm = z.infer<ReturnType<typeof loginSchema>>;
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [totpRequired, setTotpRequired] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string>("");
@@ -61,14 +63,14 @@ export function LoginPage() {
   const turnstileRenderable = turnstileEnabled && Boolean(systemStatus?.turnstile_site_key);
 
   const form = useForm<LoginForm>({
-    resolver: zodResolver(loginSchema),
+    resolver: zodResolver(loginSchema(t)),
     defaultValues: { username: "", password: "", totp_code: "" },
   });
 
   useEffect(() => {
     // Check for expired session
     if (searchParams.get("expired")) {
-      console.warn("Session expired, please login again");
+      console.warn(t("auth.login.session_expired"));
     }
 
     // Handle success messages from navigation state
@@ -105,7 +107,7 @@ export function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     if (turnstileEnabled && !turnstileToken) {
-      form.setError("root", { message: "Please complete the Turnstile verification" });
+      form.setError("root", { message: t("auth.login.turnstile_required") });
       return;
     }
     setIsLoading(true);
@@ -136,7 +138,7 @@ export function LoginPage() {
         setTotpRequired(true);
         setTotpValue("");
         form.setValue("totp_code", "");
-        form.setError("root", { message: "Please enter your TOTP code" });
+        form.setError("root", { message: t("auth.login.totp_required") });
         return;
       }
 
@@ -149,7 +151,7 @@ export function LoginPage() {
         // Handle default root password warning
         if (data.username === "root" && data.password === "123456") {
           navigate("/users/edit");
-          console.warn("Please change the default root password");
+          console.warn(t("auth.login.root_password_warning"));
         } else if (redirectTo) {
           // Decode and navigate to the original page
           try {
@@ -171,13 +173,13 @@ export function LoginPage() {
         form.setError("root", {
           message:
             m === "totp_required"
-              ? "Please enter your TOTP code"
-              : message || "Login failed",
+              ? t("auth.login.totp_required")
+              : message || t("auth.login.failed"),
         });
       }
     } catch (error) {
       form.setError("root", {
-        message: error instanceof Error ? error.message : "Login failed",
+        message: error instanceof Error ? error.message : t("auth.login.failed"),
       });
     } finally {
       setIsLoading(false);
@@ -214,11 +216,11 @@ export function LoginPage() {
             </div>
           )}
           <CardTitle className="text-2xl">
-            Sign In
-            {systemStatus.system_name ? ` to ${systemStatus.system_name}` : ""}
+            {t("auth.login.title")}
+            {systemStatus.system_name ? ` ${t("common.to")} ${systemStatus.system_name}` : ""}
           </CardTitle>
           <CardDescription>
-            Enter your credentials to access your account
+            {t("auth.login.subtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -233,7 +235,7 @@ export function LoginPage() {
                 name="username"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel htmlFor="login-username">Username</FormLabel>
+                    <FormLabel htmlFor="login-username">{t("common.username")}</FormLabel>
                     <FormControl>
                       <Input id="login-username" {...field} disabled={totpRequired} />
                     </FormControl>
@@ -246,7 +248,7 @@ export function LoginPage() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel htmlFor="login-password">Password</FormLabel>
+                    <FormLabel htmlFor="login-password">{t("common.password")}</FormLabel>
                     <FormControl>
                       <Input
                         id="login-password"
@@ -265,11 +267,11 @@ export function LoginPage() {
                   name="totp_code"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>TOTP Code</FormLabel>
+                      <FormLabel>{t("auth.login.totp_label")}</FormLabel>
                       <FormControl>
                         <Input
                           maxLength={6}
-                          placeholder="Enter 6-digit TOTP code"
+                          placeholder={t("auth.login.totp_placeholder")}
                           {...field}
                           ref={totpRef}
                           inputMode="numeric"
@@ -293,7 +295,7 @@ export function LoginPage() {
               {form.formState.errors.root && (
                 <div className="text-sm text-destructive">
                   {totpRequired
-                    ? "Please enter your TOTP code"
+                    ? t("auth.login.totp_required")
                     : form.formState.errors.root.message}
                 </div>
               )}
@@ -307,10 +309,10 @@ export function LoginPage() {
                 }
               >
                 {isLoading
-                  ? "Signing in..."
+                  ? t("auth.login.signing_in")
                   : totpRequired
-                    ? "Verify TOTP"
-                    : "Sign In"}
+                    ? t("auth.login.verify_totp")
+                    : t("auth.login.title")}
               </Button>
 
               {turnstileRenderable && systemStatus?.turnstile_site_key && (
@@ -334,18 +336,18 @@ export function LoginPage() {
                     form.clearErrors("root");
                   }}
                 >
-                  Back to Login
+                  {t("auth.login.back_to_login")}
                 </Button>
               )}
 
               <div className="text-center text-sm space-y-2">
                 <Link to="/reset" className="text-primary hover:underline">
-                  Forgot your password?
+                  {t("auth.login.forgot_password")}
                 </Link>
                 <div>
-                  Don't have an account?{" "}
+                  {t("auth.login.no_account")}{" "}
                   <Link to="/register" className="text-primary hover:underline">
-                    Sign up
+                    {t("auth.login.sign_up")}
                   </Link>
                 </div>
               </div>
@@ -357,7 +359,7 @@ export function LoginPage() {
               <Separator className="my-4" />
               <div className="text-center">
                 <p className="text-sm text-muted-foreground mb-4">
-                  Or continue with
+                  {t("auth.login.or_continue_with")}
                 </p>
                 <div className="flex justify-center gap-2">
                   {systemStatus.github_oauth && (

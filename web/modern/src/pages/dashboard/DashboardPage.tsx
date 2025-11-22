@@ -1,12 +1,25 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { useAuthStore } from '@/lib/stores/auth'
-import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { api } from '@/lib/api'
+import { Input } from '@/components/ui/input'
 import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { TimestampDisplay } from '@/components/ui/timestamp'
-import { formatNumber, cn } from '@/lib/utils'
+import { api } from '@/lib/api'
+import { useAuthStore } from '@/lib/stores/auth'
+import { cn, formatNumber } from '@/lib/utils'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 
 // Quota conversion utility
 const getQuotaPerUnit = () => parseFloat(localStorage.getItem('quota_per_unit') || '500000')
@@ -23,18 +36,6 @@ const renderQuota = (quota: number, precision: number = 2): string => {
 
   return formatNumber(quota)
 }
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  CartesianGrid,
-  XAxis,
-  YAxis,
-  Tooltip,
-  BarChart,
-  Bar,
-  Legend,
-} from 'recharts'
 
 // Gradient definitions component for charts
 const GradientDefs = () => (
@@ -100,6 +101,7 @@ const chartConfig = {
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const isAdmin = useMemo(() => (user?.role ?? 0) >= 10, [user])
   const [filtersReady, setFiltersReady] = useState(false)
@@ -184,17 +186,17 @@ export function DashboardPage() {
     const minDate = new Date(getMinDate())
 
     if (fromDate > toDate) {
-      return 'From date must be before or equal to To date'
+      return t('dashboard.errors.range_order')
     }
 
     if (toDate > today) {
-      return 'To date cannot be in the future'
+      return t('dashboard.errors.future')
     }
 
     if (fromDate < minDate) {
       return isAdmin
-        ? 'From date cannot be more than 1 year ago'
-        : 'From date cannot be more than 7 days ago'
+        ? t('dashboard.errors.too_old_admin')
+        : t('dashboard.errors.too_old_user')
     }
 
     const daysDiff = Math.ceil((toDate.getTime() - fromDate.getTime()) / (1000 * 60 * 60 * 24))
@@ -202,8 +204,8 @@ export function DashboardPage() {
 
     if (daysDiff > maxDays) {
       return isAdmin
-        ? 'Date range cannot exceed 1 year'
-        : 'Date range cannot exceed 7 days'
+        ? t('dashboard.errors.range_limit_admin')
+        : t('dashboard.errors.range_limit_user')
     }
 
     return ''
@@ -297,7 +299,7 @@ export function DashboardPage() {
         setLastUpdated(Math.floor(Date.now() / 1000))
         setDateError('')
       } else {
-        setDateError(message || 'Failed to fetch dashboard data')
+        setDateError(message || t('dashboard.errors.fetch_failed'))
         setRows([])
         setUserRows([])
         setTokenRows([])
@@ -308,7 +310,7 @@ export function DashboardPage() {
         return
       }
       console.error('Failed to fetch dashboard data:', error)
-      setDateError('Failed to fetch dashboard data')
+      setDateError(t('dashboard.errors.fetch_failed'))
       setRows([])
       setUserRows([])
       setTokenRows([])
@@ -418,7 +420,7 @@ export function DashboardPage() {
         setLastUpdated(Math.floor(Date.now() / 1000))
         setDateError('')
       } else {
-        setDateError(message || 'Failed to fetch dashboard data')
+        setDateError(message || t('dashboard.errors.fetch_failed'))
         setRows([])
         setUserRows([])
         setTokenRows([])
@@ -429,7 +431,7 @@ export function DashboardPage() {
         return
       }
       console.error('Failed to fetch dashboard data:', error)
-      setDateError('Failed to fetch dashboard data')
+      setDateError(t('dashboard.errors.fetch_failed'))
       setRows([])
       setUserRows([])
       setTokenRows([])
@@ -538,35 +540,35 @@ export function DashboardPage() {
   }
 
   const { uniqueKeys: modelKeys, stackedData: modelStackedData } = useMemo(
-    () => computeStackedSeries(rows, xAxisDays, (row) => (row.model_name ? row.model_name : 'Unknown model')),
-    [rows, xAxisDays, statisticsMetric]
+    () => computeStackedSeries(rows, xAxisDays, (row) => (row.model_name ? row.model_name : t('dashboard.fallbacks.model'))),
+    [rows, xAxisDays, statisticsMetric, t]
   )
 
   const { uniqueKeys: userKeys, stackedData: userStackedData } = useMemo(
-    () => computeStackedSeries(userRows, xAxisDays, (row) => (row.username ? row.username : 'Unknown user')),
-    [userRows, xAxisDays, statisticsMetric]
+    () => computeStackedSeries(userRows, xAxisDays, (row) => (row.username ? row.username : t('dashboard.fallbacks.user'))),
+    [userRows, xAxisDays, statisticsMetric, t]
   )
 
   const { uniqueKeys: tokenKeys, stackedData: tokenStackedData } = useMemo(
     () =>
       computeStackedSeries(tokenRows, xAxisDays, (row) => {
-        const token = row.token_name && row.token_name.trim().length > 0 ? row.token_name : 'unnamed token'
-        const owner = row.username && row.username.trim().length > 0 ? row.username : 'unknown'
+        const token = row.token_name && row.token_name.trim().length > 0 ? row.token_name : t('dashboard.fallbacks.token')
+        const owner = row.username && row.username.trim().length > 0 ? row.username : t('dashboard.fallbacks.owner')
         return `${token}(${owner})`
       }),
-    [tokenRows, xAxisDays, statisticsMetric]
+    [tokenRows, xAxisDays, statisticsMetric, t]
   )
 
   const metricLabel = useMemo(() => {
     switch (statisticsMetric) {
       case 'requests':
-        return 'Requests'
+        return t('dashboard.metrics.requests')
       case 'expenses':
-        return 'Expenses'
+        return t('dashboard.metrics.expenses')
       default:
-        return 'Tokens'
+        return t('dashboard.metrics.tokens')
     }
-  }, [statisticsMetric])
+  }, [statisticsMetric, t])
 
   const formatStackedTick = useCallback((value: number) => {
     switch (statisticsMetric) {
@@ -755,20 +757,20 @@ export function DashboardPage() {
   }, [dailyAgg])
 
   if (!user) {
-    return <div>Please log in to access the dashboard.</div>
+    return <div>{t('dashboard.login_required')}</div>
   }
 
   // --- UI ---
   return (
     <ResponsivePageContainer
-      title="Dashboard"
-      description="Monitor your API usage and account statistics"
+      title={t('dashboard.title')}
+      description={t('dashboard.description')}
     >
       {loading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-3" role="status" aria-live="polite">
             <span className="h-10 w-10 animate-spin rounded-full border-4 border-primary/20 border-t-primary" />
-            <p className="text-sm text-muted-foreground">Refreshing dashboard…</p>
+            <p className="text-sm text-muted-foreground">{t('dashboard.loading')}</p>
           </div>
         </div>
       )}
@@ -779,7 +781,7 @@ export function DashboardPage() {
           <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end w-full">
             <div className="flex flex-col sm:flex-row gap-3 flex-1 w-full">
               <div className="flex-1 min-w-0">
-                <label className="text-sm font-medium mb-2 block">From</label>
+                <label className="text-sm font-medium mb-2 block">{t('dashboard.filters.from')}</label>
                 <Input
                   type="date"
                   value={fromDate}
@@ -787,11 +789,11 @@ export function DashboardPage() {
                   max={getMaxDate()}
                   onChange={(e) => setFromDate(e.target.value)}
                   className={cn("h-10", dateError ? "border-red-500" : "")}
-                  aria-label="From date"
+                  aria-label={t('dashboard.filters.from_aria')}
                 />
               </div>
               <div className="flex-1 min-w-0">
-                <label className="text-sm font-medium mb-2 block">To</label>
+                <label className="text-sm font-medium mb-2 block">{t('dashboard.filters.to')}</label>
                 <Input
                   type="date"
                   value={toDate}
@@ -799,19 +801,19 @@ export function DashboardPage() {
                   max={getMaxDate()}
                   onChange={(e) => setToDate(e.target.value)}
                   className={cn("h-10", dateError ? "border-red-500" : "")}
-                  aria-label="To date"
+                  aria-label={t('dashboard.filters.to_aria')}
                 />
               </div>
               {isAdmin && (
                 <div className="flex-1 min-w-0">
-                  <label className="text-sm font-medium mb-2 block">User</label>
+                  <label className="text-sm font-medium mb-2 block">{t('dashboard.filters.user')}</label>
                   <select
                     className="h-11 sm:h-10 w-full border rounded-md px-3 py-2 text-base sm:text-sm bg-background"
                     value={dashUser}
                     onChange={(e) => setDashUser(e.target.value)}
-                    aria-label="Select user"
+                    aria-label={t('dashboard.filters.user_aria')}
                   >
-                    <option value="all">All Users</option>
+                    <option value="all">{t('dashboard.filters.all_users')}</option>
                     {userOptions.map(u => (
                       <option key={u.id} value={String(u.id)}>{u.display_name || u.username}</option>
                     ))}
@@ -827,7 +829,7 @@ export function DashboardPage() {
                 onClick={() => applyPreset('today')}
                 className="h-10 flex-1 min-w-[6rem] sm:flex-none"
               >
-                Today
+                {t('dashboard.filters.today')}
               </Button>
               <Button
                 variant="outline"
@@ -835,7 +837,7 @@ export function DashboardPage() {
                 onClick={() => applyPreset('7d')}
                 className="h-10 flex-1 min-w-[6rem] sm:flex-none"
               >
-                7D
+                {t('dashboard.filters.seven_days')}
               </Button>
               <Button
                 variant="outline"
@@ -843,14 +845,14 @@ export function DashboardPage() {
                 onClick={() => applyPreset('30d')}
                 className="h-10 flex-1 min-w-[6rem] sm:flex-none"
               >
-                30D
+                {t('dashboard.filters.thirty_days')}
               </Button>
               <Button
                 onClick={loadStats}
                 disabled={loading}
                 className="h-10 flex-1 min-w-[6rem] sm:flex-none sm:px-6"
               >
-                {loading ? 'Loading...' : 'Apply'}
+                {loading ? t('dashboard.filters.loading') : t('dashboard.filters.apply')}
               </Button>
             </div>
           </div>
@@ -878,7 +880,7 @@ export function DashboardPage() {
             <svg className="w-4 h-4 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-sm font-medium text-red-800 dark:text-red-200">Error</span>
+            <span className="text-sm font-medium text-red-800 dark:text-red-200">{t('dashboard.errors.label')}</span>
           </div>
           <p className="text-sm text-red-700 dark:text-red-300 mt-1">{dateError}</p>
         </div>
@@ -887,12 +889,12 @@ export function DashboardPage() {
       <div className="mb-6">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-6">
           <div>
-            <h2 className="text-xl font-semibold">Usage Overview</h2>
-            <p className="text-sm text-muted-foreground">Totals and leaders for the selected time range</p>
+            <h2 className="text-xl font-semibold">{t('dashboard.overview.title')}</h2>
+            <p className="text-sm text-muted-foreground">{t('dashboard.overview.subtitle')}</p>
           </div>
           {lastUpdated && (
             <span className="text-xs text-muted-foreground flex items-center gap-1">
-              Updated:
+              {t('dashboard.overview.updated')}
               <TimestampDisplay
                 timestamp={lastUpdated}
                 className="font-mono"
@@ -903,60 +905,68 @@ export function DashboardPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Total Requests</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.cards.total_requests')}</div>
             <div className="text-2xl font-bold mt-1">{formatNumber(totalRequests)}</div>
-            <div className="text-xs text-muted-foreground mt-2">Avg daily: {formatNumber(Math.round(avgDailyRequests || 0))}</div>
+            <div className="text-xs text-muted-foreground mt-2">
+              {t('dashboard.cards.avg_daily', { value: formatNumber(Math.round(avgDailyRequests || 0)) })}
+            </div>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Quota Used</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.cards.quota_used')}</div>
             <div className="text-2xl font-bold mt-1">{renderQuota(totalQuota)}</div>
-            <div className="text-xs text-muted-foreground mt-2">Avg daily: {renderQuota(avgDailyQuotaRaw)}</div>
+            <div className="text-xs text-muted-foreground mt-2">
+              {t('dashboard.cards.avg_daily', { value: renderQuota(avgDailyQuotaRaw) })}
+            </div>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Tokens Consumed</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.cards.tokens_consumed')}</div>
             <div className="text-2xl font-bold mt-1">{formatNumber(totalTokens)}</div>
-            <div className="text-xs text-muted-foreground mt-2">Avg daily: {formatNumber(Math.round(avgDailyTokens || 0))}</div>
+            <div className="text-xs text-muted-foreground mt-2">
+              {t('dashboard.cards.avg_daily', { value: formatNumber(Math.round(avgDailyTokens || 0)) })}
+            </div>
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Avg Cost / Request</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.cards.avg_cost')}</div>
             <div className="text-2xl font-bold mt-1">{renderQuota(avgCostPerRequestRaw, 4)}</div>
-            <div className="text-xs text-muted-foreground mt-2">{Math.round(avgTokensPerRequest || 0)} tokens per request</div>
+            <div className="text-xs text-muted-foreground mt-2">
+              {t('dashboard.cards.tokens_per_request', { value: Math.round(avgTokensPerRequest || 0) })}
+            </div>
           </div>
         </div>
 
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-6 mb-6">
-          <h3 className="text-lg font-semibold mb-4">Top Models This Period</h3>
+          <h3 className="text-lg font-semibold mb-4">{t('dashboard.top_models.title')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="rounded-lg border bg-white dark:bg-gray-900/70 p-4">
-              <div className="text-sm text-muted-foreground">Most Requests</div>
+              <div className="text-sm text-muted-foreground">{t('dashboard.top_models.most_requests')}</div>
               <div className="text-xl font-semibold mt-1">
-                {modelLeaders.mostRequested ? modelLeaders.mostRequested.model : 'No data'}
+                {modelLeaders.mostRequested ? modelLeaders.mostRequested.model : t('dashboard.labels.no_data')}
               </div>
               {modelLeaders.mostRequested && (
                 <div className="text-xs text-muted-foreground mt-2">
-                  {formatNumber(modelLeaders.mostRequested.requests)} requests
+                  {t('dashboard.labels.requests_value', { value: formatNumber(modelLeaders.mostRequested.requests) })}
                 </div>
               )}
             </div>
             <div className="rounded-lg border bg-white dark:bg-gray-900/70 p-4">
-              <div className="text-sm text-muted-foreground">Most Tokens</div>
+              <div className="text-sm text-muted-foreground">{t('dashboard.top_models.most_tokens')}</div>
               <div className="text-xl font-semibold mt-1">
-                {modelLeaders.mostTokens ? modelLeaders.mostTokens.model : 'No data'}
+                {modelLeaders.mostTokens ? modelLeaders.mostTokens.model : t('dashboard.labels.no_data')}
               </div>
               {modelLeaders.mostTokens && (
                 <div className="text-xs text-muted-foreground mt-2">
-                  {formatNumber(modelLeaders.mostTokens.tokens)} tokens
+                  {t('dashboard.labels.tokens_value', { value: formatNumber(modelLeaders.mostTokens.tokens) })}
                 </div>
               )}
             </div>
             <div className="rounded-lg border bg-white dark:bg-gray-900/70 p-4">
-              <div className="text-sm text-muted-foreground">Highest Cost</div>
+              <div className="text-sm text-muted-foreground">{t('dashboard.top_models.highest_cost')}</div>
               <div className="text-xl font-semibold mt-1">
-                {modelLeaders.mostQuota ? modelLeaders.mostQuota.model : 'No data'}
+                {modelLeaders.mostQuota ? modelLeaders.mostQuota.model : t('dashboard.labels.no_data')}
               </div>
               {modelLeaders.mostQuota && (
                 <div className="text-xs text-muted-foreground mt-2">
-                  {renderQuota(modelLeaders.mostQuota.quota)} consumed
+                  {t('dashboard.labels.quota_consumed', { value: renderQuota(modelLeaders.mostQuota.quota) })}
                 </div>
               )}
             </div>
@@ -965,32 +975,36 @@ export function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Busiest Day</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.insights.busiest_day')}</div>
             <div className="text-lg font-semibold mt-1">
-              {rangeInsights.busiestDay ? rangeInsights.busiestDay.date : 'No data'}
+              {rangeInsights.busiestDay ? rangeInsights.busiestDay.date : t('dashboard.labels.no_data')}
             </div>
             {rangeInsights.busiestDay && (
               <div className="text-xs text-muted-foreground mt-2">
-                {formatNumber(rangeInsights.busiestDay.requests)} requests
+                {t('dashboard.labels.requests_value', { value: formatNumber(rangeInsights.busiestDay.requests) })}
               </div>
             )}
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Peak Token Day</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.insights.peak_token_day')}</div>
             <div className="text-lg font-semibold mt-1">
-              {rangeInsights.tokenHeavyDay ? rangeInsights.tokenHeavyDay.date : 'No data'}
+              {rangeInsights.tokenHeavyDay ? rangeInsights.tokenHeavyDay.date : t('dashboard.labels.no_data')}
             </div>
             {rangeInsights.tokenHeavyDay && (
               <div className="text-xs text-muted-foreground mt-2">
-                {formatNumber(rangeInsights.tokenHeavyDay.tokens)} tokens
+                {t('dashboard.labels.tokens_value', { value: formatNumber(rangeInsights.tokenHeavyDay.tokens) })}
               </div>
             )}
           </div>
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <div className="text-sm text-muted-foreground">Models in Use</div>
+            <div className="text-sm text-muted-foreground">{t('dashboard.insights.models_in_use')}</div>
             <div className="text-lg font-semibold mt-1">{formatNumber(totalModels)}</div>
             <div className="text-xs text-muted-foreground mt-2">
-              {totalModels ? `${formatNumber(Math.round(totalRequests / totalModels))} requests per model` : '—'}
+              {totalModels
+                ? t('dashboard.insights.requests_per_model', {
+                    value: formatNumber(Math.round(totalRequests / totalModels))
+                  })
+                : t('dashboard.labels.no_value')}
             </div>
           </div>
         </div>
@@ -998,7 +1012,7 @@ export function DashboardPage() {
         {/* Time Series */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <h3 className="font-medium mb-4 text-blue-600">Requests</h3>
+            <h3 className="font-medium mb-4 text-blue-600">{t('dashboard.labels.requests')}</h3>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={timeSeries}>
                 <GradientDefs />
@@ -1026,7 +1040,7 @@ export function DashboardPage() {
           </div>
 
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <h3 className="font-medium mb-4 text-cyan-600">Quota</h3>
+            <h3 className="font-medium mb-4 text-cyan-600">{t('dashboard.labels.quota')}</h3>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={timeSeries}>
                 <GradientDefs />
@@ -1054,7 +1068,7 @@ export function DashboardPage() {
           </div>
 
           <div className="bg-white dark:bg-gray-900 rounded-lg border p-4">
-            <h3 className="font-medium mb-4 text-pink-600">Tokens</h3>
+            <h3 className="font-medium mb-4 text-pink-600">{t('dashboard.labels.tokens')}</h3>
             <ResponsiveContainer width="100%" height={140}>
               <LineChart data={timeSeries}>
                 <GradientDefs />
@@ -1085,18 +1099,18 @@ export function DashboardPage() {
         {/* Model Usage Statistics */}
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold">Model Usage</h3>
+            <h3 className="text-lg font-semibold">{t('dashboard.sections.model_usage')}</h3>
             <Select
               value={statisticsMetric}
               onValueChange={(value) => setStatisticsMetric(value as 'tokens' | 'requests' | 'expenses')}
             >
               <SelectTrigger className="w-32">
-                <SelectValue />
+                <SelectValue placeholder={t('dashboard.sections.metric_placeholder')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="tokens">Tokens</SelectItem>
-                <SelectItem value="requests">Requests</SelectItem>
-                <SelectItem value="expenses">Expenses</SelectItem>
+                <SelectItem value="tokens">{t('dashboard.metrics.tokens')}</SelectItem>
+                <SelectItem value="requests">{t('dashboard.metrics.requests')}</SelectItem>
+                <SelectItem value="expenses">{t('dashboard.metrics.expenses')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -1127,8 +1141,8 @@ export function DashboardPage() {
 
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold">User Usage</h3>
-            <span className="text-xs text-muted-foreground">Metric: {metricLabel}</span>
+            <h3 className="text-lg font-semibold">{t('dashboard.sections.user_usage')}</h3>
+            <span className="text-xs text-muted-foreground">{t('dashboard.sections.metric_label', { metric: metricLabel })}</span>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={userStackedData}>
@@ -1158,8 +1172,8 @@ export function DashboardPage() {
 
         <div className="bg-white dark:bg-gray-900 rounded-lg border p-6 mb-6">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold">Token Usage</h3>
-            <span className="text-xs text-muted-foreground">Metric: {metricLabel}</span>
+            <h3 className="text-lg font-semibold">{t('dashboard.sections.token_usage')}</h3>
+            <span className="text-xs text-muted-foreground">{t('dashboard.sections.metric_label', { metric: metricLabel })}</span>
           </div>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={tokenStackedData}>

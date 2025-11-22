@@ -13,6 +13,7 @@ import { cn, formatTimestamp } from '@/lib/utils'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Ban, CheckCircle, Plus, RefreshCw, Settings, TestTube, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 
 interface Channel {
@@ -80,25 +81,6 @@ const CHANNEL_TYPES: Record<number, { name: string; color: string }> = {
   20: { name: 'OpenRouter', color: 'black' },
 }
 
-const getChannelTypeBadge = (type: number) => {
-  const channelType = CHANNEL_TYPES[type] || { name: `Type ${type}`, color: 'gray' }
-  return (
-    <Badge variant="outline" className={`text-xs`}>
-      {channelType.name}
-    </Badge>
-  )
-}
-
-const getStatusBadge = (status: number, priority?: number) => {
-  if (status === 2) {
-    return <Badge variant="destructive">Disabled</Badge>
-  }
-  if ((priority ?? 0) < 0) {
-    return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">Paused</Badge>
-  }
-  return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
-}
-
 const formatResponseTime = (time?: number) => {
   if (!time) return '-'
   const color = time < 1000 ? 'text-green-600' : time < 3000 ? 'text-yellow-600' : 'text-red-600'
@@ -110,6 +92,7 @@ export function ChannelsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { isMobile } = useResponsive()
   const { notify } = useNotifications()
+  const { t } = useTranslation()
   const [data, setData] = useState<Channel[]>([])
   const [loading, setLoading] = useState(false)
   const [pageIndex, setPageIndex] = useState(Math.max(0, parseInt(searchParams.get('p') || '1') - 1))
@@ -123,6 +106,25 @@ export function ChannelsPage() {
   const [bulkTesting, setBulkTesting] = useState(false)
   const initializedRef = useRef(false)
   const skipFirstSortEffect = useRef(true)
+
+  const renderChannelTypeBadge = (type: number) => {
+    const channelType = CHANNEL_TYPES[type] || { name: t('channels.type_unknown', { type }), color: 'gray' }
+    return (
+      <Badge variant="outline" className="text-xs">
+        {channelType.name}
+      </Badge>
+    )
+  }
+
+  const renderStatusBadge = (status: number, priority?: number) => {
+    if (status === 2) {
+      return <Badge variant="destructive">{t('channels.status.disabled')}</Badge>
+    }
+    if ((priority ?? 0) < 0) {
+      return <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">{t('channels.status.paused')}</Badge>
+    }
+    return <Badge variant="default" className="bg-green-100 text-green-800">{t('channels.status.active')}</Badge>
+  }
   const updateSearchParamPage = (nextPageIndex: number) => {
     setSearchParams(prev => {
       const params = new URLSearchParams(prev)
@@ -181,7 +183,7 @@ export function ChannelsPage() {
             <div className="flex flex-col">
               <div className="font-medium">{channel.name}</div>
               <div className="text-sm text-muted-foreground flex items-center gap-2">
-                ID: {channel.id} • {getChannelTypeBadge(channel.type)} • {getStatusBadge(channel.status, channel.priority)}
+                {t('channels.search.id_label')}: {channel.id} • {renderChannelTypeBadge(channel.type)} • {renderStatusBadge(channel.status, channel.priority)}
               </div>
             </div>
           )
@@ -249,7 +251,7 @@ export function ChannelsPage() {
   const manage = async (id: number, action: 'enable' | 'disable' | 'delete' | 'test', index?: number) => {
     try {
       if (action === 'delete') {
-        if (!confirm('Are you sure you want to delete this channel?')) return
+        if (!confirm(t('channels.confirm.delete'))) return
         // Unified API call - complete URL with /api prefix
         const res = await api.delete(`/api/channel/${id}`)
         if (res.data?.success) {
@@ -272,9 +274,13 @@ export function ChannelsPage() {
           setData(newData)
         }
         if (success) {
-          notify({ type: 'success', message: 'Channel test successful.' })
+          notify({ type: 'success', message: t('channels.notifications.test_success') })
         } else {
-          notify({ type: 'error', title: 'Channel test failed', message: message || 'Unknown error' })
+          notify({
+            type: 'error',
+            title: t('channels.notifications.test_failed_title'),
+            message: message || t('channels.notifications.test_failed_message')
+          })
         }
         return
       }
@@ -309,14 +315,18 @@ export function ChannelsPage() {
       if (res.data?.success) {
         // Update local row to reflect change
         setData((prev) => prev.map((ch) => (ch.id === id ? { ...ch, testing_model: testingModel } : ch)))
-        notify({ type: 'success', message: 'Testing model saved.' })
+        notify({ type: 'success', message: t('channels.notifications.testing_model_saved') })
       } else {
-        const msg = res.data?.message || 'Failed to save testing model'
-        notify({ type: 'error', title: 'Save failed', message: msg })
+        const msg = res.data?.message || t('channels.notifications.testing_model_failed_message')
+        notify({ type: 'error', title: t('channels.notifications.testing_model_failed_title'), message: msg })
       }
     } catch (error) {
       console.error('Failed to update testing model:', error)
-      notify({ type: 'error', title: 'Save failed', message: 'Failed to update testing model' })
+      notify({
+        type: 'error',
+        title: t('channels.notifications.testing_model_failed_title'),
+        message: t('channels.notifications.testing_model_failed_message')
+      })
     }
   }
 
@@ -326,82 +336,93 @@ export function ChannelsPage() {
       // Unified API call - complete URL with /api prefix
       await api.get('/api/channel/test')
       load(pageIndex, pageSize)
-      notify({ type: 'info', message: 'Bulk channel test started.' })
+      notify({ type: 'info', message: t('channels.notifications.bulk_test_started') })
     } catch (error) {
       console.error('Bulk test failed:', error)
-      notify({ type: 'error', title: 'Bulk test failed', message: error instanceof Error ? error.message : 'Unknown error' })
+      notify({
+        type: 'error',
+        title: t('channels.notifications.bulk_test_failed_title'),
+        message: error instanceof Error ? error.message : t('channels.notifications.test_failed_message')
+      })
     } finally {
       setBulkTesting(false)
     }
   }
 
   const handleDeleteDisabled = async () => {
-    if (!confirm('Are you sure you want to delete all disabled channels? This action cannot be undone.')) return
+    if (!confirm(t('channels.confirm.delete_disabled'))) return
 
     try {
       // Unified API call - complete URL with /api prefix
       await api.delete('/api/channel/disabled')
       load(pageIndex, pageSize)
-      notify({ type: 'success', message: 'Disabled channels deleted.' })
+      notify({ type: 'success', message: t('channels.notifications.delete_disabled_success') })
     } catch (error) {
       console.error('Failed to delete disabled channels:', error)
-      notify({ type: 'error', title: 'Delete failed', message: error instanceof Error ? error.message : 'Unknown error' })
+      notify({
+        type: 'error',
+        title: t('channels.notifications.delete_failed_title'),
+        message: error instanceof Error ? error.message : t('channels.notifications.delete_failed_message')
+      })
     }
   }
 
   const columns: ColumnDef<Channel>[] = [
     {
       accessorKey: 'id',
-      header: 'ID',
+      header: t('channels.columns.id'),
       cell: ({ row }) => (
         <span className="font-mono text-sm">{row.original.id}</span>
       ),
     },
     {
       accessorKey: 'name',
-      header: 'Name',
+      header: t('channels.columns.name'),
       cell: ({ row }) => (
         <div className="font-medium">{row.original.name}</div>
       ),
     },
     {
       accessorKey: 'type',
-      header: 'Type',
-      cell: ({ row }) => getChannelTypeBadge(row.original.type),
+      header: t('channels.columns.type'),
+      cell: ({ row }) => renderChannelTypeBadge(row.original.type),
     },
     {
       accessorKey: 'status',
-      header: 'Status',
-      cell: ({ row }) => getStatusBadge(row.original.status, row.original.priority),
+      header: t('channels.columns.status'),
+      cell: ({ row }) => renderStatusBadge(row.original.status, row.original.priority),
     },
     {
       accessorKey: 'group',
-      header: 'Group',
+      header: t('channels.columns.group'),
       cell: ({ row }) => (
-        <span className="text-sm">{row.original.group || 'default'}</span>
+        <span className="text-sm">{row.original.group || t('channels.group_default')}</span>
       ),
     },
     {
       accessorKey: 'priority',
-      header: 'Priority',
+      header: t('channels.columns.priority'),
       cell: ({ row }) => (
         <span className="font-mono text-sm">{row.original.priority || 0}</span>
       ),
     },
     {
       accessorKey: 'weight',
-      header: 'Weight',
+      header: t('channels.columns.weight'),
       cell: ({ row }) => (
         <span className="font-mono text-sm">{row.original.weight || 0}</span>
       ),
     },
     {
       accessorKey: 'response_time',
-      header: 'Response',
+      header: t('channels.columns.response'),
       cell: ({ row }) => {
         const responseTime = row.original.response_time
         const testTime = row.original.test_time
-        const responseTitle = `Response time: ${responseTime ? `${responseTime}ms` : 'Not tested'}${testTime ? ` (Tested: ${formatTimestamp(testTime)} / ${formatTimestamp(testTime, { timeZone: 'UTC' })}Z)` : ''}`
+        const responseTitle = `${t('channels.response.prefix')} ${responseTime ? `${responseTime}ms` : t('channels.response.not_tested')}${testTime ? ` (${t('channels.response.tested_at', {
+          local: formatTimestamp(testTime),
+          utc: formatTimestamp(testTime, { timeZone: 'UTC' })
+        })})` : ''}`
         return (
           <div className="text-center" title={responseTitle}>
             {formatResponseTime(responseTime)}
@@ -416,7 +437,7 @@ export function ChannelsPage() {
     },
     {
       accessorKey: 'testing_model',
-      header: 'Testing Model',
+      header: t('channels.columns.testing_model'),
       cell: ({ row }) => {
         const ch = row.original
         const models = (ch.models || '')
@@ -430,12 +451,13 @@ export function ChannelsPage() {
             <select
               className="w-full border rounded px-2 py-1 text-sm bg-background"
               value={value}
+              aria-label={t('channels.columns.testing_model')}
               onChange={(e) => {
                 const v = e.target.value
                 updateTestingModel(ch.id, v === '' ? null : v)
               }}
             >
-              <option value="">CHEAPEST</option>
+              <option value="">{t('channels.testing.auto')}</option>
               {models.map((m) => (
                 <option key={m} value={m}>
                   {m}
@@ -448,13 +470,13 @@ export function ChannelsPage() {
     },
     {
       accessorKey: 'created_time',
-      header: 'Created',
+      header: t('channels.columns.created'),
       cell: ({ row }) => (
         <TimestampDisplay timestamp={row.original.created_time} className="text-sm font-mono" />
       ),
     },
     {
-      header: 'Actions',
+      header: t('channels.columns.actions'),
       cell: ({ row }) => {
         const channel = row.original
         return (
@@ -466,7 +488,7 @@ export function ChannelsPage() {
               className="gap-1"
             >
               <Settings className="h-3 w-3" />
-              Edit
+              {t('channels.actions.edit')}
             </Button>
             <Button
               variant="outline"
@@ -479,7 +501,7 @@ export function ChannelsPage() {
                   : 'text-green-600 hover:text-green-700'
               )}
             >
-              {channel.status === 1 ? 'Disable' : 'Enable'}
+              {channel.status === 1 ? t('channels.actions.disable') : t('channels.actions.enable')}
             </Button>
             <Button
               variant="outline"
@@ -488,7 +510,7 @@ export function ChannelsPage() {
               className="gap-1"
             >
               <TestTube className="h-3 w-3" />
-              Test
+              {t('channels.actions.test')}
             </Button>
             <Button
               variant="destructive"
@@ -497,7 +519,7 @@ export function ChannelsPage() {
               className="gap-1"
             >
               <Trash2 className="h-3 w-3" />
-              Delete
+              {t('channels.actions.delete')}
             </Button>
           </ResponsiveActionGroup>
         )
@@ -552,7 +574,7 @@ export function ChannelsPage() {
         ) : (
           <TestTube className="h-4 w-4" />
         )}
-        {isMobile ? "Test All Channels" : "Test All"}
+        {isMobile ? t('channels.toolbar.test_all_mobile') : t('channels.toolbar.test_all')}
       </Button>
       <Button
         variant="destructive"
@@ -564,15 +586,15 @@ export function ChannelsPage() {
         size="sm"
       >
         <Trash2 className="h-4 w-4" />
-        {isMobile ? "Delete All Disabled" : "Delete Disabled"}
+        {isMobile ? t('channels.toolbar.delete_disabled_mobile') : t('channels.toolbar.delete_disabled')}
       </Button>
     </div>
   )
 
   return (
     <ResponsivePageContainer
-      title="Channels"
-      description="Configure and manage API routing channels"
+      title={t('channels.title')}
+      description={t('channels.description')}
       actions={
         <Button
           onClick={() => navigate('/channels/add')}
@@ -582,7 +604,7 @@ export function ChannelsPage() {
           )}
         >
           <Plus className="h-4 w-4" />
-          {isMobile ? "Add New Channel" : "Add Channel"}
+          {isMobile ? t('channels.actions.add_mobile') : t('channels.actions.add')}
         </Button>
       }
     >
@@ -599,7 +621,8 @@ export function ChannelsPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => navigate(`/channels/edit/${row.id}`)}
-                  title="Edit"
+                  title={t('channels.actions.edit')}
+                  aria-label={t('channels.actions.edit')}
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -607,7 +630,8 @@ export function ChannelsPage() {
                   variant="ghost"
                   size="icon"
                   onClick={() => manage(row.id, row.status === 1 ? 'disable' : 'enable')}
-                  title={row.status === 1 ? 'Disable' : 'Enable'}
+                  title={row.status === 1 ? t('channels.actions.disable') : t('channels.actions.enable')}
+                  aria-label={row.status === 1 ? t('channels.actions.disable') : t('channels.actions.enable')}
                   className={row.status === 1 ? 'text-orange-600 hover:text-orange-700' : 'text-green-600 hover:text-green-700'}
                 >
                   {row.status === 1 ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
@@ -619,7 +643,8 @@ export function ChannelsPage() {
                     const idx = data.findIndex((c) => c.id === row.id)
                     manage(row.id, 'test', idx !== -1 ? idx : undefined)
                   }}
-                  title="Test"
+                  title={t('channels.actions.test')}
+                  aria-label={t('channels.actions.test')}
                 >
                   <TestTube className="h-4 w-4" />
                 </Button>
@@ -639,12 +664,12 @@ export function ChannelsPage() {
             onSearchChange={searchChannels}
             onSearchValueChange={setSearchKeyword}
             onSearchSubmit={performSearch}
-            searchPlaceholder="Search channels by name, type, or group..."
+            searchPlaceholder={t('channels.search.placeholder')}
             allowSearchAdditions={true}
             toolbarActions={toolbarActions}
             onRefresh={refresh}
             loading={loading}
-            emptyMessage="No channels found. Create your first channel to get started."
+            emptyMessage={t('channels.empty')}
             mobileCardLayout={true}
             hideColumnsOnMobile={['created_time', 'response_time']}
             compactMode={isMobile}

@@ -3,6 +3,7 @@ import { useAuthStore } from '@/lib/stores/auth'
 import { api } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { LanguageSelector } from '@/components/LanguageSelector'
 import { NavigationDrawer } from '@/components/ui/mobile-drawer'
 import {
   Dialog,
@@ -37,6 +38,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 // Icon mapping for navigation items
 const navigationIcons = {
@@ -54,6 +56,7 @@ const navigationIcons = {
 }
 
 export function Header() {
+  const { t } = useTranslation()
   const { user, logout } = useAuthStore()
   const location = useLocation()
   const navigate = useNavigate()
@@ -66,18 +69,18 @@ export function Header() {
   const chatLink = localStorage.getItem('chat_link')
 
   const navigationItems = [
-    { name: 'Dashboard', to: '/dashboard', show: true },
-    { name: 'Channels', to: '/channels', show: isAdmin },
-    { name: 'Tokens', to: '/tokens', show: true },
-    { name: 'Logs', to: '/logs', show: true },
-    { name: 'Users', to: '/users', show: isAdmin },
-    { name: 'Redemptions', to: '/redemptions', show: isAdmin },
-    { name: 'Top Up', to: '/topup', show: true },
-    { name: 'Models', to: '/models', show: true },
-    { name: 'Status', to: '/status', show: true },
-    { name: 'Playground', to: '/chat', show: true },
-    { name: 'About', to: '/about', show: true },
-    { name: 'Settings', to: '/settings', show: isAdmin },
+    { name: t('common.dashboard'), to: '/dashboard', show: true },
+    { name: t('common.channels'), to: '/channels', show: isAdmin },
+    { name: t('common.tokens'), to: '/tokens', show: true },
+    { name: t('common.logs'), to: '/logs', show: true },
+    { name: t('common.users'), to: '/users', show: isAdmin },
+    { name: t('common.redemptions'), to: '/redemptions', show: isAdmin },
+    { name: t('common.topup'), to: '/topup', show: true },
+    { name: t('common.models'), to: '/models', show: true },
+    { name: t('common.status'), to: '/status', show: true },
+    { name: t('common.playground'), to: '/chat', show: true },
+    { name: t('common.about'), to: '/about', show: true },
+    { name: t('common.settings'), to: '/settings', show: isAdmin },
   ].filter(item => item.show).map(item => ({
     ...item,
     href: item.to,
@@ -138,6 +141,7 @@ export function Header() {
 
             {/* Actions and User Menu */}
             <div className="flex items-center space-x-2 min-w-0">
+              <LanguageSelector />
               <ThemeToggle />
 
               {user ? (
@@ -162,7 +166,7 @@ export function Header() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuLabel className="flex flex-col">
-                          <span className="text-xs text-muted-foreground">Signed in as</span>
+                          <span className="text-xs text-muted-foreground">{t('header.signed_in_as')}</span>
                           <span className="font-medium truncate">{user.username}</span>
                         </DropdownMenuLabel>
                         <DropdownMenuSeparator />
@@ -171,7 +175,7 @@ export function Header() {
                           className="flex items-center gap-2"
                         >
                           <LogOut className="h-4 w-4" />
-                          Logout
+                          {t('common.logout')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -197,7 +201,7 @@ export function Header() {
                     className={`font-medium text-muted-foreground hover:text-primary transition-colors ${isMobile ? 'text-sm' : 'text-sm'
                       }`}
                   >
-                    Register
+                    {t('common.register')}
                   </Link>
                   <Button
                     asChild
@@ -205,7 +209,7 @@ export function Header() {
                     className="touch-target"
                   >
                     <Link to="/login">
-                      Login
+                      {t('common.login')}
                     </Link>
                   </Button>
                 </div>
@@ -220,7 +224,7 @@ export function Header() {
             isOpen={mobileMenuOpen}
             onClose={() => setMobileMenuOpen(false)}
             navigationItems={navigationItems}
-            title="Navigation"
+            title={t('header.navigation')}
             footer={(
               <Button
                 variant="outline"
@@ -231,7 +235,7 @@ export function Header() {
                 }}
               >
                 <LogOut className="h-4 w-4" />
-                Logout
+                {t('common.logout')}
               </Button>
             )}
           />
@@ -241,9 +245,9 @@ export function Header() {
       <Dialog open={isLogoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirm logout</DialogTitle>
+            <DialogTitle>{t('header.confirm_logout')}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to log out? You&apos;ll need to sign in again to access your dashboard.
+              {t('header.logout_description')}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -252,14 +256,14 @@ export function Header() {
               onClick={() => setLogoutDialogOpen(false)}
               disabled={isLoggingOut}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               variant="destructive"
               onClick={performLogout}
               disabled={isLoggingOut}
             >
-              {isLoggingOut ? 'Logging out…' : 'Log out'}
+              {isLoggingOut ? t('header.logging_out') : t('header.log_out')}
             </Button>
           </DialogFooter>
         </DialogContent>

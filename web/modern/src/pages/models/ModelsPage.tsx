@@ -1,12 +1,12 @@
-import { useEffect, useState } from 'react'
-import { api } from '@/lib/api'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Button } from '@/components/ui/button'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
 import { Info } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ModelData {
   input_price: number
@@ -30,6 +30,12 @@ export function ModelsPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedChannels, setSelectedChannels] = useState<string[]>([])
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`models.${key}`, { defaultValue, ...options }),
+    [t]
+  )
 
   const fetchModelsData = async () => {
     try {
@@ -95,14 +101,14 @@ export function ModelsPage() {
   }, [searchTerm, selectedChannels, modelsData])
 
   const formatPrice = (price: number): string => {
-    if (price === 0) return 'Free'
+    if (price === 0) return tr('labels.free', 'Free')
     if (price < 0.001) return `$${price.toFixed(6)}`
     if (price < 1) return `$${price.toFixed(4)}`
     return `$${price.toFixed(2)}`
   }
 
   const formatMaxTokens = (maxTokens: number): string => {
-    if (maxTokens === 0) return 'Unlimited'
+    if (maxTokens === 0) return tr('labels.unlimited', 'Unlimited')
     if (maxTokens >= 1000000) return `${(maxTokens / 1000000).toFixed(1)}M`
     if (maxTokens >= 1000) return `${(maxTokens / 1000).toFixed(0)}K`
     return maxTokens.toString()
@@ -153,14 +159,14 @@ export function ModelsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2 px-3 font-medium">Model</th>
-                  <th className="text-left py-2 px-3 font-medium">Input Price (per 1M tokens)</th>
-                  <th className="text-left py-2 px-3 font-medium">Cached Input Price</th>
-                  <th className="text-left py-2 px-3 font-medium">Output Price</th>
-                  <th className="text-left py-2 px-3 font-medium">Image Price (per image)</th>
+                  <th className="text-left py-2 px-3 font-medium">{tr('table.model', 'Model')}</th>
+                  <th className="text-left py-2 px-3 font-medium">{tr('table.input_price', 'Input Price (per 1M tokens)')}</th>
+                  <th className="text-left py-2 px-3 font-medium">{tr('table.cached_input_price', 'Cached Input Price')}</th>
+                  <th className="text-left py-2 px-3 font-medium">{tr('table.output_price', 'Output Price')}</th>
+                  <th className="text-left py-2 px-3 font-medium">{tr('table.image_price', 'Image Price (per image)')}</th>
                   <th className="text-left py-2 px-3 font-medium">
                     <span className="inline-flex items-center gap-1">
-                      Max Tokens
+                      {tr('table.max_tokens', 'Max Tokens')}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <button
@@ -172,7 +178,7 @@ export function ModelsPage() {
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top" align="start" className="max-w-xs text-sm">
-                          Maximum total tokens this channel allows per request for the model, including prompt and completion tokens. A value of 0 means the provider does not advertise a fixed limit.
+                          {tr('table.max_tokens_tooltip', 'Maximum total tokens this channel allows per request for the model, including prompt and completion tokens. A value of 0 means the provider does not advertise a fixed limit.')}
                         </TooltipContent>
                       </Tooltip>
                     </span>
@@ -204,7 +210,7 @@ export function ModelsPage() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3">Loading models...</span>
+            <span className="ml-3">{tr('loading', 'Loading models...')}</span>
           </CardContent>
         </Card>
       </div>
@@ -222,16 +228,16 @@ export function ModelsPage() {
       <div className="container mx-auto px-4 py-8">
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Supported Models</CardTitle>
+            <CardTitle>{tr('title', 'Supported Models')}</CardTitle>
             <CardDescription>
-              Browse all models supported by the server, grouped by channel/adaptor with pricing information.
+              {tr('description', 'Browse all models supported by the server, grouped by channel/adaptor with pricing information.')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div className="md:col-span-1">
                 <Input
-                  placeholder="Search models..."
+                  placeholder={tr('search', 'Search models...')}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -252,21 +258,21 @@ export function ModelsPage() {
               </div>
               <div className="md:col-span-1">
                 <Button variant="outline" onClick={clearFilters} className="w-full">
-                  Clear Filters
+                  {tr('clear_filters', 'Clear Filters')}
                 </Button>
               </div>
             </div>
 
             {totalModels === 0 ? (
               <div className="text-center py-8">
-                <h3 className="text-lg font-medium mb-2">No models found</h3>
-                <p className="text-muted-foreground">Try adjusting your search terms or filters.</p>
+                <h3 className="text-lg font-medium mb-2">{tr('no_models', 'No models found')}</h3>
+                <p className="text-muted-foreground">{tr('no_models_desc', 'Try adjusting your search terms or filters.')}</p>
               </div>
             ) : (
               <>
                 <div className="mb-6">
                   <h3 className="text-lg font-medium">
-                    Found {totalModels} models in {Object.keys(filteredData).length} channels
+                    {tr('found', 'Found {{count}} models in {{channels}} channels', { count: totalModels, channels: Object.keys(filteredData).length })}
                   </h3>
                 </div>
                 {Object.keys(filteredData)

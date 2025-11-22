@@ -78,6 +78,7 @@ The original author stopped maintaining the project, leaving critical PRs and ne
   - [Contributors](#contributors)
   - [New Features](#new-features)
     - [Universal Features](#universal-features)
+      - [I18n Support](#i18n-support)
       - [Unified Billing System](#unified-billing-system)
       - [Support channel's built-in tooling configuration](#support-channels-built-in-tooling-configuration)
       - [Support update user's remained quota](#support-update-users-remained-quota)
@@ -295,6 +296,10 @@ The Kubernetes deployment guide has been moved into a dedicated document:
 ## New Features
 
 ### Universal Features
+
+#### I18n Support
+
+Support internationalization (i18n) in the web frontend, including English, Chinese, French, Spanish, and Japanese.
 
 #### Unified Billing System
 

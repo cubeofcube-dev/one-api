@@ -1,18 +1,17 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Button } from '@/components/ui/button'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { TimestampDisplay } from '@/components/ui/timestamp'
-import { cn, renderQuota } from '@/lib/utils'
-import { LOG_TYPES, getLogTypeLabel } from '@/lib/constants/logs'
-import type { LogEntry, LogMetadata } from '@/types/log'
-import { useAuthStore } from '@/lib/stores/auth'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { api } from '@/lib/api'
+import { LOG_TYPES, getLogTypeLabel } from '@/lib/constants/logs'
+import { useAuthStore } from '@/lib/stores/auth'
+import { cn, renderQuota } from '@/lib/utils'
+import type { LogEntry, LogMetadata } from '@/types/log'
 import {
   Activity,
   ArrowRight,
@@ -29,6 +28,8 @@ import {
   User,
   Zap
 } from 'lucide-react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface LogDetailsModalProps {
   open: boolean
@@ -140,53 +141,9 @@ const getMethodColor = (method: string): string => {
   }
 }
 
-const timelineEvents = [
-  {
-    key: 'request_received' as keyof TraceTimestamps,
-    title: 'Request Received',
-    icon: Play,
-    color: 'text-blue-500',
-    description: 'Initial request received by the gateway'
-  },
-  {
-    key: 'request_forwarded' as keyof TraceTimestamps,
-    title: 'Forwarded to Upstream',
-    icon: ArrowRight,
-    color: 'text-teal-500',
-    description: 'Request forwarded to upstream service'
-  },
-  {
-    key: 'first_upstream_response' as keyof TraceTimestamps,
-    title: 'First Upstream Response',
-    icon: Reply,
-    color: 'text-purple-500',
-    description: 'First response received from upstream'
-  },
-  {
-    key: 'first_client_response' as keyof TraceTimestamps,
-    title: 'First Client Response',
-    icon: Send,
-    color: 'text-orange-500',
-    description: 'First response sent to client'
-  },
-  {
-    key: 'upstream_completed' as keyof TraceTimestamps,
-    title: 'Upstream Completed',
-    icon: CheckCircle,
-    color: 'text-green-500',
-    description: 'Upstream response completed (streaming)'
-  },
-  {
-    key: 'request_completed' as keyof TraceTimestamps,
-    title: 'Request Completed',
-    icon: Flag,
-    color: 'text-green-600',
-    description: 'Request fully completed'
-  }
-]
-
 // LogDetailsModal renders a scrollable dialog containing the full details of a log entry, including metadata and content.
 export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProps) {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const metadataJSON = useMemo(() => (log?.metadata ? JSON.stringify(log.metadata, null, 2) : null), [log])
   const cacheWriteSummary = useMemo(() => getCacheWriteSummaries(log?.metadata), [log])
@@ -201,6 +158,51 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     typeof log.id === 'number' &&
     log.type === LOG_TYPES.CONSUME
   )
+
+  const timelineEvents = useMemo(() => [
+    {
+      key: 'request_received' as keyof TraceTimestamps,
+      title: t('logs.details.events.request_received', 'Request Received'),
+      icon: Play,
+      color: 'text-blue-500',
+      description: t('logs.details.events.request_received_desc', 'Initial request received by the gateway')
+    },
+    {
+      key: 'request_forwarded' as keyof TraceTimestamps,
+      title: t('logs.details.events.request_forwarded', 'Forwarded to Upstream'),
+      icon: ArrowRight,
+      color: 'text-teal-500',
+      description: t('logs.details.events.request_forwarded_desc', 'Request forwarded to upstream service')
+    },
+    {
+      key: 'first_upstream_response' as keyof TraceTimestamps,
+      title: t('logs.details.events.first_upstream_response', 'First Upstream Response'),
+      icon: Reply,
+      color: 'text-purple-500',
+      description: t('logs.details.events.first_upstream_response_desc', 'First response received from upstream')
+    },
+    {
+      key: 'first_client_response' as keyof TraceTimestamps,
+      title: t('logs.details.events.first_client_response', 'First Client Response'),
+      icon: Send,
+      color: 'text-orange-500',
+      description: t('logs.details.events.first_client_response_desc', 'First response sent to client')
+    },
+    {
+      key: 'upstream_completed' as keyof TraceTimestamps,
+      title: t('logs.details.events.upstream_completed', 'Upstream Completed'),
+      icon: CheckCircle,
+      color: 'text-green-500',
+      description: t('logs.details.events.upstream_completed_desc', 'Upstream response completed (streaming)')
+    },
+    {
+      key: 'request_completed' as keyof TraceTimestamps,
+      title: t('logs.details.events.request_completed', 'Request Completed'),
+      icon: Flag,
+      color: 'text-green-600',
+      description: t('logs.details.events.request_completed_desc', 'Request fully completed')
+    }
+  ], [t])
 
   useEffect(() => {
     let active = true
@@ -225,14 +227,14 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
           setTraceData(response.data.data as TraceData)
         } else {
           setTraceData(null)
-          setTraceError(response.data?.message || 'Failed to load trace information.')
+          setTraceError(response.data?.message || t('logs.details.load_failed', 'Failed to load trace information.'))
         }
       } catch (error: any) {
         if (!active) {
           return
         }
         setTraceData(null)
-        setTraceError(error?.response?.data?.message || 'Failed to load trace information.')
+        setTraceError(error?.response?.data?.message || t('logs.details.load_failed', 'Failed to load trace information.'))
       } finally {
         if (active) {
           setTraceLoading(false)
@@ -245,7 +247,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     return () => {
       active = false
     }
-  }, [open, hasTrace, log])
+  }, [open, hasTrace, log, t])
 
   const handleCopy = async (value?: string) => {
     if (!value) return
@@ -279,14 +281,14 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     <div className="rounded border bg-muted/30 p-4 space-y-4">
       <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
         <Globe className="h-4 w-4" />
-        Request Information
+        {t('logs.details.request_info', 'Request Information')}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Globe className="h-4 w-4" />
-            URL
+            {t('logs.details.url', 'URL')}
           </div>
           <div className="font-mono text-sm bg-background p-2 rounded border break-all">
             {trace.url || 'N/A'}
@@ -296,7 +298,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Activity className="h-4 w-4" />
-            Method & Status
+            {t('logs.details.method_status', 'Method & Status')}
           </div>
           <div className="flex items-center gap-2">
             <Badge className={getMethodColor(trace.method)}>{trace.method || 'N/A'}</Badge>
@@ -307,7 +309,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <FileText className="h-4 w-4" />
-            Request Size
+            {t('logs.details.request_size', 'Request Size')}
           </div>
           <div className="text-sm">{trace.body_size ? `${trace.body_size} bytes` : 'N/A'}</div>
         </div>
@@ -315,7 +317,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <User className="h-4 w-4" />
-            User
+            {t('logs.details.user', 'User')}
           </div>
           <div className="text-sm">{trace.log?.username || log?.username || user?.username || 'N/A'}</div>
         </div>
@@ -323,7 +325,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         <div className="space-y-2 md:col-span-2">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Hash className="h-4 w-4" />
-            Trace ID
+            {t('logs.details.trace_id', 'Trace ID')}
           </div>
           <TooltipProvider>
             <Tooltip>
@@ -344,7 +346,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
                 </div>
               </TooltipTrigger>
               <TooltipContent>
-                <span>{traceCopied ? 'Copied!' : 'Click to copy trace ID'}</span>
+                <span>{traceCopied ? t('logs.details.copied', 'Copied!') : t('logs.details.copy_trace', 'Click to copy trace ID')}</span>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -355,21 +357,21 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
 
   const renderTimeline = (trace: TraceData) => {
     if (!trace.timestamps) {
-      return <p className="text-sm text-muted-foreground">Timeline data is not available for this trace.</p>
+      return <p className="text-sm text-muted-foreground">{t('logs.details.no_timeline', 'Timeline data is not available for this trace.')}</p>
     }
 
     const { timestamps, durations } = trace
     const activeEvents = timelineEvents.filter(event => timestamps[event.key])
 
     if (activeEvents.length === 0) {
-      return <p className="text-sm text-muted-foreground">Timeline data is not available for this trace.</p>
+      return <p className="text-sm text-muted-foreground">{t('logs.details.no_timeline', 'Timeline data is not available for this trace.')}</p>
     }
 
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
           <Clock className="h-4 w-4" />
-          Request Timeline
+          {t('logs.details.timeline', 'Request Timeline')}
         </div>
         <div className="space-y-4">
           {activeEvents.map((event, index) => {
@@ -413,7 +415,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         {durations?.total_time && (
           <div className="flex items-center gap-2 border rounded-lg bg-primary/5 border-primary/20 px-4 py-3">
             <Zap className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">Total Request Time:</span>
+            <span className="text-sm font-semibold">{t('logs.details.total_time', 'Total Request Time')}:</span>
             <Badge variant="default">{formatDuration(durations.total_time)}</Badge>
           </div>
         )}
@@ -453,10 +455,10 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     return (
       <div className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <DetailItem label="Log ID" value={<span className="font-mono text-sm">{log.id}</span>} />
-          <DetailItem label="Type" value={<Badge variant="outline">{logTypeLabel}</Badge>} />
+          <DetailItem label={t('logs.details.log_id', 'Log ID')} value={<span className="font-mono text-sm">{log.id}</span>} />
+          <DetailItem label={t('logs.details.type', 'Type')} value={<Badge variant="outline">{logTypeLabel}</Badge>} />
           <DetailItem
-            label="Recorded At"
+            label={t('logs.details.recorded_at', 'Recorded At')}
             value={(
               <TimestampDisplay
                 timestamp={log.created_at}
@@ -464,49 +466,49 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
               />
             )}
           />
-          <DetailItem label="Model" value={log.model_name || '—'} />
-          <DetailItem label="User" value={username} />
-          <DetailItem label="Token" value={log.token_name || '—'} />
-          <DetailItem label="Channel" value={<span className="font-mono text-sm">{channelDisplay}</span>} />
-          <DetailItem label="Quota" value={<span className="font-mono text-sm">{quotaDisplay}</span>} />
-          <DetailItem label="Quota (raw units)" value={<span className="font-mono text-sm">{rawQuota}</span>} />
+          <DetailItem label={t('logs.details.model', 'Model')} value={log.model_name || '—'} />
+          <DetailItem label={t('logs.details.user', 'User')} value={username} />
+          <DetailItem label={t('logs.details.token', 'Token')} value={log.token_name || '—'} />
+          <DetailItem label={t('logs.details.channel', 'Channel')} value={<span className="font-mono text-sm">{channelDisplay}</span>} />
+          <DetailItem label={t('logs.details.quota', 'Quota')} value={<span className="font-mono text-sm">{quotaDisplay}</span>} />
+          <DetailItem label={t('logs.details.quota_raw', 'Quota (raw units)')} value={<span className="font-mono text-sm">{rawQuota}</span>} />
           <DetailItem
-            label="Latency"
+            label={t('logs.details.latency', 'Latency')}
             value={<span className={cn('font-mono text-sm', latencyColor)}>{latencyValue}</span>}
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailItem
-            label="Prompt Tokens (input)"
+            label={t('logs.details.prompt_tokens_input', 'Prompt Tokens (input)')}
             value={<span className="font-mono text-sm">{promptTokens}</span>}
           />
           <DetailItem
-            label="Prompt Tokens (cached)"
+            label={t('logs.details.prompt_tokens_cached', 'Prompt Tokens (cached)')}
             value={<span className="font-mono text-sm">{cachedPromptTokens}</span>}
           />
           <DetailItem
-            label="Completion Tokens (output)"
+            label={t('logs.details.completion_tokens_output', 'Completion Tokens (output)')}
             value={<span className="font-mono text-sm">{completionTokens}</span>}
           />
           <DetailItem
-            label="Completion Tokens (cached)"
+            label={t('logs.details.completion_tokens_cached', 'Completion Tokens (cached)')}
             value={<span className="font-mono text-sm">{cachedCompletionTokens}</span>}
           />
           <DetailItem
-            label="Cache Write 5m Tokens"
+            label={t('logs.details.cache_write_5m', 'Cache Write 5m Tokens')}
             value={<span className="font-mono text-sm">{cacheWriteSummary.fiveMinute}</span>}
           />
           <DetailItem
-            label="Cache Write 1h Tokens"
+            label={t('logs.details.cache_write_1h', 'Cache Write 1h Tokens')}
             value={<span className="font-mono text-sm">{cacheWriteSummary.oneHour}</span>}
           />
           <DetailItem
-            label="Total Tokens"
+            label={t('logs.details.total_tokens', 'Total Tokens')}
             value={<span className="font-mono text-sm">{totalTokens}</span>}
           />
           <DetailItem
-            label="Total Cached Tokens"
+            label={t('logs.details.total_cached_tokens', 'Total Cached Tokens')}
             value={<span className="font-mono text-sm">{totalCachedTokens}</span>}
           />
         </div>
@@ -520,7 +522,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Log Entry Details
+            {t('logs.details.title', 'Log Entry Details')}
             {log && (
               <Badge variant="secondary" className="ml-2">
                 {getLogTypeLabel(log.type)}
@@ -530,7 +532,7 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
           {log && (
             <DialogDescription className="flex items-center gap-2 text-sm">
               <Hash className="h-4 w-4" />
-              Recorded at{' '}
+              {t('logs.details.recorded_at', 'Recorded at')}{' '}
               <TimestampDisplay
                 timestamp={log.created_at}
                 className="font-mono text-xs"
@@ -541,24 +543,24 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
 
         <ScrollArea className="max-h-[calc(90vh-8rem)] pr-2">
           <div className="space-y-6">
-            {!log && <p className="text-sm text-muted-foreground">Select a log entry to view full details.</p>}
+            {!log && <p className="text-sm text-muted-foreground">{t('logs.details.select_hint', 'Select a log entry to view full details.')}</p>}
 
             {log && (
               <>
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Summary</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.summary', 'Summary')}</h3>
                   {renderSummary()}
                 </section>
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Identifiers</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.identifiers', 'Identifiers')}</h3>
                   <div className="space-y-3">
                     <div className="space-y-1">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Request ID</span>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.request_id', 'Request ID')}</span>
                       {renderIdentifier(log.request_id)}
                     </div>
                     <div className="space-y-1">
-                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Trace ID</span>
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.trace_id', 'Trace ID')}</span>
                       {renderIdentifier(log.trace_id)}
                     </div>
                   </div>
@@ -566,10 +568,10 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
 
                 {(log.is_stream || log.system_prompt_reset) && (
                   <section className="space-y-2">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Flags</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.flags', 'Flags')}</h3>
                     <div className="flex gap-2 flex-wrap">
-                      {log.is_stream && <Badge variant="secondary">Stream</Badge>}
-                      {log.system_prompt_reset && <Badge variant="destructive">System Reset</Badge>}
+                      {log.is_stream && <Badge variant="secondary">{t('logs.details.stream', 'Stream')}</Badge>}
+                      {log.system_prompt_reset && <Badge variant="destructive">{t('logs.details.system_reset', 'System Reset')}</Badge>}
                     </div>
                   </section>
                 )}
@@ -577,17 +579,17 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
                 <Separator />
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Content</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.content', 'Content')}</h3>
                   <div className="rounded border bg-muted/40 p-3">
                     <pre className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {log.content || 'No content recorded.'}
+                      {log.content || t('logs.details.no_content', 'No content recorded.')}
                     </pre>
                   </div>
                 </section>
 
                 {metadataJSON && (
                   <section className="space-y-3">
-                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Metadata</h3>
+                    <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.metadata', 'Metadata')}</h3>
                     <div className="rounded border bg-muted/40 p-3">
                       <pre className="whitespace-pre-wrap text-sm leading-relaxed">{metadataJSON}</pre>
                     </div>
@@ -595,9 +597,9 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
                 )}
 
                 <section className="space-y-3">
-                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Tracing</h3>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">{t('logs.details.tracing', 'Tracing')}</h3>
                   {!hasTrace && (
-                    <p className="text-sm text-muted-foreground">Tracing data is not available for this log entry.</p>
+                    <p className="text-sm text-muted-foreground">{t('logs.details.no_tracing', 'Tracing data is not available for this log entry.')}</p>
                   )}
 
                   {hasTrace && traceLoading && (

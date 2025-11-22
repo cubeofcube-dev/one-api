@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { useForm, useWatch } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { api } from '@/lib/api'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
+import { Input } from '@/components/ui/input'
 import { useNotifications } from '@/components/ui/notifications'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Info } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useForm, useWatch } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { useNavigate, useParams } from 'react-router-dom'
+import * as z from 'zod'
 
 // Helper function to render quota with USD conversion (USD only)
 const renderQuotaWithPrompt = (quota: number): string => {
@@ -23,22 +24,14 @@ const renderQuotaWithPrompt = (quota: number): string => {
   return `$${usdValue}`
 }
 
-const userSchema = z.object({
-  username: z.string().trim().min(3, 'Username must be at least 3 characters').max(30, 'Username must be at most 30 characters'),
-  display_name: z.string().trim().max(20, 'Display name must be at most 20 characters').optional(),
-  password: z.string().optional(),
-  email: z
-    .string()
-    .trim()
-    .max(50, 'Email must be at most 50 characters')
-    .refine((value) => value === '' || z.string().email().safeParse(value).success, { message: 'Valid email is required' })
-    .optional(),
-  // Coerce to number since HTML inputs provide string values
-  quota: z.coerce.number().min(0, 'Quota must be non-negative'),
-  group: z.string().min(1, 'Group is required'),
-})
-
-type UserForm = z.infer<typeof userSchema>
+type UserForm = {
+  username: string
+  display_name?: string
+  password?: string
+  email?: string
+  quota: number
+  group: string
+}
 
 interface Group {
   key: string
@@ -67,12 +60,32 @@ export function EditUserPage() {
   const userId = params.id
   const isEdit = userId !== undefined
   const navigate = useNavigate()
+  const { t } = useTranslation()
+  const tr = useCallback(
+    (key: string, defaultValue: string, options?: Record<string, unknown>) =>
+      t(`users.edit.${key}`, { defaultValue, ...options }),
+    [t]
+  )
 
   const [loading, setLoading] = useState(isEdit)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [groupOptions, setGroupOptions] = useState<Group[]>([])
   const [initialSnapshot, setInitialSnapshot] = useState<UserSnapshot | null>(null)
   const { notify } = useNotifications()
+
+  const userSchema = useMemo(() => z.object({
+    username: z.string().trim().min(3, tr('validation.username_min', 'Username must be at least 3 characters')).max(30, tr('validation.username_max', 'Username must be at most 30 characters')),
+    display_name: z.string().trim().max(20, tr('validation.display_name_max', 'Display name must be at most 20 characters')).optional(),
+    password: z.string().optional(),
+    email: z
+      .string()
+      .trim()
+      .max(50, tr('validation.email_max', 'Email must be at most 50 characters'))
+      .refine((value) => value === '' || z.string().email().safeParse(value).success, { message: tr('validation.email_invalid', 'Valid email is required') })
+      .optional(),
+    quota: z.coerce.number().min(0, tr('validation.quota_min', 'Quota must be non-negative')),
+    group: z.string().min(1, tr('validation.group_required', 'Group is required')),
+  }), [tr])
 
   const form = useForm<UserForm>({
     resolver: zodResolver(userSchema),
@@ -198,18 +211,25 @@ export function EditUserPage() {
       if (success) {
         navigate('/users', {
           state: {
-            message: isEdit ? 'User updated successfully' : 'User created successfully'
+            message: isEdit
+              ? tr('notifications.update_success', 'User updated successfully')
+              : tr('notifications.create_success', 'User created successfully')
           }
         })
       } else {
-        form.setError('root', { message: message || 'Operation failed' })
-        notify({ type: 'error', title: 'Request failed', message: message || 'Operation failed' })
+        const fallback = tr('errors.operation_failed', 'Operation failed')
+        form.setError('root', { message: message || fallback })
+        notify({ type: 'error', title: tr('errors.request_failed_title', 'Request failed'), message: message || fallback })
       }
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Operation failed'
+        message: error instanceof Error ? error.message : tr('errors.operation_failed', 'Operation failed')
       })
-      notify({ type: 'error', title: 'Unexpected error', message: error instanceof Error ? error.message : 'Operation failed' })
+      notify({
+        type: 'error',
+        title: tr('errors.unexpected_title', 'Unexpected error'),
+        message: error instanceof Error ? error.message : tr('errors.operation_failed', 'Operation failed'),
+      })
     } finally {
       setIsSubmitting(false)
     }
@@ -218,8 +238,9 @@ export function EditUserPage() {
   // RHF invalid handler: toast + focus first invalid field
   const onInvalid = (errors: any) => {
     const firstKey = Object.keys(errors)[0]
-    const firstMsg = errors[firstKey]?.message || 'Please correct the highlighted fields.'
-    notify({ type: 'error', title: 'Validation error', message: String(firstMsg) })
+    const fallbackMessage = tr('validation.fix_fields', 'Please correct the highlighted fields.')
+    const firstMsg = errors[firstKey]?.message || fallbackMessage
+    notify({ type: 'error', title: tr('validation.error_title', 'Validation error'), message: String(firstMsg || fallbackMessage) })
     const el = document.querySelector(`[name="${firstKey}"]`) as HTMLElement | null
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'center' })
@@ -237,7 +258,7 @@ export function EditUserPage() {
         <Card>
           <CardContent className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-3">Loading user...</span>
+            <span className="ml-3">{tr('loading', 'Loading user...')}</span>
           </CardContent>
         </Card>
       </div>
@@ -249,32 +270,14 @@ export function EditUserPage() {
       <TooltipProvider>
         <Card>
           <CardHeader>
-            <CardTitle>{isEdit ? 'Edit User' : 'Create User'}</CardTitle>
+            <CardTitle>{isEdit ? tr('title.edit', 'Edit User') : tr('title.create', 'Create User')}</CardTitle>
             <CardDescription>
-              {isEdit ? 'Update user information' : 'Create a new user account'}
+              {isEdit ? tr('description.edit', 'Update user information') : tr('description.create', 'Create a new user account')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit, onInvalid)} className="space-y-6">
-                {/* helper for label + tooltip */}
-                {(() => {
-                  // small inline helper component
-                  const LabelWithHelp = ({ label, help }: { label: string; help: string }) => (
-                    <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                        {label}
-                      </span>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={`Help: ${label}`} />
-                        </TooltipTrigger>
-                        <TooltipContent className="max-w-xs whitespace-pre-line">{help}</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  )
-                  return null
-                })()}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -282,16 +285,16 @@ export function EditUserPage() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-1">
-                          <FormLabel>Username *</FormLabel>
+                          <FormLabel>{tr('fields.username.label', 'Username *')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Username" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_username', 'Help: Username')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Unique login name. Min 3 characters.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.username.help', 'Unique login name. Min 3 characters.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <FormControl>
-                          <Input placeholder="Enter username" className={errorClass('username')} {...field} />
+                          <Input placeholder={tr('fields.username.placeholder', 'Enter username')} className={errorClass('username')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -304,16 +307,16 @@ export function EditUserPage() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-1">
-                          <FormLabel>Display Name</FormLabel>
+                          <FormLabel>{tr('fields.display_name.label', 'Display Name')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Display Name" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_display_name', 'Help: Display Name')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Optional human‑readable name shown in the UI.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.display_name.help', 'Optional human-readable name shown in the UI.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <FormControl>
-                          <Input placeholder="Enter display name" className={errorClass('display_name')} {...field} />
+                          <Input placeholder={tr('fields.display_name.placeholder', 'Enter display name')} className={errorClass('display_name')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -328,16 +331,16 @@ export function EditUserPage() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-1">
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{tr('fields.email.label', 'Email')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Email" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_email', 'Help: Email')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Optional contact address for password reset and notifications.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.email.help', 'Optional contact address for password reset and notifications.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <FormControl>
-                          <Input type="email" placeholder="Enter email" className={errorClass('email')} {...field} />
+                          <Input type="email" placeholder={tr('fields.email.placeholder', 'Enter email')} className={errorClass('email')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -350,16 +353,20 @@ export function EditUserPage() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-1">
-                          <FormLabel>{isEdit ? 'New Password (leave empty to keep current)' : 'Password *'}</FormLabel>
+                          <FormLabel>
+                            {isEdit
+                              ? tr('fields.password.label_edit', 'New Password (leave empty to keep current)')
+                              : tr('fields.password.label_create', 'Password *')}
+                          </FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Password" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_password', 'Help: Password')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Minimum length depends on policy. Leave empty when editing to keep unchanged.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.password.help', 'Minimum length depends on policy. Leave empty when editing to keep unchanged.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <FormControl>
-                          <Input type="password" placeholder="Enter password" className={errorClass('password')} {...field} />
+                          <Input type="password" placeholder={tr('fields.password.placeholder', 'Enter password')} className={errorClass('password')} {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -379,14 +386,14 @@ export function EditUserPage() {
                               const current = watchQuota ?? field.value ?? 0
                               const numeric = Number(current)
                               const usdLabel = Number.isFinite(numeric) && numeric >= 0 ? renderQuotaWithPrompt(numeric) : '$0.00'
-                              return `Quota (${usdLabel})`
+                              return tr('fields.quota.label', 'Quota ({{usd}})', { usd: usdLabel })
                             })()}
                           </FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Quota" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_quota', 'Help: Quota')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">Quota units are tokens. USD estimate uses the per‑unit ratio configured by admin.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.quota.help', 'Quota units are tokens. USD estimate uses the per-unit ratio configured by admin.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <FormControl>
@@ -412,18 +419,18 @@ export function EditUserPage() {
                     render={({ field }) => (
                       <FormItem>
                         <div className="flex items-center gap-1">
-                          <FormLabel>Group *</FormLabel>
+                          <FormLabel>{tr('fields.group.label', 'Group *')}</FormLabel>
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label="Help: Group" />
+                              <Info className="h-4 w-4 text-muted-foreground cursor-help" aria-label={tr('aria.help_group', 'Help: Group')} />
                             </TooltipTrigger>
-                            <TooltipContent className="max-w-xs">User group controls access and model/channel visibility.</TooltipContent>
+                            <TooltipContent className="max-w-xs">{tr('fields.group.help', 'User group controls access and model/channel visibility.')}</TooltipContent>
                           </Tooltip>
                         </div>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className={errorClass('group')}>
-                              <SelectValue placeholder="Select a group" />
+                              <SelectValue placeholder={tr('fields.group.placeholder', 'Select a group')} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -449,8 +456,8 @@ export function EditUserPage() {
                 <div className="flex gap-2">
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting
-                      ? (isEdit ? 'Updating...' : 'Creating...')
-                      : (isEdit ? 'Update User' : 'Create User')
+                      ? (isEdit ? tr('actions.updating', 'Updating...') : tr('actions.creating', 'Creating...'))
+                      : (isEdit ? tr('actions.update', 'Update User') : tr('actions.create', 'Create User'))
                     }
                   </Button>
                   <Button
@@ -458,7 +465,7 @@ export function EditUserPage() {
                     variant="outline"
                     onClick={() => navigate('/users')}
                   >
-                    Cancel
+                    {tr('actions.cancel', 'Cancel')}
                   </Button>
                 </div>
               </form>
