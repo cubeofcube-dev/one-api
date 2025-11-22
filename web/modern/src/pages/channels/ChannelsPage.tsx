@@ -123,6 +123,13 @@ export function ChannelsPage() {
   const [bulkTesting, setBulkTesting] = useState(false)
   const initializedRef = useRef(false)
   const skipFirstSortEffect = useRef(true)
+  const updateSearchParamPage = (nextPageIndex: number) => {
+    setSearchParams(prev => {
+      const params = new URLSearchParams(prev)
+      params.set('p', (nextPageIndex + 1).toString())
+      return params
+    })
+  }
 
   const load = async (p = 0, size = pageSize) => {
     setLoading(true)
@@ -499,10 +506,7 @@ export function ChannelsPage() {
   ]
 
   const handlePageChange = (newPageIndex: number, newPageSize: number) => {
-    setSearchParams(prev => {
-      prev.set('p', (newPageIndex + 1).toString())
-      return prev
-    })
+    updateSearchParamPage(newPageIndex)
     load(newPageIndex, newPageSize)
   }
 
@@ -515,6 +519,8 @@ export function ChannelsPage() {
   const handleSortChange = (newSortBy: string, newSortOrder: 'asc' | 'desc') => {
     setSortBy(newSortBy)
     setSortOrder(newSortOrder)
+    updateSearchParamPage(0)
+    setPageIndex(0)
     // Let useEffect handle the reload to avoid double requests
   }
 
