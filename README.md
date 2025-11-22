@@ -298,7 +298,7 @@ The Kubernetes deployment guide has been moved into a dedicated document:
 
 #### Unified Billing System
 
-All channels share a four-layer billing pipeline (channel overrides → adapter defaults → global fallback → safe default) with support for tiered token pricing, cached prompt buckets, and per-second/per-image media meters. Administrators can fetch defaults, override specific models, and audit every call via `X-Oneapi-Request-Id`; see `docs/arch/billing.md` for internals and `docs/manuals/billing.md` for the operational playbook.
+All channels share a four-layer billing pipeline (channel overrides → adapter defaults → global fallback → safe default) with support for tiered token pricing, cached prompt buckets, and per-second/per-image media meters. Administrators can fetch defaults, override specific models, and audit every call via `X-Oneapi-Request-Id`; see [docs/arch/billing.md](./docs/arch/billing.md) for internals and [docs/manuals/billing.md](./docs/manuals/billing.md) for the operational playbook.
 
 #### Support channel's built-in tooling configuration
 

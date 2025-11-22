@@ -333,6 +333,23 @@ func GetAllEnabledChannels() ([]*Channel, error) {
 	return channels, nil
 }
 
+// GetEnabledChannelsVersionSignature returns a signature string that changes whenever
+// the set of enabled channels (or their configurations) is modified.
+func GetEnabledChannelsVersionSignature() (string, error) {
+	type snapshot struct {
+		Count        int64 `gorm:"column:count"`
+		MaxUpdatedAt int64 `gorm:"column:max_updated_at"`
+	}
+	var result snapshot
+	if err := DB.Model(&Channel{}).
+		Where("status = ?", ChannelStatusEnabled).
+		Select("COUNT(*) AS count, COALESCE(MAX(updated_at), 0) AS max_updated_at").
+		Scan(&result).Error; err != nil {
+		return "", errors.Wrap(err, "query enabled channel version")
+	}
+	return fmt.Sprintf("%d:%d", result.Count, result.MaxUpdatedAt), nil
+}
+
 func SearchChannels(keyword string, sortBy string, sortOrder string) (channels []*Channel, err error) {
 	// Default sorting
 	orderClause := "id desc"

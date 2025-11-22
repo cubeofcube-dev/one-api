@@ -271,6 +271,60 @@ func TestListAllModelsIncludesCustomChannelModels(t *testing.T) {
 	require.True(t, found, "expected custom-alpha to be listed in /v1/models response")
 }
 
+func TestListAllModelsCacheInvalidationAfterChannelChange(t *testing.T) {
+	model.InitDB()
+	gin.SetMode(gin.TestMode)
+
+	router := gin.New()
+	router.GET("/v1/models", ListAllModels)
+
+	// Warm the cache with the current state (no custom channel overrides yet).
+	preReq, _ := http.NewRequest("GET", "/v1/models", nil)
+	preResp := httptest.NewRecorder()
+	router.ServeHTTP(preResp, preReq)
+	require.Equal(t, http.StatusOK, preResp.Code)
+
+	channel := &model.Channel{
+		Name:   "cache-invalidation",
+		Type:   channeltype.OpenAI,
+		Status: model.ChannelStatusEnabled,
+		Models: "",
+		Group:  "default",
+	}
+	overrides := map[string]model.ModelConfigLocal{
+		"cache-alpha": {
+			Ratio:           0.000003,
+			CompletionRatio: 1.7,
+			MaxTokens:       2048,
+		},
+	}
+	require.NoError(t, channel.SetModelPriceConfigs(overrides))
+	require.NoError(t, model.DB.Create(channel).Error)
+
+	req, _ := http.NewRequest("GET", "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Object string `json:"object"`
+		Data   []struct {
+			Id      string `json:"id"`
+			OwnedBy string `json:"owned_by"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, "list", resp.Object)
+	var found bool
+	for _, m := range resp.Data {
+		if m.Id == "cache-alpha" {
+			found = true
+			break
+		}
+	}
+	require.True(t, found, "expected cache-alpha to appear after channel update even with warm cache")
+}
+
 func TestChannelDefaultPricing(t *testing.T) {
 	// This test verifies that the /api/channel/default-pricing endpoint works correctly
 	// for different channel types

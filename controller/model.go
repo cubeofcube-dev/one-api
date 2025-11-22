@@ -159,15 +159,26 @@ func DashboardListModels(c *gin.Context) {
 	})
 }
 
+type listAllModelsCacheEntry struct {
+	Models  []OpenAIModels
+	Version string
+}
+
 // cachedListAllModels is a short-term cache for ListAllModels to reduce load.
-var cachedListAllModels = gutils.NewSingleItemExpCache[[]OpenAIModels](time.Minute)
+var cachedListAllModels = gutils.NewSingleItemExpCache[listAllModelsCacheEntry](time.Minute)
 
 // ListAllModels returns every known model in the OpenAI-compatible format regardless of user permissions.
 func ListAllModels(c *gin.Context) {
-	if models, ok := cachedListAllModels.Get(); ok {
+	version, err := model.GetEnabledChannelsVersionSignature()
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, errors.Wrap(err, "channels version signature"))
+		return
+	}
+
+	if entry, ok := cachedListAllModels.Get(); ok && entry.Version == version {
 		c.JSON(200, gin.H{
 			"object": "list",
-			"data":   models,
+			"data":   entry.Models,
 		})
 		return
 	}
@@ -183,7 +194,10 @@ func ListAllModels(c *gin.Context) {
 	})
 
 	// update cache
-	cachedListAllModels.Set(models)
+	cachedListAllModels.Set(listAllModelsCacheEntry{
+		Models:  models,
+		Version: version,
+	})
 }
 
 // ModelsDisplayResponse represents the response structure for the models display page
