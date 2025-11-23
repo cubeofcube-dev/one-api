@@ -489,6 +489,11 @@
     },
     "type_unknown": "Type {{type}}"
   },
+  "chat": {
+    "iframe_title": "Chat Interface",
+    "not_available": "Chat Not Available",
+    "not_configured": "Chat service has not been configured by the administrator."
+  },
   "common": {
     "about": "About",
     "back": "Back",
@@ -787,6 +792,355 @@
     "message": "Page not found",
     "redirecting": "Redirecting to home in {{seconds}}s..."
   },
+  "operation_settings": {
+    "general": {
+      "approximate_token": "Enable Approximate Token Counting",
+      "approximate_token_desc": "Use a faster approximation for token counting to improve performance (may be slightly less accurate).",
+      "chat_link": "Chat Link",
+      "chat_link_desc": "External chat/support link shown in the UI.",
+      "description": "Configure general operation parameters",
+      "display_in_currency": "Display in Currency",
+      "display_in_currency_desc": "Show usage and quotas as currency in the UI, based on the configured conversion.",
+      "display_token_stat": "Display Token Statistics",
+      "display_token_stat_desc": "Display token statistics in logs and dashboards when available.",
+      "log_consume_enabled": "Enable Consumption Logging",
+      "log_consume_enabled_desc": "Record usage/consumption logs. Turn off to reduce storage overhead.",
+      "quota_per_unit": "Quota per Unit",
+      "quota_per_unit_desc": "Conversion ratio for currency display. Higher value makes each $ represent more quota.",
+      "retry_times": "Retry Times",
+      "retry_times_desc": "Automatic retry attempts for upstream requests on transient errors.",
+      "save": "Save General Settings",
+      "title": "General Settings",
+      "top_up_link": "Top-up Link",
+      "top_up_link_desc": "External link for users to purchase or top up quota."
+    },
+    "loading": "Loading operation settings...",
+    "logs": {
+      "clear_button": "Clear Logs Before This Date",
+      "clear_failed": "Failed to clear logs: {{message}}",
+      "clear_warning": "This will permanently delete all logs before the selected date.",
+      "cleared_success": "Cleared {{count}} logs!",
+      "description": "Clear historical logs to free up storage space",
+      "title": "Log Management"
+    },
+    "monitoring": {
+      "automatic_disable_channel": "Automatic Channel Disable",
+      "automatic_disable_channel_desc": "Automatically disable channels that show sustained failures.",
+      "automatic_enable_channel": "Automatic Channel Enable",
+      "automatic_enable_channel_desc": "Automatically re‑enable previously disabled channels when healthy.",
+      "channel_disable_threshold": "Channel Disable Threshold",
+      "channel_disable_threshold_desc": "Failure rate threshold (percentage) to auto‑disable a channel. Default 5%.",
+      "description": "Configure monitoring thresholds and channel management",
+      "quota_remind_threshold": "Quota Remind Threshold",
+      "quota_remind_threshold_desc": "When remaining quota falls below this value, users will be reminded.",
+      "save": "Save Monitoring Settings",
+      "title": "Monitoring & Channel Settings"
+    },
+    "quota": {
+      "description": "Configure user quota and invitation rewards",
+      "pre_consumed_quota": "Pre-consumed Quota",
+      "pre_consumed_quota_desc": "Quota reserved at request start to avoid abuse. Unused part is returned after billing.",
+      "quota_for_invitee": "Quota for Invitee",
+      "quota_for_invitee_desc": "Quota reward granted to the invitee upon successful registration.",
+      "quota_for_inviter": "Quota for Inviter",
+      "quota_for_inviter_desc": "Quota reward granted to the inviter after a successful invite.",
+      "quota_for_new_user": "Quota for New User",
+      "quota_for_new_user_desc": "Initial quota granted to each newly registered user.",
+      "save": "Save Quota Settings",
+      "title": "Quota Settings"
+    }
+  },
+  "other_settings": {
+    "branding": {
+      "description": "Configure system name, logo, and visual appearance",
+      "logo_url": "Logo URL",
+      "logo_url_desc": "Logo image URL displayed in the header/login screens.",
+      "save": "Save",
+      "system_name": "System Name",
+      "system_name_desc": "System display name shown in the UI and emails.",
+      "theme": "Theme",
+      "theme_desc": "UI theme name. Supported: default, berry, air, modern.",
+      "title": "System Branding"
+    },
+    "content": {
+      "about": "About Page Content (supports Markdown)",
+      "about_desc": "Content for the About page. Markdown supported.",
+      "about_placeholder": "Enter about page content...",
+      "description": "Configure notices, about page, and home page content",
+      "footer": "Footer Content (supports HTML)",
+      "footer_desc": "Footer content rendered site‑wide. HTML allowed; use responsibly.",
+      "footer_placeholder": "Enter footer content...",
+      "home_page": "Home Page Content (supports Markdown)",
+      "home_page_desc": "Content displayed on the home page. Markdown supported.",
+      "home_page_placeholder": "Enter home page content...",
+      "notice": "Notice (supports Markdown)",
+      "notice_desc": "Site‑wide announcement content shown to all users. Markdown supported.",
+      "notice_placeholder": "Enter notice content...",
+      "save_about": "Save About",
+      "save_footer": "Save Footer",
+      "save_home_page": "Save Home Content",
+      "save_notice": "Save Notice",
+      "title": "Content Management"
+    },
+    "loading": "Loading other settings...",
+    "updates": {
+      "check_update": "Check for Updates",
+      "description": "Check for updates and manage system version",
+      "title": "System Updates",
+      "update_available": "Update Available: {{version}}",
+      "view_releases": "View GitHub Releases"
+    }
+  },
+  "personal_settings": {
+    "access_token": {
+      "description": "Generate access tokens and invitation links.",
+      "generate_token": "Generate Access Token",
+      "get_invite_link": "Get Invitation Link",
+      "title": "Access Token & Invitation"
+    },
+    "profile_info": {
+      "description": "Update your personal information and account settings.",
+      "display_name": "Display Name",
+      "display_name_placeholder": "Enter display name",
+      "email": "Email",
+      "email_placeholder": "Enter email",
+      "failed": "Update failed",
+      "password": "New Password (leave empty to keep current)",
+      "password_placeholder": "Enter new password",
+      "success": "Profile updated successfully",
+      "title": "Profile Information",
+      "update_button": "Update Profile",
+      "updating": "Updating...",
+      "username": "Username"
+    },
+    "totp": {
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "description": "Enhance your account security with two-factor authentication.",
+      "disable_button": "Disable TOTP",
+      "disable_placeholder": "Enter TOTP code to disable",
+      "disabled_desc": "Enable two-factor authentication to secure your account.",
+      "disabled_title": "TOTP is not enabled",
+      "enable_button": "Enable TOTP",
+      "enabled_desc": "Your account is protected with two-factor authentication.",
+      "enabled_title": "TOTP is enabled",
+      "errors": {
+        "confirm_failed": "Failed to confirm TOTP",
+        "disable_failed": "Failed to disable TOTP",
+        "invalid_code": "Enter a valid 6-digit code",
+        "load_status": "Failed to load TOTP status",
+        "missing_code": "Please enter the TOTP code to disable",
+        "setup_failed": "Failed to setup TOTP"
+      },
+      "processing": "Processing...",
+      "secret_key": "Secret Key (manual entry)",
+      "setup_desc": "Follow these steps to secure your account with TOTP.",
+      "setup_instructions_title": "Setup Instructions",
+      "setup_step1": "Install an authenticator app (Google Authenticator, Authy, etc.)",
+      "setup_step2": "Scan the QR code below or manually enter the secret key",
+      "setup_step3": "Enter the 6-digit code from your authenticator app",
+      "setup_step4": "Click \"Confirm\" to enable TOTP",
+      "setup_title": "Setup Two-Factor Authentication",
+      "title": "Two-Factor Authentication (TOTP)",
+      "verify_code": "Verification Code",
+      "verify_placeholder": "Enter 6-digit code from your authenticator app",
+      "verify_placeholder_mobile": "Enter 6-digit code"
+    }
+  },
+  "playground": {
+    "actions": {
+      "copy": "Copy",
+      "delete": "Delete",
+      "edit": "Edit",
+      "retry": "Retry"
+    },
+    "chat": {
+      "clear": "Clear",
+      "disable_focus": "Disable Focus Mode",
+      "empty_state": {
+        "description": "Select a model and type your message below",
+        "title": "Start a conversation with the AI"
+      },
+      "enable_focus": "Enable Focus Mode",
+      "export": "Export",
+      "focus": "Focus",
+      "generating": "Generating...",
+      "generating_mobile": "Gen...",
+      "input": {
+        "hint_no_model": "Please select a model from the sidebar to begin",
+        "hint_no_token": "Please select an API token from the sidebar to begin",
+        "placeholder_default": "Type your message... (Shift+Enter for new line)",
+        "placeholder_generating": "Generating response...",
+        "placeholder_no_model": "Select a model to start chatting...",
+        "placeholder_no_token": "Select an API token to start chatting...",
+        "send": "Send",
+        "stop": "Stop"
+      },
+      "model_label": "Model:",
+      "preview": "Preview",
+      "preview_desc": "This is how your message will be rendered",
+      "processing": "is processing..."
+    },
+    "delete": {
+      "cancel": "Cancel",
+      "confirm": "Delete Message",
+      "description": "Are you sure you want to delete this message? This action cannot be undone.",
+      "preview_label": "{{role}} Message:",
+      "title": "Delete {{role}} Message"
+    },
+    "edit": {
+      "attachments_hint": "You can delete individual attachments by clicking the × button that appears when you hover over them.",
+      "attachments_label": "Message Attachments ({{count}})",
+      "cancel": "Cancel",
+      "content_label": "{{role}} Message Content",
+      "description": "Make changes to the message content. You can use <1>Ctrl+Enter</1> to save or <3>Esc</3> to cancel.",
+      "save": "Save Changes",
+      "shortcuts": {
+        "cancel": "to cancel",
+        "save": "to save"
+      },
+      "stats": {
+        "chars": "chars",
+        "modified": "Modified",
+        "words": "words"
+      },
+      "title": "Edit {{role}} Message"
+    },
+    "export": {
+      "button_label": "Export as JSON",
+      "button_sublabel": "Structured data format",
+      "cancel": "Cancel",
+      "description": "Export your conversation in JSON format. The file will include a unique digest for verification.",
+      "filename_hint": "Date and digest will be automatically added. Extension will be set to .json",
+      "filename_label": "Custom Filename (optional)",
+      "from_model": " from {{model}}",
+      "generating": "Generating export file...",
+      "ready_to_export": "Ready to export {{count}} message{{plural}}",
+      "title": "Export Conversation"
+    },
+    "notifications": {
+      "channel_metadata_error": "Failed to load channel metadata for model filtering",
+      "copied_message": "Message copied to clipboard",
+      "copied_title": "Copied!",
+      "copy_failed_message": "Failed to copy message to clipboard",
+      "copy_failed_title": "Copy failed",
+      "error_title": "Error",
+      "load_models_error": "Failed to load models from the selected token",
+      "load_tokens_error": "Failed to load API tokens",
+      "message_deleted_message": "Message has been removed from conversation",
+      "message_deleted_title": "Message deleted",
+      "message_edited_message": "Message has been updated successfully",
+      "message_edited_title": "Message edited",
+      "no_models_channel_error": "No models matched the selected channel ({{channel}}). Adjust the filter or choose another channel.",
+      "no_models_title": "No Models Available",
+      "no_models_token_error": "Failed to load models from selected token. The selected token has no models configured.",
+      "no_tokens_error": "Failed to load models from selected token. Please add an enabled API token to use the playground.",
+      "no_tokens_title": "No API Tokens Available"
+    },
+    "parameters": {
+      "channel": {
+        "browse_all": "Leave blank to browse models across every channel.",
+        "label": "Channel Filter",
+        "loading": "Loading...",
+        "no_match": "No channels match your search.",
+        "placeholder": "Filter by channel",
+        "showing_associated": "Showing models associated with {{channel}}."
+      },
+      "extended_thinking": {
+        "description": "Allow Claude to show its reasoning process",
+        "label": "Enable Extended Thinking"
+      },
+      "frequency_penalty": {
+        "description": "Penalizes frequent tokens: -2.0 to 2.0",
+        "label": "Frequency Penalty"
+      },
+      "max_completion_tokens": {
+        "description": "Maximum completion tokens (preferred over max_tokens)",
+        "label": "Max Completion Tokens"
+      },
+      "max_tokens": {
+        "description": "Maximum response length",
+        "label": "Max Tokens"
+      },
+      "model": {
+        "active": "Active model: {{model}}.",
+        "channels_label": "Channels: {{channels}}",
+        "label": "Model",
+        "loading": "Loading models...",
+        "more_channels": "+{{count}} more",
+        "no_available": "No models are available for the current token and channel selection.",
+        "no_match": "No models match your search.",
+        "no_models": "No models available",
+        "no_models_for_selection": "No models available for the selected token and channel.",
+        "search_hint": "Search to find a model, then press Enter or click to select it.",
+        "search_placeholder": "Search models"
+      },
+      "presence_penalty": {
+        "description": "Penalizes repeated tokens: -2.0 to 2.0",
+        "label": "Presence Penalty"
+      },
+      "reasoning_effort": {
+        "description": "Reasoning effort level (for supported models like DeepSeek)",
+        "label": "Reasoning Effort",
+        "options": {
+          "high": "High",
+          "low": "Low",
+          "medium": "Medium",
+          "none": "None"
+        }
+      },
+      "show_reasoning": {
+        "description": "Display AI reasoning processes when available",
+        "label": "Show Reasoning Content"
+      },
+      "stop_sequences": {
+        "description": "Stop generation at these sequences (comma-separated)",
+        "label": "Stop Sequences",
+        "placeholder": "Comma-separated stop sequences"
+      },
+      "system_message": {
+        "description": "System messages provide context and instructions that guide the AI's behavior throughout the conversation",
+        "label": "System Message",
+        "placeholder": "Enter system instructions that will guide the AI's behavior and responses..."
+      },
+      "temperature": {
+        "description": "Controls randomness: 0 = focused, 2 = creative",
+        "label": "Temperature"
+      },
+      "thinking_budget": {
+        "description": "Maximum tokens for thinking content (minimum 1024)",
+        "label": "Thinking Budget Tokens"
+      },
+      "title": "Model & Parameters",
+      "token": {
+        "create_link": "Create a token",
+        "label": "API Token",
+        "loading": "Loading...",
+        "no_enabled": "No enabled tokens found.",
+        "no_tokens": "No tokens available",
+        "select_placeholder": "Select a token",
+        "unlimited": "Unlimited"
+      },
+      "top_k": {
+        "description": "Top-K sampling: limits token choices to top K most likely",
+        "label": "Top K"
+      },
+      "top_p": {
+        "description": "Nucleus sampling: 0.1 = focused, 1.0 = diverse",
+        "label": "Top P"
+      }
+    },
+    "roles": {
+      "assistant": "Assistant",
+      "error": "Error",
+      "message": "Message",
+      "system": "System",
+      "system_message": "System Message",
+      "user": "User"
+    },
+    "system_prompt": "You are a helpful AI assistant with expertise across multiple domains including technical topics, creative tasks, and analytical reasoning.\n\n## Context and Capabilities\n\nYour responses should be grounded in your training data and adapted to the user's needs. When uncertain about current events or information beyond your training, acknowledge these limitations rather than speculate.\n\n**You excel at:**\n- Breaking down complex problems into clear, manageable steps\n- Providing code examples with proper syntax highlighting and explanation\n- Analyzing data and offering evidence-based insights\n- Creative writing with attention to tone, style, and audience\n- Teaching concepts through clear explanations and examples\n\n**You cannot:**\n- Access external URLs, browse the web, or retrieve real-time information\n- Execute code, run commands, or interact with external systems\n- Access files, databases, or personal data outside this conversation\n\n## Response Guidelines\n\n**Adapt your style to the task:**\n- Technical questions → Precise, structured answers with code/examples\n- Creative requests → Engaging, imaginative responses\n- Analysis tasks → Evidence-based reasoning with clear conclusions\n- Simple queries → Direct answers (offer elaboration if relevant)\n- Complex problems → Step-by-step breakdowns with explanations\n\n**Format for clarity:**\n- Use Markdown for structure (headers, lists, code blocks, emphasis)\n- Include code blocks with language tags for syntax highlighting\n- Break long responses into logical sections\n- Use tables, bullet points, and numbering for readability\n\n**Engage authentically:**\n- Ask clarifying questions when requirements are ambiguous\n- Acknowledge uncertainty or limitations directly\n- Offer alternative approaches when appropriate\n- Vary language naturally (avoid repetitive phrasing)\n- Show reasoning for complex or subjective topics\n\n## Handling Sensitive Content\n\nFor potentially harmful, illegal, or sensitive topics:\n- Provide factual, educational information where appropriate\n- Explain risks, legal considerations, and ethical implications\n- Redirect to constructive alternatives when requests could cause harm\n- Decline requests that clearly promote illegal activities or harm\n\n## Quality Standards\n\n- **Accuracy**: Ground responses in knowledge, acknowledge gaps\n- **Clarity**: Use precise language, define technical terms\n- **Conciseness**: Match depth to question complexity\n- **Helpfulness**: Anticipate follow-up needs, offer next steps\n- **Respect**: Maintain professional, empathetic tone regardless of topic",
+    "title": "AI Playground"
+  },
   "redemptions": {
     "actions": {
       "add": "Add Redemption",
@@ -874,6 +1228,16 @@
       "status": "Status"
     }
   },
+  "settings": {
+    "description": "Configure your account and system settings",
+    "tabs": {
+      "operation": "Operation",
+      "other": "Other",
+      "personal": "Personal",
+      "system": "System"
+    },
+    "title": "Settings"
+  },
   "status": {
     "badges": {
       "auto_disabled": "Auto Disabled",
@@ -930,6 +1294,120 @@
     },
     "subtitle": "Monitor the status and performance of all channels",
     "title": "Channel Status"
+  },
+  "system_settings": {
+    "description": "Configure system-wide settings and options.",
+    "descriptions": {
+      "About": "About page content (markdown/HTML supported by frontend rendering).",
+      "ApproximateTokenEnabled": "Use a faster approximation for token counting to improve performance (may be slightly less accurate).",
+      "AutomaticDisableChannelEnabled": "Automatically disable channels that show sustained failures.",
+      "AutomaticEnableChannelEnabled": "Automatically re‑enable previously disabled channels when healthy.",
+      "ChannelDisableThreshold": "Failure rate threshold (percentage) to auto‑disable a channel. Default 5%.",
+      "ChatLink": "External chat/support link shown in the UI.",
+      "DisplayInCurrencyEnabled": "Show usage and quotas as currency in the UI, based on the configured conversion.",
+      "DisplayTokenStatEnabled": "Display token statistics in logs and dashboards when available.",
+      "EmailDomainRestrictionEnabled": "Only allow registrations from domains listed below.",
+      "EmailDomainWhitelist": "Comma-separated allowed email domains (e.g., gmail.com, example.com).",
+      "EmailVerificationEnabled": "Require email verification for actions like registration or password reset.",
+      "Footer": "Footer text or HTML displayed site‑wide.",
+      "GitHubClientId": "GitHub OAuth Client ID used for login.",
+      "GitHubClientSecret": "GitHub OAuth Client Secret used to exchange authorization codes. Stored securely and never displayed.",
+      "GitHubOAuthEnabled": "Enable GitHub OAuth login. Requires GitHub Client ID and Secret.",
+      "GroupRatio": "JSON mapping of group‑specific billing ratios. Controls discounts/premiums by user group.",
+      "HomePageContent": "Content displayed on the home page.",
+      "LarkClientId": "Lark app ID for Lark OAuth login.",
+      "LarkClientSecret": "Lark app secret used for completing the OAuth flow. Stored securely and never displayed.",
+      "LogConsumeEnabled": "Record usage/consumption logs. Turn off to reduce storage overhead.",
+      "Logo": "Logo URL displayed in the header/login screens.",
+      "MessagePusherAddress": "Endpoint of the alert/notification pusher service for log events.",
+      "MessagePusherToken": "Authentication token for the alert/notification pusher. Stored securely and never displayed.",
+      "Notice": "Site‑wide announcement content shown to all users.",
+      "OidcAuthorizationEndpoint": "OIDC authorization endpoint URL.",
+      "OidcClientId": "OIDC Client ID used when initiating the OIDC login flow.",
+      "OidcClientSecret": "OIDC client secret used during the token exchange. Stored securely and never displayed.",
+      "OidcEnabled": "Enable OpenID Connect (OIDC) login. Requires OIDC endpoints and credentials.",
+      "OidcTokenEndpoint": "OIDC token endpoint URL.",
+      "OidcUserinfoEndpoint": "OIDC userinfo endpoint URL.",
+      "OidcWellKnown": "OIDC well-known discovery URL (e.g., https://issuer/.well-known/openid-configuration).",
+      "PasswordLoginEnabled": "Allow users to sign in with email and password. Disable to require OAuth or other providers.",
+      "PasswordRegisterEnabled": "Allow new users to register with email and password.",
+      "PreConsumedQuota": "Quota reserved at request start to avoid abuse. Unused part is returned after billing.",
+      "QuotaForInvitee": "Quota reward granted to the invitee upon successful registration.",
+      "QuotaForInviter": "Quota reward granted to the inviter after a successful invite.",
+      "QuotaForNewUser": "Initial quota granted to each newly registered user.",
+      "QuotaPerUnit": "Conversion ratio for currency display. Higher value makes each $ represent more quota.",
+      "QuotaRemindThreshold": "When remaining quota falls below this value, users will be reminded.",
+      "RegisterEnabled": "Master switch for user registration. Turn off to stop all new sign-ups.",
+      "RetryTimes": "Automatic retry attempts for upstream requests on transient errors.",
+      "ServerAddress": "Public base URL of this server (used in links/callbacks).",
+      "SMTPAccount": "SMTP username or account email used to authenticate.",
+      "SMTPFrom": "From address used in outgoing emails (e.g., no-reply@yourdomain).",
+      "SMTPPort": "SMTP server port (e.g., 587 for STARTTLS, 465 for SMTPS).",
+      "SMTPServer": "SMTP server hostname for sending emails.",
+      "SMTPToken": "SMTP password or application token used to authenticate. Stored securely and never displayed.",
+      "SystemName": "System display name shown in the UI and emails.",
+      "Theme": "UI theme (default, berry, air, modern).",
+      "TopUpLink": "External link for users to purchase or top up quota.",
+      "TurnstileCheckEnabled": "Enable Cloudflare Turnstile on critical actions (registration/reset).",
+      "TurnstileSecretKey": "Cloudflare Turnstile secret key used by the server. Keep this confidential.",
+      "TurnstileSiteKey": "Cloudflare Turnstile site key used by the frontend.",
+      "WeChatAccountQRCodeImageURL": "URL of the WeChat account QR code image displayed to users.",
+      "WeChatAuthEnabled": "Enable WeChat login. Requires WeChat server settings.",
+      "WeChatServerAddress": "WeChat login forwarder/server base URL.",
+      "WeChatServerToken": "Verification token for your WeChat server integration. Stored securely and never displayed."
+    },
+    "groups": {
+      "authentication": {
+        "description": "Control how users sign up and sign in to your workspace.",
+        "title": "Authentication & Registration"
+      },
+      "branding": {
+        "description": "Customize the look and feel of the product experience.",
+        "title": "Branding & Content"
+      },
+      "channels": {
+        "description": "Automatically react to upstream channel health and retry behavior.",
+        "title": "Channels & Reliability"
+      },
+      "email": {
+        "description": "Set up outbound email delivery.",
+        "title": "Email (SMTP)"
+      },
+      "links": {
+        "description": "Control external links exposed to your end users.",
+        "title": "Links"
+      },
+      "logging": {
+        "description": "Tune observability and downstream integrations.",
+        "title": "Logging, Metrics & Integrations"
+      },
+      "oauth": {
+        "description": "Connect third-party identity providers for seamless sign-in.",
+        "title": "OAuth / SSO Providers"
+      },
+      "other": {
+        "description": "Configuration keys that are not yet categorized.",
+        "title": "Other Settings"
+      },
+      "quota": {
+        "description": "Manage quotas, billing ratios, and currency presentation.",
+        "title": "Quota & Billing"
+      },
+      "security": {
+        "description": "Configure bot protection and security checks.",
+        "title": "Anti-bot & Security"
+      }
+    },
+    "loading": "Loading options...",
+    "no_options": "No options available or insufficient permissions.",
+    "refresh": "Refresh",
+    "save": "Save",
+    "save_failed": "Save failed",
+    "saved_message": "{{key}} updated successfully.",
+    "saved_success": "Setting saved",
+    "saving": "Saving...",
+    "sensitive_hint": "Stored value is hidden. Enter a new value to overwrite the existing secret.",
+    "title": "System Settings"
   },
   "tokens": {
     "edit": {

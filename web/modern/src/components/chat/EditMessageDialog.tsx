@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import {
   Dialog,
   DialogContent,
@@ -7,11 +8,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent } from '@/components/ui/card'
-import { Edit2, X, Image as ImageIcon } from 'lucide-react'
+import { Textarea } from '@/components/ui/textarea'
+import { Edit2, Image as ImageIcon, X } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 
 interface EditMessageDialogProps {
   isOpen: boolean
@@ -30,6 +31,7 @@ export function EditMessageDialog({
   originalContent,
   messageRole
 }: EditMessageDialogProps) {
+  const { t } = useTranslation()
   const [editedContent, setEditedContent] = useState(currentContent)
   const [editedAttachments, setEditedAttachments] = useState<any[]>([])
   const [hasChanges, setHasChanges] = useState(false)
@@ -120,11 +122,11 @@ export function EditMessageDialog({
 
   const getRoleDisplayName = () => {
     switch (messageRole) {
-      case 'user': return 'User'
-      case 'assistant': return 'Assistant'
-      case 'system': return 'System'
-      case 'error': return 'Error'
-      default: return 'Message'
+      case 'user': return t('playground.roles.user')
+      case 'assistant': return t('playground.roles.assistant')
+      case 'system': return t('playground.roles.system')
+      case 'error': return t('playground.roles.error')
+      default: return t('playground.roles.message')
     }
   }
 
@@ -144,12 +146,14 @@ export function EditMessageDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Edit2 className="h-4 w-4" />
-            Edit {getRoleDisplayName()} Message
+            {t('playground.edit.title', { role: getRoleDisplayName() })}
           </DialogTitle>
           <DialogDescription>
-            Make changes to the message content. You can use{' '}
-            <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl+Enter</kbd> to save or{' '}
-            <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Esc</kbd> to cancel.
+            <Trans i18nKey="playground.edit.description">
+              Make changes to the message content. You can use{' '}
+              <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Ctrl+Enter</kbd> to save or{' '}
+              <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded">Esc</kbd> to cancel.
+            </Trans>
           </DialogDescription>
         </DialogHeader>
 
@@ -157,20 +161,20 @@ export function EditMessageDialog({
           <div className="space-y-3">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
               <Label htmlFor="message-content" className={`text-sm font-semibold ${getRoleColor()} flex-shrink-0`}>
-                {getRoleDisplayName()} Message Content
+                {t('playground.edit.content_label', { role: getRoleDisplayName() })}
               </Label>
               <div className="flex items-center gap-1 sm:gap-2 text-xs flex-shrink-0 flex-wrap">
                 <span className="text-muted-foreground">
-                  {editedContent.length} chars
+                  {editedContent.length} {t('playground.edit.stats.chars')}
                 </span>
                 <span className="text-muted-foreground">•</span>
                 <span className="text-muted-foreground">
-                  {editedContent.trim() ? editedContent.trim().split(/\s+/).length : 0} words
+                  {editedContent.trim() ? editedContent.trim().split(/\s+/).length : 0} {t('playground.edit.stats.words')}
                 </span>
                 {hasChanges && (
                   <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
                     <span className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></span>
-                    Modified
+                    {t('playground.edit.stats.modified')}
                   </span>
                 )}
               </div>
@@ -193,10 +197,10 @@ export function EditMessageDialog({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-xs">
             <div className="flex items-center gap-2 text-muted-foreground flex-wrap">
               <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded border">Ctrl+Enter</kbd>
-              <span>to save</span>
+              <span>{t('playground.edit.shortcuts.save')}</span>
               <span>•</span>
               <kbd className="px-1.5 py-0.5 text-xs bg-muted rounded border">Esc</kbd>
-              <span>to cancel</span>
+              <span>{t('playground.edit.shortcuts.cancel')}</span>
             </div>
           </div>
 
@@ -205,7 +209,7 @@ export function EditMessageDialog({
             <div className="space-y-2">
               <Label className="text-sm font-medium flex items-center gap-2">
                 <ImageIcon className="h-4 w-4" />
-                Message Attachments ({editedAttachments.length})
+                {t('playground.edit.attachments_label', { count: editedAttachments.length })}
               </Label>
               <div className="max-h-[120px] sm:max-h-[180px] overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 p-3 bg-muted/30 rounded-lg">
@@ -236,7 +240,7 @@ export function EditMessageDialog({
                 </div>
               </div>
               <div className="text-xs text-muted-foreground">
-                You can delete individual attachments by clicking the × button that appears when you hover over them.
+                {t('playground.edit.attachments_hint')}
               </div>
             </div>
           )}
@@ -248,14 +252,14 @@ export function EditMessageDialog({
             onClick={handleCancel}
             className="px-3 py-2 text-sm"
           >
-            Cancel
+            {t('playground.edit.cancel')}
           </Button>
           <Button
             onClick={handleSave}
             disabled={!hasChanges}
             className="px-3 py-2 text-sm"
           >
-            Save Changes
+            {t('playground.edit.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

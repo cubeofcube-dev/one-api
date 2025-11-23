@@ -1,5 +1,3 @@
-import React from 'react'
-import { Copy, Edit2, Trash2, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -8,6 +6,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { Copy, Edit2, MoreHorizontal, Trash2 } from 'lucide-react'
 
 interface UserMessageActionsProps {
   onCopyMessage: () => void

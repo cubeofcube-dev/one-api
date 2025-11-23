@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
-import * as z from 'zod'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Separator } from '@/components/ui/separator'
-import { api } from '@/lib/api'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { Info } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import * as z from 'zod'
 
 const otherSchema = z.object({
   Footer: z.string().default(''),
@@ -25,21 +25,22 @@ const otherSchema = z.object({
 type OtherForm = z.infer<typeof otherSchema>
 
 export function OtherSettings() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [updateData, setUpdateData] = useState<{ tag_name: string; content: string } | null>(null)
 
   // Descriptions for each setting on this page
   const descriptions = useMemo<Record<string, string>>(
     () => ({
-      SystemName: 'System display name shown in the UI and emails.',
-      Logo: 'Logo image URL displayed in the header/login screens.',
-      Theme: 'UI theme name. Supported: default, berry, air, modern.',
-      Notice: 'Site‑wide announcement content shown to all users. Markdown supported.',
-      About: 'Content for the About page. Markdown supported.',
-      HomePageContent: 'Content displayed on the home page. Markdown supported.',
-      Footer: 'Footer content rendered site‑wide. HTML allowed; use responsibly.',
+      SystemName: t('other_settings.branding.system_name_desc'),
+      Logo: t('other_settings.branding.logo_url_desc'),
+      Theme: t('other_settings.branding.theme_desc'),
+      Notice: t('other_settings.content.notice_desc'),
+      About: t('other_settings.content.about_desc'),
+      HomePageContent: t('other_settings.content.home_page_desc'),
+      Footer: t('other_settings.content.footer_desc'),
     }),
-    []
+    [t]
   )
 
   const form = useForm<OtherForm>({
@@ -121,7 +122,7 @@ export function OtherSettings() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3">Loading other settings...</span>
+          <span className="ml-3">{t('other_settings.loading')}</span>
         </CardContent>
       </Card>
     )
@@ -133,8 +134,8 @@ export function OtherSettings() {
         {/* System Branding */}
         <Card>
           <CardHeader>
-            <CardTitle>System Branding</CardTitle>
-            <CardDescription>Configure system name, logo, and visual appearance</CardDescription>
+            <CardTitle>{t('other_settings.branding.title')}</CardTitle>
+            <CardDescription>{t('other_settings.branding.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -145,7 +146,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        System Name
+                        {t('other_settings.branding.system_name')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About System Name">
@@ -161,7 +162,7 @@ export function OtherSettings() {
                         <FormControl>
                           <Input placeholder="One API" {...field} />
                         </FormControl>
-                        <Button onClick={() => submitField('SystemName')}>Save</Button>
+                        <Button onClick={() => submitField('SystemName')}>{t('other_settings.branding.save')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -174,7 +175,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Logo URL
+                        {t('other_settings.branding.logo_url')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Logo URL">
@@ -190,7 +191,7 @@ export function OtherSettings() {
                         <FormControl>
                           <Input placeholder="https://..." {...field} />
                         </FormControl>
-                        <Button onClick={() => submitField('Logo')}>Save</Button>
+                        <Button onClick={() => submitField('Logo')}>{t('other_settings.branding.save')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -203,7 +204,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Theme
+                        {t('other_settings.branding.theme')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Theme">
@@ -219,7 +220,7 @@ export function OtherSettings() {
                         <FormControl>
                           <Input placeholder="default" {...field} />
                         </FormControl>
-                        <Button onClick={() => submitField('Theme')}>Save</Button>
+                        <Button onClick={() => submitField('Theme')}>{t('other_settings.branding.save')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -233,8 +234,8 @@ export function OtherSettings() {
         {/* Content Management */}
         <Card>
           <CardHeader>
-            <CardTitle>Content Management</CardTitle>
-            <CardDescription>Configure notices, about page, and home page content</CardDescription>
+            <CardTitle>{t('other_settings.content.title')}</CardTitle>
+            <CardDescription>{t('other_settings.content.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -245,7 +246,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Notice (supports Markdown)
+                        {t('other_settings.content.notice')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Notice">
@@ -260,12 +261,12 @@ export function OtherSettings() {
                       <div className="space-y-2">
                         <FormControl>
                           <Textarea
-                            placeholder="Enter notice content..."
+                            placeholder={t('other_settings.content.notice_placeholder')}
                             className="min-h-[100px]"
                             {...field}
                           />
                         </FormControl>
-                        <Button onClick={() => submitField('Notice')}>Save Notice</Button>
+                        <Button onClick={() => submitField('Notice')}>{t('other_settings.content.save_notice')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -278,7 +279,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        About Page Content (supports Markdown)
+                        {t('other_settings.content.about')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About About Page Content">
@@ -293,12 +294,12 @@ export function OtherSettings() {
                       <div className="space-y-2">
                         <FormControl>
                           <Textarea
-                            placeholder="Enter about page content..."
+                            placeholder={t('other_settings.content.about_placeholder')}
                             className="min-h-[100px]"
                             {...field}
                           />
                         </FormControl>
-                        <Button onClick={() => submitField('About')}>Save About</Button>
+                        <Button onClick={() => submitField('About')}>{t('other_settings.content.save_about')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -311,7 +312,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Home Page Content (supports Markdown)
+                        {t('other_settings.content.home_page')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Home Page Content">
@@ -326,12 +327,12 @@ export function OtherSettings() {
                       <div className="space-y-2">
                         <FormControl>
                           <Textarea
-                            placeholder="Enter home page content..."
+                            placeholder={t('other_settings.content.home_page_placeholder')}
                             className="min-h-[100px]"
                             {...field}
                           />
                         </FormControl>
-                        <Button onClick={() => submitField('HomePageContent')}>Save Home Content</Button>
+                        <Button onClick={() => submitField('HomePageContent')}>{t('other_settings.content.save_home_page')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -344,7 +345,7 @@ export function OtherSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Footer Content (supports HTML)
+                        {t('other_settings.content.footer')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Footer Content">
@@ -359,12 +360,12 @@ export function OtherSettings() {
                       <div className="space-y-2">
                         <FormControl>
                           <Textarea
-                            placeholder="Enter footer content..."
+                            placeholder={t('other_settings.content.footer_placeholder')}
                             className="min-h-[80px]"
                             {...field}
                           />
                         </FormControl>
-                        <Button onClick={() => submitField('Footer')}>Save Footer</Button>
+                        <Button onClick={() => submitField('Footer')}>{t('other_settings.content.save_footer')}</Button>
                       </div>
                       <FormMessage />
                     </FormItem>
@@ -378,21 +379,21 @@ export function OtherSettings() {
         {/* System Updates */}
         <Card>
           <CardHeader>
-            <CardTitle>System Updates</CardTitle>
-            <CardDescription>Check for updates and manage system version</CardDescription>
+            <CardTitle>{t('other_settings.updates.title')}</CardTitle>
+            <CardDescription>{t('other_settings.updates.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex gap-2">
-                <Button onClick={checkUpdate}>Check for Updates</Button>
+                <Button onClick={checkUpdate}>{t('other_settings.updates.check_update')}</Button>
                 <Button variant="outline" onClick={openGitHubRelease}>
-                  View GitHub Releases
+                  {t('other_settings.updates.view_releases')}
                 </Button>
               </div>
 
               {updateData && (
                 <div className="p-4 bg-muted rounded-lg">
-                  <h4 className="font-medium mb-2">Update Available: {updateData.tag_name}</h4>
+                  <h4 className="font-medium mb-2">{t('other_settings.updates.update_available', { version: updateData.tag_name })}</h4>
                   <div className="text-sm text-muted-foreground">
                     {updateData.content}
                   </div>

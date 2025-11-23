@@ -209,7 +209,8 @@
  * @see STORAGE_KEYS for storage key definitions
  */
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { api } from '@/lib/api'
 import { useNotifications } from '@/components/ui/notifications'
 // Use a11y-dark theme for better compatibility with both light and dark modes
@@ -279,66 +280,9 @@ const formatChannelName = (channelName: string): string => {
   return channelName
 }
 
-// Note: This uses context engineering rather than prompt engineering. Context engineering establishes
-// role, capabilities, and decision frameworks, while prompt engineering relies on explicit instructions.
-const defaultSystemPrompt = `You are a helpful AI assistant with expertise across multiple domains including technical topics, creative tasks, and analytical reasoning.
-
-## Context and Capabilities
-
-Your responses should be grounded in your training data and adapted to the user's needs. When uncertain about current events or information beyond your training, acknowledge these limitations rather than speculate.
-
-**You excel at:**
-- Breaking down complex problems into clear, manageable steps
-- Providing code examples with proper syntax highlighting and explanation
-- Analyzing data and offering evidence-based insights
-- Creative writing with attention to tone, style, and audience
-- Teaching concepts through clear explanations and examples
-
-**You cannot:**
-- Access external URLs, browse the web, or retrieve real-time information
-- Execute code, run commands, or interact with external systems
-- Access files, databases, or personal data outside this conversation
-
-## Response Guidelines
-
-**Adapt your style to the task:**
-- Technical questions → Precise, structured answers with code/examples
-- Creative requests → Engaging, imaginative responses
-- Analysis tasks → Evidence-based reasoning with clear conclusions
-- Simple queries → Direct answers (offer elaboration if relevant)
-- Complex problems → Step-by-step breakdowns with explanations
-
-**Format for clarity:**
-- Use Markdown for structure (headers, lists, code blocks, emphasis)
-- Include code blocks with language tags for syntax highlighting
-- Break long responses into logical sections
-- Use tables, bullet points, and numbering for readability
-
-**Engage authentically:**
-- Ask clarifying questions when requirements are ambiguous
-- Acknowledge uncertainty or limitations directly
-- Offer alternative approaches when appropriate
-- Vary language naturally (avoid repetitive phrasing)
-- Show reasoning for complex or subjective topics
-
-## Handling Sensitive Content
-
-For potentially harmful, illegal, or sensitive topics:
-- Provide factual, educational information where appropriate
-- Explain risks, legal considerations, and ethical implications
-- Redirect to constructive alternatives when requests could cause harm
-- Decline requests that clearly promote illegal activities or harm
-
-## Quality Standards
-
-- **Accuracy**: Ground responses in knowledge, acknowledge gaps
-- **Clarity**: Use precise language, define technical terms
-- **Conciseness**: Match depth to question complexity
-- **Helpfulness**: Anticipate follow-up needs, offer next steps
-- **Respect**: Maintain professional, empathetic tone regardless of topic`
-
-
 export function PlaygroundPage() {
+  const { t } = useTranslation()
+  const defaultSystemPrompt = t('playground.system_prompt')
   const { notify } = useNotifications()
   const { user } = useAuthStore()
   const [messages, setMessages] = useState<Message[]>([])
@@ -422,16 +366,16 @@ export function PlaygroundPage() {
         } else {
           setChannelModelMap({})
           notify({
-            title: 'Error',
-            message: 'Failed to load channel metadata for model filtering',
+            title: t('playground.notifications.error_title'),
+            message: t('playground.notifications.channel_metadata_error'),
             type: 'error'
           })
         }
       } catch {
         setChannelModelMap({})
         notify({
-          title: 'Error',
-          message: 'Failed to load channel metadata for model filtering',
+          title: t('playground.notifications.error_title'),
+          message: t('playground.notifications.channel_metadata_error'),
           type: 'error'
         })
       } finally {
@@ -507,8 +451,10 @@ export function PlaygroundPage() {
         const remaining = model.channels.length - visibleChannels.length
         if (visibleChannels.length > 0) {
           const base = visibleChannels.join(', ')
-          const summary = remaining > 0 ? `${base}, +${remaining} more` : base
-          description = `Channels: ${summary}`
+          const summary = remaining > 0
+            ? `${base}, ${t('playground.parameters.model.more_channels', { count: remaining })}`
+            : base
+          description = t('playground.parameters.model.channels_label', { channels: summary })
         }
       }
 
@@ -955,8 +901,8 @@ export function PlaygroundPage() {
           setModelInputValue('')
           channelErrorRef.current = null
           notify({
-            title: 'No Models Available',
-            message: 'Failed to load models from selected token. The selected token has no models configured.',
+            title: t('playground.notifications.no_models_title'),
+            message: t('playground.notifications.no_models_token_error'),
             type: 'error'
           })
           return
@@ -1047,8 +993,8 @@ export function PlaygroundPage() {
           if (channelErrorRef.current !== selectedChannel) {
             const channelLabel = channelLabelMap.get(selectedChannel) ?? formatChannelName(selectedChannel)
             notify({
-              title: 'No Models Available',
-              message: `No models matched the selected channel (${channelLabel}). Adjust the filter or choose another channel.`,
+              title: t('playground.notifications.no_models_title'),
+              message: t('playground.notifications.no_models_channel_error', { channel: channelLabel }),
               type: 'error'
             })
             channelErrorRef.current = selectedChannel
@@ -1094,8 +1040,8 @@ export function PlaygroundPage() {
         setModelInputValue(resolveLabel(fallbackModelId))
       } catch {
         notify({
-          title: 'Error',
-          message: 'Failed to load models from the selected token',
+          title: t('playground.notifications.error_title'),
+          message: t('playground.notifications.load_models_error'),
           type: 'error'
         })
         setModels([])
@@ -1114,8 +1060,8 @@ export function PlaygroundPage() {
       setSelectedModel('')
       setModelInputValue('')
       notify({
-        title: 'No API Tokens Available',
-        message: 'Failed to load models from selected token. Please add an enabled API token to use the playground.',
+        title: t('playground.notifications.no_tokens_title'),
+        message: t('playground.notifications.no_tokens_error'),
         type: 'error'
       })
     }
@@ -1151,8 +1097,8 @@ export function PlaygroundPage() {
       }
     } catch (error) {
       notify({
-        title: 'Error',
-        message: 'Failed to load API tokens',
+        title: t('playground.notifications.error_title'),
+        message: t('playground.notifications.load_tokens_error'),
         type: 'error'
       })
       setTokens([])
@@ -1200,14 +1146,14 @@ export function PlaygroundPage() {
     try {
       await navigator.clipboard.writeText(content)
       notify({
-        title: 'Copied!',
-        message: 'Message copied to clipboard',
+        title: t('playground.notifications.copied_title'),
+        message: t('playground.notifications.copied_message'),
         type: 'success'
       })
     } catch (error) {
       notify({
-        title: 'Copy failed',
-        message: 'Failed to copy message to clipboard',
+        title: t('playground.notifications.copy_failed_title'),
+        message: t('playground.notifications.copy_failed_message'),
         type: 'error'
       })
     }
@@ -1251,8 +1197,8 @@ export function PlaygroundPage() {
     setMessages(updatedMessages)
 
     notify({
-      title: 'Message edited',
-      message: 'Message has been updated successfully',
+      title: t('playground.notifications.message_edited_title'),
+      message: t('playground.notifications.message_edited_message'),
       type: 'success'
     })
   }
@@ -1262,8 +1208,8 @@ export function PlaygroundPage() {
     setMessages(updatedMessages)
 
     notify({
-      title: 'Message deleted',
-      message: 'Message has been removed from conversation',
+      title: t('playground.notifications.message_deleted_title'),
+      message: t('playground.notifications.message_deleted_message'),
       type: 'success'
     })
   }

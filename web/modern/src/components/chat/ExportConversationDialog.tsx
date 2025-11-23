@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,15 +7,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { FileDown, FileJson } from 'lucide-react'
 import {
   Message,
-  generateSHA256Digest,
-  formatTimestamp
+  formatTimestamp,
+  generateSHA256Digest
 } from '@/lib/utils'
+import { FileDown, FileJson } from 'lucide-react'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ExportConversationDialogProps {
   isOpen: boolean
@@ -36,6 +37,7 @@ export function ExportConversationDialog({
   conversationCreated,
   conversationCreatedBy
 }: ExportConversationDialogProps) {
+  const { t } = useTranslation()
   const [customFilename, setCustomFilename] = useState('')
   const [isExporting, setIsExporting] = useState(false)
 
@@ -126,16 +128,16 @@ export function ExportConversationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileDown className="h-4 w-4" />
-            Export Conversation
+            {t('playground.export.title')}
           </DialogTitle>
           <DialogDescription className="space-y-2">
             <div>
-              Export your conversation in JSON format. The file will include a unique digest for verification.
+              {t('playground.export.description')}
             </div>
             {messages.length > 0 && (
               <div className="text-sm text-muted-foreground">
-                Ready to export {messages.length} message{messages.length === 1 ? '' : 's'}
-                {selectedModel && ` from ${selectedModel}`}
+                {t('playground.export.ready_to_export', { count: messages.length, plural: messages.length === 1 ? '' : 's' })}
+                {selectedModel && t('playground.export.from_model', { model: selectedModel })}
               </div>
             )}
           </DialogDescription>
@@ -145,7 +147,7 @@ export function ExportConversationDialog({
           {/* Custom filename input */}
           <div className="space-y-2">
             <Label htmlFor="filename" className="text-sm font-medium">
-              Custom Filename (optional)
+              {t('playground.export.filename_label')}
             </Label>
             <Input
               id="filename"
@@ -156,7 +158,7 @@ export function ExportConversationDialog({
               className="text-sm"
             />
             <p className="text-xs text-muted-foreground">
-              Date and digest will be automatically added. Extension will be set to .json
+              {t('playground.export.filename_hint')}
             </p>
           </div>
 
@@ -170,8 +172,8 @@ export function ExportConversationDialog({
             >
               <FileJson className="h-8 w-8 text-green-600" />
               <div className="text-center">
-                <div className="font-medium">Export as JSON</div>
-                <div className="text-xs text-muted-foreground">Structured data format</div>
+                <div className="font-medium">{t('playground.export.button_label')}</div>
+                <div className="text-xs text-muted-foreground">{t('playground.export.button_sublabel')}</div>
               </div>
             </Button>
           </div>
@@ -179,7 +181,7 @@ export function ExportConversationDialog({
           {isExporting && (
             <div className="flex items-center justify-center gap-2 py-2">
               <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full"></div>
-              <span className="text-sm text-muted-foreground">Generating export file...</span>
+              <span className="text-sm text-muted-foreground">{t('playground.export.generating')}</span>
             </div>
           )}
         </div>
@@ -190,7 +192,7 @@ export function ExportConversationDialog({
             onClick={handleClose}
             disabled={isExporting}
           >
-            Cancel
+            {t('playground.export.cancel')}
           </Button>
         </DialogFooter>
       </DialogContent>

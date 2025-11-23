@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -24,6 +25,7 @@ const personalSchema = z.object({
 type PersonalForm = z.infer<typeof personalSchema>
 
 export function PersonalSettings() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const [loading, setLoading] = useState(false)
   const [systemToken, setSystemToken] = useState('')
@@ -75,10 +77,10 @@ export function PersonalSettings() {
       if (res.data.success) {
         setTotpEnabled(res.data.data.totp_enabled)
       } else {
-        setTotpError(res.data.message || 'Failed to load TOTP status')
+        setTotpError(res.data.message || t('personal_settings.totp.errors.load_status'))
       }
     } catch (error) {
-      setTotpError(error instanceof Error ? error.message : 'Failed to load TOTP status')
+      setTotpError(error instanceof Error ? error.message : t('personal_settings.totp.errors.load_status'))
     }
   }
 
@@ -107,10 +109,10 @@ export function PersonalSettings() {
         setTotpQRCode(compositeImage)
         setShowTotpSetup(true)
       } else {
-        setSetupTotpError(res.data.message || 'Failed to setup TOTP')
+        setSetupTotpError(res.data.message || t('personal_settings.totp.errors.setup_failed'))
       }
     } catch (error) {
-      setSetupTotpError(error instanceof Error ? error.message : 'Failed to setup TOTP')
+      setSetupTotpError(error instanceof Error ? error.message : t('personal_settings.totp.errors.setup_failed'))
     }
     setTotpLoading(false)
   }
@@ -160,7 +162,7 @@ export function PersonalSettings() {
   const confirmTotp = async () => {
     setConfirmTotpError('') // Clear previous error
     if (!/^\d{6}$/.test(totpCode)) {
-      setConfirmTotpError('Enter a valid 6-digit code')
+      setConfirmTotpError(t('personal_settings.totp.errors.invalid_code'))
       return
     }
 
@@ -179,10 +181,10 @@ export function PersonalSettings() {
         setTotpSecret('')
         setTotpQRCode('')
       } else {
-        setConfirmTotpError(res.data.message || 'Failed to confirm TOTP')
+        setConfirmTotpError(res.data.message || t('personal_settings.totp.errors.confirm_failed'))
       }
     } catch (error) {
-      setConfirmTotpError(error instanceof Error ? error.message : 'Failed to confirm TOTP')
+      setConfirmTotpError(error instanceof Error ? error.message : t('personal_settings.totp.errors.confirm_failed'))
     } finally {
       setTotpLoading(false)
     }
@@ -191,7 +193,7 @@ export function PersonalSettings() {
   const disableTotp = async () => {
     setDisableTotpError('') // Clear previous error
     if (!totpCode) {
-      setDisableTotpError('Please enter the TOTP code to disable')
+      setDisableTotpError(t('personal_settings.totp.errors.missing_code'))
       return
     }
 
@@ -207,10 +209,10 @@ export function PersonalSettings() {
         setTotpEnabled(false)
         setTotpCode('')
       } else {
-        setDisableTotpError(res.data.message || 'Failed to disable TOTP')
+        setDisableTotpError(res.data.message || t('personal_settings.totp.errors.disable_failed'))
       }
     } catch (error) {
-      setDisableTotpError(error instanceof Error ? error.message : 'Failed to disable TOTP')
+      setDisableTotpError(error instanceof Error ? error.message : t('personal_settings.totp.errors.disable_failed'))
     }
     setTotpLoading(false)
   }
@@ -268,15 +270,15 @@ export function PersonalSettings() {
       const { success, message } = response.data
       if (success) {
         // Show success message
-        console.log('Profile updated successfully')
+        console.log(t('personal_settings.profile_info.success'))
         // Update the form to clear password
         form.setValue('password', '')
       } else {
-        form.setError('root', { message: message || 'Update failed' })
+        form.setError('root', { message: message || t('personal_settings.profile_info.failed') })
       }
     } catch (error) {
       form.setError('root', {
-        message: error instanceof Error ? error.message : 'Update failed'
+        message: error instanceof Error ? error.message : t('personal_settings.profile_info.failed')
       })
     } finally {
       setLoading(false)
@@ -287,9 +289,9 @@ export function PersonalSettings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Profile Information</CardTitle>
+          <CardTitle>{t('personal_settings.profile_info.title')}</CardTitle>
           <CardDescription>
-            Update your personal information and account settings.
+            {t('personal_settings.profile_info.description')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -301,7 +303,7 @@ export function PersonalSettings() {
                   name="username"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Username</FormLabel>
+                      <FormLabel>{t('personal_settings.profile_info.username')}</FormLabel>
                       <FormControl>
                         <Input {...field} disabled />
                       </FormControl>
@@ -315,9 +317,9 @@ export function PersonalSettings() {
                   name="display_name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Display Name</FormLabel>
+                      <FormLabel>{t('personal_settings.profile_info.display_name')}</FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter display name" {...field} />
+                        <Input placeholder={t('personal_settings.profile_info.display_name_placeholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -331,9 +333,9 @@ export function PersonalSettings() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>{t('personal_settings.profile_info.email')}</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="Enter email" {...field} />
+                        <Input type="email" placeholder={t('personal_settings.profile_info.email_placeholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -345,9 +347,9 @@ export function PersonalSettings() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>New Password (leave empty to keep current)</FormLabel>
+                      <FormLabel>{t('personal_settings.profile_info.password')}</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Enter new password" {...field} />
+                        <Input type="password" placeholder={t('personal_settings.profile_info.password_placeholder')} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -362,7 +364,7 @@ export function PersonalSettings() {
               )}
 
               <Button type="submit" disabled={loading}>
-                {loading ? 'Updating...' : 'Update Profile'}
+                {loading ? t('personal_settings.profile_info.updating') : t('personal_settings.profile_info.update_button')}
               </Button>
             </form>
           </Form>
@@ -371,16 +373,16 @@ export function PersonalSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Access Token & Invitation</CardTitle>
+          <CardTitle>{t('personal_settings.access_token.title')}</CardTitle>
           <CardDescription>
-            Generate access tokens and invitation links.
+            {t('personal_settings.access_token.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Button onClick={generateAccessToken} className="w-full">
-                Generate Access Token
+                {t('personal_settings.access_token.generate_token')}
               </Button>
               {systemToken && (
                 <div className="mt-2 p-2 bg-muted rounded text-sm font-mono break-all">
@@ -391,7 +393,7 @@ export function PersonalSettings() {
 
             <div>
               <Button onClick={getAffLink} variant="outline" className="w-full">
-                Get Invitation Link
+                {t('personal_settings.access_token.get_invite_link')}
               </Button>
               {affLink && (
                 <div className="mt-2 p-2 bg-muted rounded text-sm break-all">
@@ -405,9 +407,9 @@ export function PersonalSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Two-Factor Authentication (TOTP)</CardTitle>
+          <CardTitle>{t('personal_settings.totp.title')}</CardTitle>
           <CardDescription>
-            Enhance your account security with two-factor authentication.
+            {t('personal_settings.totp.description')}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -420,14 +422,14 @@ export function PersonalSettings() {
             <Alert className="bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900">
               <div className="flex flex-col space-y-4">
                 <div>
-                  <AlertTitle className="text-green-800 dark:text-green-300">TOTP is enabled</AlertTitle>
+                  <AlertTitle className="text-green-800 dark:text-green-300">{t('personal_settings.totp.enabled_title')}</AlertTitle>
                   <AlertDescription>
-                    Your account is protected with two-factor authentication.
+                    {t('personal_settings.totp.enabled_desc')}
                   </AlertDescription>
                 </div>
                 <div className="flex flex-col space-y-2">
                   <Input
-                    placeholder="Enter TOTP code to disable"
+                    placeholder={t('personal_settings.totp.disable_placeholder')}
                     value={totpCode}
                     onChange={(e) => setTotpCode(e.target.value)}
                   />
@@ -442,7 +444,7 @@ export function PersonalSettings() {
                     disabled={totpLoading}
                     className="w-full md:w-auto"
                   >
-                    {totpLoading ? 'Processing...' : 'Disable TOTP'}
+                    {totpLoading ? t('personal_settings.totp.processing') : t('personal_settings.totp.disable_button')}
                   </Button>
                 </div>
               </div>
@@ -451,9 +453,9 @@ export function PersonalSettings() {
             <Alert className="bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900">
               <div className="flex flex-col space-y-4">
                 <div>
-                  <AlertTitle className="text-blue-800 dark:text-blue-300">TOTP is not enabled</AlertTitle>
+                  <AlertTitle className="text-blue-800 dark:text-blue-300">{t('personal_settings.totp.disabled_title')}</AlertTitle>
                   <AlertDescription>
-                    Enable two-factor authentication to secure your account.
+                    {t('personal_settings.totp.disabled_desc')}
                   </AlertDescription>
                 </div>
                 {setupTotpError && (
@@ -468,7 +470,7 @@ export function PersonalSettings() {
                     disabled={totpLoading}
                     className="w-full md:w-auto"
                   >
-                    {totpLoading ? 'Processing...' : 'Enable TOTP'}
+                    {totpLoading ? t('personal_settings.totp.processing') : t('personal_settings.totp.enable_button')}
                   </Button>
                 </div>
               </div>
@@ -481,21 +483,21 @@ export function PersonalSettings() {
       <Dialog open={showTotpSetup} onOpenChange={(open) => !totpLoading && setShowTotpSetup(open)}>
         <DialogContent className={`${isMobile ? 'max-w-[95vw] p-4 max-h-[90vh] overflow-y-auto' : 'max-w-[500px]'}`}>
           <DialogHeader>
-            <DialogTitle className={isMobile ? 'text-base' : ''}>Setup Two-Factor Authentication</DialogTitle>
+            <DialogTitle className={isMobile ? 'text-base' : ''}>{t('personal_settings.totp.setup_title')}</DialogTitle>
             <DialogDescription className={isMobile ? 'text-xs' : ''}>
-              Follow these steps to secure your account with TOTP.
+              {t('personal_settings.totp.setup_desc')}
             </DialogDescription>
           </DialogHeader>
 
           <div className={`space-y-${isMobile ? '3' : '4'}`}>
             <Alert className={isMobile ? 'text-xs' : ''}>
-              <AlertTitle className={isMobile ? 'text-sm' : ''}>Setup Instructions</AlertTitle>
+              <AlertTitle className={isMobile ? 'text-sm' : ''}>{t('personal_settings.totp.setup_instructions_title')}</AlertTitle>
               <AlertDescription>
                 <ol className={`${isMobile ? 'pl-3 mt-1 space-y-0.5 text-xs' : 'pl-4 mt-2 space-y-1'}`}>
-                  <li>Install an authenticator app (Google Authenticator, Authy, etc.)</li>
-                  <li>Scan the QR code below or manually enter the secret key</li>
-                  <li>Enter the 6-digit code from your authenticator app</li>
-                  <li>Click "Confirm" to enable TOTP</li>
+                  <li>{t('personal_settings.totp.setup_step1')}</li>
+                  <li>{t('personal_settings.totp.setup_step2')}</li>
+                  <li>{t('personal_settings.totp.setup_step3')}</li>
+                  <li>{t('personal_settings.totp.setup_step4')}</li>
                 </ol>
               </AlertDescription>
             </Alert>
@@ -511,7 +513,7 @@ export function PersonalSettings() {
             )}
 
             <div className="space-y-2">
-              <FormLabel className={isMobile ? 'text-xs' : ''}>Secret Key (manual entry)</FormLabel>
+              <FormLabel className={isMobile ? 'text-xs' : ''}>{t('personal_settings.totp.secret_key')}</FormLabel>
               <Input
                 value={totpSecret}
                 readOnly
@@ -520,9 +522,9 @@ export function PersonalSettings() {
             </div>
 
             <div className="space-y-2">
-              <FormLabel className={isMobile ? 'text-xs' : ''}>Verification Code</FormLabel>
+              <FormLabel className={isMobile ? 'text-xs' : ''}>{t('personal_settings.totp.verify_code')}</FormLabel>
               <Input
-                placeholder={isMobile ? "Enter 6-digit code" : "Enter 6-digit code from your authenticator app"}
+                placeholder={isMobile ? t('personal_settings.totp.verify_placeholder_mobile') : t('personal_settings.totp.verify_placeholder')}
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value)}
                 maxLength={6}
@@ -543,14 +545,14 @@ export function PersonalSettings() {
               disabled={totpLoading}
               className={isMobile ? 'w-full h-10' : ''}
             >
-              Cancel
+              {t('personal_settings.totp.cancel')}
             </Button>
             <Button
               onClick={confirmTotp}
               disabled={!totpCode || totpCode.length !== 6 || totpLoading}
               className={isMobile ? 'w-full h-10' : ''}
             >
-              {totpLoading ? 'Processing...' : 'Confirm'}
+              {totpLoading ? t('personal_settings.totp.processing') : t('personal_settings.totp.confirm')}
             </Button>
           </DialogFooter>
         </DialogContent>

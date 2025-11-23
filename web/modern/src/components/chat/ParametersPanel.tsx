@@ -1,15 +1,17 @@
-import React from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
-import { Settings, X } from 'lucide-react'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Slider } from '@/components/ui/slider'
+import { Textarea } from '@/components/ui/textarea'
+import { Settings, X } from 'lucide-react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 
 interface Token {
   id: number
@@ -294,17 +296,19 @@ export function ParametersPanel({
   onSystemMessageChange,
   modelCapabilities
 }: ParametersPanelProps) {
+  const { t } = useTranslation()
+
   const modelPlaceholder = isLoadingModels
-    ? 'Loading models...'
+    ? t('playground.parameters.model.loading')
     : models.length === 0
-      ? 'No models available'
-      : 'Search models'
+      ? t('playground.parameters.model.no_models')
+      : t('playground.parameters.model.search_placeholder')
 
   const isModelInputDisabled = isLoadingModels || models.length === 0
 
   const modelEmptyText = models.length === 0
-    ? 'No models available for the selected token and channel.'
-    : 'No models match your search.'
+    ? t('playground.parameters.model.no_models_for_selection')
+    : t('playground.parameters.model.no_match')
 
   return (
     <div className={`
@@ -331,18 +335,18 @@ export function ParametersPanel({
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Settings className="h-4 w-4" />
-            Model & Parameters
+            {t('playground.parameters.title')}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* Token Selection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm">API Token</Label>
+              <Label className="text-sm">{t('playground.parameters.token.label')}</Label>
               {isLoadingTokens && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  Loading...
+                  {t('playground.parameters.token.loading')}
                 </div>
               )}
             </div>
@@ -353,7 +357,7 @@ export function ParametersPanel({
             >
               <SelectTrigger className={isLoadingTokens ? "opacity-50" : ""}>
                 <SelectValue placeholder={
-                  isLoadingTokens ? "Loading tokens..." : tokens.length === 0 ? "No tokens available" : "Select a token"
+                  isLoadingTokens ? t('playground.parameters.token.loading') : tokens.length === 0 ? t('playground.parameters.token.no_tokens') : t('playground.parameters.token.select_placeholder')
                 } />
               </SelectTrigger>
               <SelectContent>
@@ -362,7 +366,7 @@ export function ParametersPanel({
                     <div className="flex items-center justify-between w-full">
                       <span>{token.name || `Token ${token.id}`}</span>
                       <Badge variant="outline" className="ml-2 text-xs">
-                        {token.unlimited_quota ? 'Unlimited' : `${Math.floor(token.remain_quota / 1000)}K`}
+                        {token.unlimited_quota ? t('playground.parameters.token.unlimited') : `${Math.floor(token.remain_quota / 1000)}K`}
                       </Badge>
                     </div>
                   </SelectItem>
@@ -371,7 +375,7 @@ export function ParametersPanel({
             </Select>
             {tokens.length === 0 && !isLoadingTokens && (
               <div className="text-xs text-muted-foreground">
-                No enabled tokens found. <a href="/tokens" className="text-primary hover:underline">Create a token</a> to use the playground.
+                {t('playground.parameters.token.no_enabled')} <Link to="/tokens" className="text-primary hover:underline">{t('playground.parameters.token.create_link')}</Link>
               </div>
             )}
           </div>
@@ -381,11 +385,11 @@ export function ParametersPanel({
           {/* Channel Selection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm">Channel Filter</Label>
+              <Label className="text-sm">{t('playground.parameters.channel.label')}</Label>
               {isLoadingChannels && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  Loading...
+                  {t('playground.parameters.channel.loading')}
                 </div>
               )}
             </div>
@@ -393,18 +397,18 @@ export function ParametersPanel({
               value={channelInputValue}
               disabled={isLoadingChannels}
               isLoading={isLoadingChannels}
-              placeholder={isLoadingChannels ? 'Loading channels...' : 'Filter by channel'}
+              placeholder={isLoadingChannels ? t('playground.parameters.channel.loading') : t('playground.parameters.channel.placeholder')}
               suggestions={channelSuggestions}
               activeKey={selectedChannel}
-              emptyText="No channels match your search."
+              emptyText={t('playground.parameters.channel.no_match')}
               onQueryChange={onChannelQueryChange}
               onSelect={onChannelSelect}
               onClear={onChannelClear}
             />
             <div className="text-xs text-muted-foreground">
               {selectedChannel
-                ? `Showing models associated with ${channelInputValue || 'the selected channel'}.`
-                : 'Leave blank to browse models across every channel.'}
+                ? t('playground.parameters.channel.showing_associated', { channel: channelInputValue || 'the selected channel' })
+                : t('playground.parameters.channel.browse_all')}
             </div>
           </div>
 
@@ -413,11 +417,11 @@ export function ParametersPanel({
           {/* Model Selection */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label className="text-sm">Model</Label>
+              <Label className="text-sm">{t('playground.parameters.model.label')}</Label>
               {isLoadingModels && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <div className="w-3 h-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-                  Loading...
+                  {t('playground.parameters.model.loading')}
                 </div>
               )}
             </div>
@@ -435,10 +439,10 @@ export function ParametersPanel({
             />
             <div className="text-xs text-muted-foreground">
               {selectedModel
-                ? `Active model: ${modelInputValue || selectedModel}.`
+                ? t('playground.parameters.model.active', { model: modelInputValue || selectedModel })
                 : models.length === 0
-                  ? 'No models are available for the current token and channel selection.'
-                  : 'Search to find a model, then press Enter or click to select it.'}
+                  ? t('playground.parameters.model.no_available')
+                  : t('playground.parameters.model.search_hint')}
             </div>
           </div>
 
@@ -446,23 +450,23 @@ export function ParametersPanel({
 
           {/* System Message */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">System Message</Label>
+            <Label className="text-sm font-medium">{t('playground.parameters.system_message.label')}</Label>
             <Textarea
               value={systemMessage}
               onChange={(e) => onSystemMessageChange(e.target.value)}
-              placeholder="Enter system instructions that will guide the AI's behavior and responses..."
+              placeholder={t('playground.parameters.system_message.placeholder')}
               className="min-h-[100px] max-h-[200px] resize-y text-sm"
               rows={4}
             />
             <div className="text-xs text-muted-foreground">
-              System messages provide context and instructions that guide the AI's behavior throughout the conversation
+              {t('playground.parameters.system_message.description')}
             </div>
           </div>
 
           {/* Temperature */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium">Temperature</Label>
+              <Label className="text-sm font-medium">{t('playground.parameters.temperature.label')}</Label>
               <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                 {temperature[0]}
               </Badge>
@@ -476,7 +480,7 @@ export function ParametersPanel({
               className="w-full"
             />
             <div className="text-xs text-muted-foreground">
-              Controls randomness: 0 = focused, 2 = creative
+              {t('playground.parameters.temperature.description')}
             </div>
           </div>
 
@@ -485,7 +489,7 @@ export function ParametersPanel({
           {/* Max Tokens */}
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <Label className="text-sm font-medium">Max Tokens</Label>
+              <Label className="text-sm font-medium">{t('playground.parameters.max_tokens.label')}</Label>
               <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                 {maxTokens[0]}
               </Badge>
@@ -499,7 +503,7 @@ export function ParametersPanel({
               className="w-full"
             />
             <div className="text-xs text-muted-foreground">
-              Maximum response length
+              {t('playground.parameters.max_tokens.description')}
             </div>
           </div>
 
@@ -509,7 +513,7 @@ export function ParametersPanel({
           {modelCapabilities.supportsTopP == true && (
             <div className="space-y-2">
               <div className="flex justify-between items-center">
-                <Label className="text-sm font-medium">Top P</Label>
+                <Label className="text-sm font-medium">{t('playground.parameters.top_p.label')}</Label>
                 <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                   {topP[0]}
                 </Badge>
@@ -523,7 +527,7 @@ export function ParametersPanel({
                 className="w-full"
               />
               <div className="text-xs text-muted-foreground">
-                Nucleus sampling: 0.1 = focused, 1.0 = diverse
+                {t('playground.parameters.top_p.description')}
               </div>
             </div>
           )}
@@ -535,7 +539,7 @@ export function ParametersPanel({
             <>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label className="text-sm font-medium">Top K</Label>
+                  <Label className="text-sm font-medium">{t('playground.parameters.top_k.label')}</Label>
                   <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                     {topK[0]}
                   </Badge>
@@ -549,7 +553,7 @@ export function ParametersPanel({
                   className="w-full"
                 />
                 <div className="text-xs text-muted-foreground">
-                  Top-K sampling: limits token choices to top K most likely
+                  {t('playground.parameters.top_k.description')}
                 </div>
               </div>
               <Separator />
@@ -561,7 +565,7 @@ export function ParametersPanel({
             <>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label className="text-sm font-medium">Frequency Penalty</Label>
+                  <Label className="text-sm font-medium">{t('playground.parameters.frequency_penalty.label')}</Label>
                   <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                     {frequencyPenalty[0]}
                   </Badge>
@@ -575,7 +579,7 @@ export function ParametersPanel({
                   className="w-full"
                 />
                 <div className="text-xs text-muted-foreground">
-                  Penalizes frequent tokens: -2.0 to 2.0
+                  {t('playground.parameters.frequency_penalty.description')}
                 </div>
               </div>
               <Separator />
@@ -587,7 +591,7 @@ export function ParametersPanel({
             <>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label className="text-sm font-medium">Presence Penalty</Label>
+                  <Label className="text-sm font-medium">{t('playground.parameters.presence_penalty.label')}</Label>
                   <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                     {presencePenalty[0]}
                   </Badge>
@@ -601,7 +605,7 @@ export function ParametersPanel({
                   className="w-full"
                 />
                 <div className="text-xs text-muted-foreground">
-                  Penalizes repeated tokens: -2.0 to 2.0
+                  {t('playground.parameters.presence_penalty.description')}
                 </div>
               </div>
               <Separator />
@@ -613,7 +617,7 @@ export function ParametersPanel({
             <>
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label className="text-sm font-medium">Max Completion Tokens</Label>
+                  <Label className="text-sm font-medium">{t('playground.parameters.max_completion_tokens.label')}</Label>
                   <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                     {maxCompletionTokens[0]}
                   </Badge>
@@ -627,7 +631,7 @@ export function ParametersPanel({
                   className="w-full"
                 />
                 <div className="text-xs text-muted-foreground">
-                  Maximum completion tokens (preferred over max_tokens)
+                  {t('playground.parameters.max_completion_tokens.description')}
                 </div>
               </div>
               <Separator />
@@ -638,15 +642,15 @@ export function ParametersPanel({
           {modelCapabilities.supportsStop == true && (
             <>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Stop Sequences</Label>
+                <Label className="text-sm font-medium">{t('playground.parameters.stop_sequences.label')}</Label>
                 <Input
                   value={stopSequences}
                   onChange={(e) => onStopSequencesChange(e.target.value)}
-                  placeholder="Comma-separated stop sequences"
+                  placeholder={t('playground.parameters.stop_sequences.placeholder')}
                   className="w-full"
                 />
                 <div className="text-xs text-muted-foreground">
-                  Stop generation at these sequences (comma-separated)
+                  {t('playground.parameters.stop_sequences.description')}
                 </div>
               </div>
               <Separator />
@@ -657,20 +661,20 @@ export function ParametersPanel({
           {modelCapabilities.supportsReasoningEffort == true && (
             <>
               <div className="space-y-2">
-                <Label className="text-sm font-medium">Reasoning Effort</Label>
+                <Label className="text-sm font-medium">{t('playground.parameters.reasoning_effort.label')}</Label>
                 <Select value={reasoningEffort} onValueChange={onReasoningEffortChange}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="none">{t('playground.parameters.reasoning_effort.options.none')}</SelectItem>
+                    <SelectItem value="low">{t('playground.parameters.reasoning_effort.options.low')}</SelectItem>
+                    <SelectItem value="medium">{t('playground.parameters.reasoning_effort.options.medium')}</SelectItem>
+                    <SelectItem value="high">{t('playground.parameters.reasoning_effort.options.high')}</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="text-xs text-muted-foreground">
-                  Reasoning effort level (for supported models like DeepSeek)
+                  {t('playground.parameters.reasoning_effort.description')}
                 </div>
               </div>
               <Separator />
@@ -692,10 +696,10 @@ export function ParametersPanel({
                       htmlFor="thinking-enabled"
                       className="text-sm font-medium cursor-pointer"
                     >
-                      Enable Extended Thinking
+                      {t('playground.parameters.extended_thinking.label')}
                     </Label>
                     <div className="text-xs text-muted-foreground">
-                      Allow Claude to show its reasoning process
+                      {t('playground.parameters.extended_thinking.description')}
                     </div>
                   </div>
                 </div>
@@ -705,7 +709,7 @@ export function ParametersPanel({
               {thinkingEnabled && (
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <Label className="text-sm font-medium">Thinking Budget Tokens</Label>
+                    <Label className="text-sm font-medium">{t('playground.parameters.thinking_budget.label')}</Label>
                     <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                       {thinkingBudgetTokens[0]}
                     </Badge>
@@ -719,7 +723,7 @@ export function ParametersPanel({
                     className="w-full"
                   />
                   <div className="text-xs text-muted-foreground">
-                    Maximum tokens for thinking content (minimum 1024)
+                    {t('playground.parameters.thinking_budget.description')}
                   </div>
                 </div>
               )}
@@ -743,10 +747,10 @@ export function ParametersPanel({
                   htmlFor="show-reasoning"
                   className="text-sm font-medium cursor-pointer"
                 >
-                  Show Reasoning Content
+                  {t('playground.parameters.show_reasoning.label')}
                 </Label>
                 <div className="text-xs text-muted-foreground">
-                  Display AI reasoning processes when available
+                  {t('playground.parameters.show_reasoning.description')}
                 </div>
               </div>
             </div>

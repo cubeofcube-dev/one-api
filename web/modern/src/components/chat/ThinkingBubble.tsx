@@ -1,7 +1,7 @@
-import React from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
 import { MarkdownRenderer } from '@/components/ui/markdown'
+import { Brain, ChevronDown, ChevronRight } from 'lucide-react'
+import React from 'react'
 
 export interface ThinkingBubbleProps {
   content: string | null

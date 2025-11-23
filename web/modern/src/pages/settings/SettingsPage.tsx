@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -11,6 +12,7 @@ import { useAuthStore } from '@/lib/stores/auth'
 import { cn } from '@/lib/utils'
 
 export function SettingsPage() {
+  const { t } = useTranslation()
   const { user } = useAuthStore()
   const { isMobile } = useResponsive()
   const isRoot = user?.role >= 100
@@ -19,8 +21,8 @@ export function SettingsPage() {
 
   return (
     <ResponsivePageContainer
-      title="Settings"
-      description="Configure your account and system settings"
+      title={t('settings.title')}
+      description={t('settings.description')}
     >
       <Card>
         <CardContent className={cn(
@@ -39,14 +41,14 @@ export function SettingsPage() {
                 value="personal"
                 className={cn(isMobile ? "w-full justify-start" : "")}
               >
-                Personal
+                {t('settings.tabs.personal')}
               </TabsTrigger>
               {isRoot && (
                 <TabsTrigger
                   value="operation"
                   className={cn(isMobile ? "w-full justify-start" : "")}
                 >
-                  Operation
+                  {t('settings.tabs.operation')}
                 </TabsTrigger>
               )}
               {isRoot && (
@@ -54,7 +56,7 @@ export function SettingsPage() {
                   value="system"
                   className={cn(isMobile ? "w-full justify-start" : "")}
                 >
-                  System
+                  {t('settings.tabs.system')}
                 </TabsTrigger>
               )}
               {isRoot && (
@@ -62,7 +64,7 @@ export function SettingsPage() {
                   value="other"
                   className={cn(isMobile ? "w-full justify-start" : "")}
                 >
-                  Other
+                  {t('settings.tabs.other')}
                 </TabsTrigger>
               )}
             </TabsList>

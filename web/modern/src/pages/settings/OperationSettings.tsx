@@ -1,16 +1,17 @@
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Separator } from '@/components/ui/separator'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { api } from '@/lib/api'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Info } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
+import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Separator } from '@/components/ui/separator'
-import { api } from '@/lib/api'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Info } from 'lucide-react'
 
 const operationSchema = z.object({
   QuotaForNewUser: z.number().min(0).default(0),
@@ -34,6 +35,7 @@ const operationSchema = z.object({
 type OperationForm = z.infer<typeof operationSchema>
 
 export function OperationSettings() {
+  const { t } = useTranslation()
   const [loading, setLoading] = useState(true)
   const [historyTimestamp, setHistoryTimestamp] = useState('')
 
@@ -41,28 +43,28 @@ export function OperationSettings() {
   const descriptions = useMemo<Record<string, string>>(
     () => ({
       // Quota
-      QuotaForNewUser: 'Initial quota granted to each newly registered user.',
-      QuotaForInviter: 'Quota reward granted to the inviter after a successful invite.',
-      QuotaForInvitee: 'Quota reward granted to the invitee upon successful registration.',
-      PreConsumedQuota: 'Quota reserved at request start to avoid abuse. Unused part is returned after billing.',
+      QuotaForNewUser: t('operation_settings.quota.quota_for_new_user_desc'),
+      QuotaForInviter: t('operation_settings.quota.quota_for_inviter_desc'),
+      QuotaForInvitee: t('operation_settings.quota.quota_for_invitee_desc'),
+      PreConsumedQuota: t('operation_settings.quota.pre_consumed_quota_desc'),
 
       // General
-      TopUpLink: 'External link for users to purchase or top up quota.',
-      ChatLink: 'External chat/support link shown in the UI.',
-      QuotaPerUnit: 'Conversion ratio for currency display. Higher value makes each $ represent more quota.',
-      RetryTimes: 'Automatic retry attempts for upstream requests on transient errors.',
-      LogConsumeEnabled: 'Record usage/consumption logs. Turn off to reduce storage overhead.',
-      DisplayInCurrencyEnabled: 'Show usage and quotas as currency in the UI, based on the configured conversion.',
-      DisplayTokenStatEnabled: 'Display token statistics in logs and dashboards when available.',
-      ApproximateTokenEnabled: 'Use a faster approximation for token counting to improve performance (may be slightly less accurate).',
+      TopUpLink: t('operation_settings.general.top_up_link_desc'),
+      ChatLink: t('operation_settings.general.chat_link_desc'),
+      QuotaPerUnit: t('operation_settings.general.quota_per_unit_desc'),
+      RetryTimes: t('operation_settings.general.retry_times_desc'),
+      LogConsumeEnabled: t('operation_settings.general.log_consume_enabled_desc'),
+      DisplayInCurrencyEnabled: t('operation_settings.general.display_in_currency_desc'),
+      DisplayTokenStatEnabled: t('operation_settings.general.display_token_stat_desc'),
+      ApproximateTokenEnabled: t('operation_settings.general.approximate_token_desc'),
 
       // Monitoring & Channels
-      QuotaRemindThreshold: 'When remaining quota falls below this value, users will be reminded.',
-      ChannelDisableThreshold: 'Failure rate threshold (percentage) to auto‑disable a channel. Default 5%.',
-      AutomaticDisableChannelEnabled: 'Automatically disable channels that show sustained failures.',
-      AutomaticEnableChannelEnabled: 'Automatically re‑enable previously disabled channels when healthy.',
+      QuotaRemindThreshold: t('operation_settings.monitoring.quota_remind_threshold_desc'),
+      ChannelDisableThreshold: t('operation_settings.monitoring.channel_disable_threshold_desc'),
+      AutomaticDisableChannelEnabled: t('operation_settings.monitoring.automatic_disable_channel_desc'),
+      AutomaticEnableChannelEnabled: t('operation_settings.monitoring.automatic_enable_channel_desc'),
     }),
-    []
+    [t]
   )
 
   const form = useForm<OperationForm>({
@@ -155,9 +157,9 @@ export function OperationSettings() {
       const res = await api.delete(`/api/log/?target_timestamp=${timestamp}`)
       const { success, message, data } = res.data
       if (success) {
-        console.log(`Cleared ${data} logs!`)
+        console.log(t('operation_settings.logs.cleared_success', { count: data }))
       } else {
-        console.error('Failed to clear logs:', message)
+        console.error(t('operation_settings.logs.clear_failed', { message }))
       }
     } catch (error) {
       console.error('Error clearing logs:', error)
@@ -178,7 +180,7 @@ export function OperationSettings() {
       <Card>
         <CardContent className="flex items-center justify-center py-12">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <span className="ml-3">Loading operation settings...</span>
+          <span className="ml-3">{t('operation_settings.loading')}</span>
         </CardContent>
       </Card>
     )
@@ -190,8 +192,8 @@ export function OperationSettings() {
         {/* Quota Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Quota Settings</CardTitle>
-            <CardDescription>Configure user quota and invitation rewards</CardDescription>
+            <CardTitle>{t('operation_settings.quota.title')}</CardTitle>
+            <CardDescription>{t('operation_settings.quota.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -202,7 +204,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Quota for New User
+                        {t('operation_settings.quota.quota_for_new_user')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Quota for New User">
@@ -232,7 +234,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Quota for Inviter
+                        {t('operation_settings.quota.quota_for_inviter')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Quota for Inviter">
@@ -262,7 +264,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Quota for Invitee
+                        {t('operation_settings.quota.quota_for_invitee')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Quota for Invitee">
@@ -292,7 +294,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Pre-consumed Quota
+                        {t('operation_settings.quota.pre_consumed_quota')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Pre-consumed Quota">
@@ -317,7 +319,7 @@ export function OperationSettings() {
                 />
               </div>
               <div className="mt-4">
-                <Button onClick={() => onSubmitGroup('quota')}>Save Quota Settings</Button>
+                <Button onClick={() => onSubmitGroup('quota')}>{t('operation_settings.quota.save')}</Button>
               </div>
             </Form>
           </CardContent>
@@ -326,8 +328,8 @@ export function OperationSettings() {
         {/* General Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>General Settings</CardTitle>
-            <CardDescription>Configure general operation parameters</CardDescription>
+            <CardTitle>{t('operation_settings.general.title')}</CardTitle>
+            <CardDescription>{t('operation_settings.general.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -338,7 +340,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Top-up Link
+                        {t('operation_settings.general.top_up_link')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Top-up Link">
@@ -364,7 +366,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Chat Link
+                        {t('operation_settings.general.chat_link')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Chat Link">
@@ -390,7 +392,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Quota per Unit
+                        {t('operation_settings.general.quota_per_unit')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Quota per Unit">
@@ -420,7 +422,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Retry Times
+                        {t('operation_settings.general.retry_times')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Retry Times">
@@ -463,7 +465,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Enable Consumption Logging
+                        {t('operation_settings.general.log_consume_enabled')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Enable Consumption Logging">
@@ -494,7 +496,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Display in Currency
+                        {t('operation_settings.general.display_in_currency')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Display in Currency">
@@ -525,7 +527,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Display Token Statistics
+                        {t('operation_settings.general.display_token_stat')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Display Token Statistics">
@@ -556,7 +558,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Enable Approximate Token Counting
+                        {t('operation_settings.general.approximate_token')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Approximate Token Counting">
@@ -574,7 +576,7 @@ export function OperationSettings() {
               </div>
 
               <div className="mt-4">
-                <Button onClick={() => onSubmitGroup('general')}>Save General Settings</Button>
+                <Button onClick={() => onSubmitGroup('general')}>{t('operation_settings.general.save')}</Button>
               </div>
             </Form>
           </CardContent>
@@ -583,8 +585,8 @@ export function OperationSettings() {
         {/* Monitoring Settings */}
         <Card>
           <CardHeader>
-            <CardTitle>Monitoring & Channel Settings</CardTitle>
-            <CardDescription>Configure monitoring thresholds and channel management</CardDescription>
+            <CardTitle>{t('operation_settings.monitoring.title')}</CardTitle>
+            <CardDescription>{t('operation_settings.monitoring.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -595,7 +597,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Quota Remind Threshold
+                        {t('operation_settings.monitoring.quota_remind_threshold')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Quota Remind Threshold">
@@ -625,7 +627,7 @@ export function OperationSettings() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="flex items-center gap-2">
-                        Channel Disable Threshold
+                        {t('operation_settings.monitoring.channel_disable_threshold')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Channel Disable Threshold">
@@ -668,7 +670,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Automatic Channel Disable
+                        {t('operation_settings.monitoring.automatic_disable_channel')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Automatic Channel Disable">
@@ -699,7 +701,7 @@ export function OperationSettings() {
                         />
                       </FormControl>
                       <FormLabel className="flex items-center gap-2">
-                        Automatic Channel Enable
+                        {t('operation_settings.monitoring.automatic_enable_channel')}
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <button type="button" className="text-muted-foreground hover:text-foreground" aria-label="About Automatic Channel Enable">
@@ -717,7 +719,7 @@ export function OperationSettings() {
               </div>
 
               <div className="mt-4">
-                <Button onClick={() => onSubmitGroup('monitor')}>Save Monitoring Settings</Button>
+                <Button onClick={() => onSubmitGroup('monitor')}>{t('operation_settings.monitoring.save')}</Button>
               </div>
             </Form>
           </CardContent>
@@ -726,8 +728,8 @@ export function OperationSettings() {
         {/* Log Management */}
         <Card>
           <CardHeader>
-            <CardTitle>Log Management</CardTitle>
-            <CardDescription>Clear historical logs to free up storage space</CardDescription>
+            <CardTitle>{t('operation_settings.logs.title')}</CardTitle>
+            <CardDescription>{t('operation_settings.logs.description')}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="flex items-center space-x-4">
@@ -738,11 +740,11 @@ export function OperationSettings() {
                 className="w-auto"
               />
               <Button variant="destructive" onClick={deleteHistoryLogs}>
-                Clear Logs Before This Date
+                {t('operation_settings.logs.clear_button')}
               </Button>
             </div>
             <p className="text-sm text-muted-foreground mt-2">
-              This will permanently delete all logs before the selected date.
+              {t('operation_settings.logs.clear_warning')}
             </p>
           </CardContent>
         </Card>

@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Send, Trash2, Download, Bot, Menu, X, Eye, EyeOff, Settings } from 'lucide-react'
-import { useResponsive, useIsTouchDevice } from '@/hooks/useResponsive'
-import { MarkdownRenderer } from '@/components/ui/markdown'
-import { MessageList } from '@/components/chat/MessageList'
 import { ImageAttachmentComponent, ImageAttachment as ImageAttachmentType } from '@/components/chat/ImageAttachment'
+import { MessageList } from '@/components/chat/MessageList'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { MarkdownRenderer } from '@/components/ui/markdown'
+import { Textarea } from '@/components/ui/textarea'
+import { useIsTouchDevice, useResponsive } from '@/hooks/useResponsive'
 import { Message } from '@/lib/utils'
+import { Bot, Download, Eye, EyeOff, Send, Settings, Trash2, X } from 'lucide-react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface ChatInterfaceProps {
   // Messages
@@ -84,6 +85,7 @@ export function ChatInterface({
   onEditMessage,
   onDeleteMessage
 }: ChatInterfaceProps) {
+  const { t } = useTranslation()
   const { isMobile, isTablet } = useResponsive()
   const isTouchDevice = useIsTouchDevice()
 
@@ -133,7 +135,7 @@ export function ChatInterface({
                   <Bot className="h-4 w-4 text-primary" />
                   <CardTitle className={`font-semibold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent ${isMobile ? 'text-base' : 'text-lg'
                     }`}>
-                    AI Playground
+                    {t('playground.title')}
                   </CardTitle>
                 </div>
               </div>
@@ -145,10 +147,10 @@ export function ChatInterface({
                   size="sm"
                   onClick={() => onFocusModeChange(!focusModeEnabled)}
                   className={`flex-shrink-0 ${focusModeEnabled ? 'bg-primary/10 border-primary/50 text-primary' : 'hover:bg-primary/10'}`}
-                  title={focusModeEnabled ? "Disable Focus Mode" : "Enable Focus Mode"}
+                  title={focusModeEnabled ? t('playground.chat.disable_focus') : t('playground.chat.enable_focus')}
                 >
                   {focusModeEnabled ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-                  Focus
+                  {t('playground.chat.focus')}
                 </Button>
                 <Button
                   variant="outline"
@@ -158,7 +160,7 @@ export function ChatInterface({
                   className="hover:bg-primary/10 flex-shrink-0"
                 >
                   <Download className="h-4 w-4 mr-1" />
-                  Export
+                  {t('playground.chat.export')}
                 </Button>
                 <Button
                   variant="outline"
@@ -168,7 +170,7 @@ export function ChatInterface({
                   className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 flex-shrink-0"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  Clear
+                  {t('playground.chat.clear')}
                 </Button>
               </div>
             </div>
@@ -178,7 +180,7 @@ export function ChatInterface({
               <div className="flex items-start gap-2 min-w-0 flex-1">
                 {selectedModel && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 min-w-0 flex-1">
-                    <span className="text-sm text-muted-foreground flex-shrink-0">Model:</span>
+                    <span className="text-sm text-muted-foreground flex-shrink-0">{t('playground.chat.model_label')}</span>
                     <div className="min-w-0 flex-1">
                       <Badge
                         variant="secondary"
@@ -195,7 +197,7 @@ export function ChatInterface({
                 {isStreaming && (
                   <Badge variant="outline" className="animate-pulse border-green-500 text-green-600 text-xs flex-shrink-0 self-start sm:ml-auto">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></div>
-                    {isMobile ? 'Gen...' : 'Generating...'}
+                    {isMobile ? t('playground.chat.generating_mobile') : t('playground.chat.generating')}
                   </Badge>
                 )}
               </div>
@@ -207,7 +209,7 @@ export function ChatInterface({
                   size="sm"
                   onClick={() => onFocusModeChange(!focusModeEnabled)}
                   className={`flex-shrink-0 p-2 ${focusModeEnabled ? 'bg-primary/10 border-primary/50 text-primary' : 'hover:bg-primary/10'}`}
-                  title={focusModeEnabled ? "Disable Focus Mode" : "Enable Focus Mode"}
+                  title={focusModeEnabled ? t('playground.chat.disable_focus') : t('playground.chat.enable_focus')}
                 >
                   {focusModeEnabled ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
@@ -217,7 +219,7 @@ export function ChatInterface({
                   onClick={onExportConversation}
                   disabled={messages.length === 0}
                   className="hover:bg-primary/10 flex-shrink-0 p-2"
-                  title="Export"
+                  title={t('playground.chat.export')}
                 >
                   <Download className="h-4 w-4" />
                 </Button>
@@ -227,7 +229,7 @@ export function ChatInterface({
                   onClick={onClearConversation}
                   disabled={messages.length === 0 || isStreaming}
                   className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50 flex-shrink-0 p-2"
-                  title="Clear"
+                  title={t('playground.chat.clear')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -261,10 +263,10 @@ export function ChatInterface({
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-3">
               <Badge variant="outline" className="text-xs border-blue-300 text-blue-600 dark:border-blue-600 dark:text-blue-400">
-                Preview
+                {t('playground.chat.preview')}
               </Badge>
               <span className="text-xs text-muted-foreground">
-                This is how your message will be rendered
+                {t('playground.chat.preview_desc')}
               </span>
             </div>
             <div className="max-h-[300px] overflow-y-auto">
@@ -300,12 +302,12 @@ export function ChatInterface({
                 onKeyDown={handleKeyPress}
                 placeholder={
                   !selectedToken
-                    ? "Select an API token to start chatting..."
+                    ? t('playground.chat.input.placeholder_no_token')
                     : !selectedModel
-                      ? "Select a model to start chatting..."
+                      ? t('playground.chat.input.placeholder_no_model')
                       : isStreaming
-                        ? "Generating response..."
-                        : "Type your message... (Shift+Enter for new line)"
+                        ? t('playground.chat.input.placeholder_generating')
+                        : t('playground.chat.input.placeholder_default')
                 }
                 disabled={isStreaming || !selectedModel || !selectedToken}
                 className={`
@@ -339,7 +341,7 @@ export function ChatInterface({
                     {isMobile || isTablet ? (
                       <X className="h-4 w-4" />
                     ) : (
-                      "Stop"
+                      t('playground.chat.input.stop')
                     )}
                   </Button>
                 ) : (
@@ -360,7 +362,7 @@ export function ChatInterface({
                     ) : (
                       <>
                         <Send className="h-4 w-4 mr-1" />
-                        Send
+                        {t('playground.chat.input.send')}
                       </>
                     )}
                   </Button>
@@ -372,8 +374,8 @@ export function ChatInterface({
               <div className="text-center">
                 <span className="text-sm text-muted-foreground">
                   {!selectedToken
-                    ? "Please select an API token from the sidebar to begin"
-                    : "Please select a model from the sidebar to begin"
+                    ? t('playground.chat.input.hint_no_token')
+                    : t('playground.chat.input.hint_no_model')
                   }
                 </span>
               </div>

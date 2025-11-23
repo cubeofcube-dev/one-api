@@ -1,10 +1,10 @@
-import React, { useRef, useState, useCallback, useMemo } from 'react'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { ImageIcon, X, Upload, Eye, AlertCircle, FileX } from 'lucide-react'
-import { generateUUIDv4 } from '@/lib/utils'
 import { useNotifications } from '@/components/ui/notifications'
+import { generateUUIDv4 } from '@/lib/utils'
+import { AlertCircle, Eye, FileX, ImageIcon, Upload, X } from 'lucide-react'
+import React, { useCallback, useMemo, useRef, useState } from 'react'
 
 interface ImageAttachment {
   id: string

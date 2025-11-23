@@ -1,8 +1,9 @@
-import React, { useRef, useEffect } from 'react'
-import { Bot } from 'lucide-react'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { MessageItem } from '@/components/chat/MessageItem'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { Message } from '@/lib/utils'
+import { Bot } from 'lucide-react'
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface MessageListProps {
   messages: Message[]
@@ -30,6 +31,7 @@ export function MessageList({
   onEditMessage,
   onDeleteMessage
 }: MessageListProps) {
+  const { t } = useTranslation()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -58,8 +60,8 @@ export function MessageList({
         {messages.length === 0 && (
           <div className="text-center text-muted-foreground py-12">
             <Bot className="h-16 w-16 mx-auto mb-6 opacity-50" />
-            <p className="text-lg font-medium">Start a conversation with the AI</p>
-            <p className="text-sm mt-2">Select a model and type your message below</p>
+            <p className="text-lg font-medium">{t('playground.chat.empty_state.title')}</p>
+            <p className="text-sm mt-2">{t('playground.chat.empty_state.description')}</p>
           </div>
         )}
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
@@ -7,8 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Trash2, AlertTriangle } from 'lucide-react'
+import { AlertTriangle, Trash2 } from 'lucide-react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 interface DeleteConfirmationDialogProps {
   isOpen: boolean
@@ -25,6 +26,8 @@ export function DeleteConfirmationDialog({
   messageRole,
   messagePreview
 }: DeleteConfirmationDialogProps) {
+  const { t } = useTranslation()
+
   const handleConfirm = () => {
     onConfirm()
     onClose()
@@ -45,11 +48,11 @@ export function DeleteConfirmationDialog({
 
   const getRoleDisplayName = () => {
     switch (messageRole) {
-      case 'user': return 'User'
-      case 'assistant': return 'Assistant'
-      case 'system': return 'System'
-      case 'error': return 'Error'
-      default: return 'Message'
+      case 'user': return t('playground.roles.user')
+      case 'assistant': return t('playground.roles.assistant')
+      case 'system': return t('playground.roles.system')
+      case 'error': return t('playground.roles.error')
+      default: return t('playground.roles.message')
     }
   }
 
@@ -76,18 +79,18 @@ export function DeleteConfirmationDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-destructive">
             <AlertTriangle className="h-4 w-4" />
-            Delete {getRoleDisplayName()} Message
+            {t('playground.delete.title', { role: getRoleDisplayName() })}
           </DialogTitle>
           <DialogDescription className="space-y-3">
             <div>
-              Are you sure you want to delete this message? This action cannot be undone.
+              {t('playground.delete.description')}
             </div>
 
             {messagePreview && (
               <div className="p-3 bg-muted/50 rounded-lg border">
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-xs font-medium ${getRoleColor()}`}>
-                    {getRoleDisplayName()} Message:
+                    {t('playground.delete.preview_label', { role: getRoleDisplayName() })}
                   </span>
                 </div>
                 <div className="text-sm text-muted-foreground italic">
@@ -104,7 +107,7 @@ export function DeleteConfirmationDialog({
             onClick={onClose}
             autoFocus
           >
-            Cancel
+            {t('playground.delete.cancel')}
           </Button>
           <Button
             variant="destructive"
@@ -112,7 +115,7 @@ export function DeleteConfirmationDialog({
             className="flex items-center gap-2"
           >
             <Trash2 className="h-4 w-4" />
-            Delete Message
+            {t('playground.delete.confirm')}
           </Button>
         </DialogFooter>
       </DialogContent>

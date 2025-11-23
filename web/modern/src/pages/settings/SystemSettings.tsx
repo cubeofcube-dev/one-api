@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -177,90 +178,214 @@ const BOOLEAN_OPTION_KEYS = new Set<string>([
 const isBooleanOptionKey = (key: string) => BOOLEAN_OPTION_KEYS.has(key)
 
 export function SystemSettings() {
+  const { t } = useTranslation()
   const [options, setOptions] = useState<OptionRow[]>([])
   const [loading, setLoading] = useState(false)
   const [hasLoaded, setHasLoaded] = useState(false)
   const { notify } = useNotifications()
 
+  const OPTION_GROUPS: OptionGroup[] = useMemo(() => [
+    {
+      id: 'authentication',
+      title: t('system_settings.groups.authentication.title'),
+      description: t('system_settings.groups.authentication.description'),
+      keys: [
+        'PasswordLoginEnabled',
+        'PasswordRegisterEnabled',
+        'RegisterEnabled',
+        'EmailVerificationEnabled',
+        'EmailDomainRestrictionEnabled',
+        'EmailDomainWhitelist',
+      ],
+    },
+    {
+      id: 'oauth',
+      title: t('system_settings.groups.oauth.title'),
+      description: t('system_settings.groups.oauth.description'),
+      keys: [
+        'GitHubOAuthEnabled',
+        'GitHubClientId',
+        'GitHubClientSecret',
+        'OidcEnabled',
+        'OidcClientId',
+        'OidcClientSecret',
+        'OidcWellKnown',
+        'OidcAuthorizationEndpoint',
+        'OidcTokenEndpoint',
+        'OidcUserinfoEndpoint',
+        'LarkClientId',
+        'LarkClientSecret',
+        'WeChatAuthEnabled',
+        'WeChatServerAddress',
+        'WeChatServerToken',
+        'WeChatAccountQRCodeImageURL',
+      ],
+    },
+    {
+      id: 'security',
+      title: t('system_settings.groups.security.title'),
+      description: t('system_settings.groups.security.description'),
+      keys: [
+        'TurnstileCheckEnabled',
+        'TurnstileSiteKey',
+        'TurnstileSecretKey',
+      ],
+    },
+    {
+      id: 'email',
+      title: t('system_settings.groups.email.title'),
+      description: t('system_settings.groups.email.description'),
+      keys: [
+        'SMTPServer',
+        'SMTPPort',
+        'SMTPAccount',
+        'SMTPToken',
+        'SMTPFrom',
+      ],
+    },
+    {
+      id: 'branding',
+      title: t('system_settings.groups.branding.title'),
+      description: t('system_settings.groups.branding.description'),
+      keys: [
+        'SystemName',
+        'Logo',
+        'Footer',
+        'Notice',
+        'About',
+        'HomePageContent',
+        'Theme',
+      ],
+    },
+    {
+      id: 'links',
+      title: t('system_settings.groups.links.title'),
+      description: t('system_settings.groups.links.description'),
+      keys: [
+        'TopUpLink',
+        'ChatLink',
+        'ServerAddress',
+      ],
+    },
+    {
+      id: 'quota',
+      title: t('system_settings.groups.quota.title'),
+      description: t('system_settings.groups.quota.description'),
+      keys: [
+        'QuotaForNewUser',
+        'QuotaForInviter',
+        'QuotaForInvitee',
+        'QuotaRemindThreshold',
+        'PreConsumedQuota',
+        'GroupRatio',
+        'QuotaPerUnit',
+        'DisplayInCurrencyEnabled',
+        'DisplayTokenStatEnabled',
+        'ApproximateTokenEnabled',
+      ],
+    },
+    {
+      id: 'channels',
+      title: t('system_settings.groups.channels.title'),
+      description: t('system_settings.groups.channels.description'),
+      keys: [
+        'AutomaticDisableChannelEnabled',
+        'AutomaticEnableChannelEnabled',
+        'ChannelDisableThreshold',
+        'RetryTimes',
+      ],
+    },
+    {
+      id: 'logging',
+      title: t('system_settings.groups.logging.title'),
+      description: t('system_settings.groups.logging.description'),
+      keys: [
+        'LogConsumeEnabled',
+        'MessagePusherAddress',
+        'MessagePusherToken',
+      ],
+    },
+  ], [t])
+
   // Map each option key to a concise, user-friendly description for tooltips
   const descriptions = useMemo<Record<string, string>>(
     () => ({
       // Authentication & Registration
-      PasswordLoginEnabled: 'Allow users to sign in with email and password. Disable to require OAuth or other providers.',
-      PasswordRegisterEnabled: 'Allow new users to register with email and password.',
-      RegisterEnabled: 'Master switch for user registration. Turn off to stop all new sign-ups.',
-      EmailVerificationEnabled: 'Require email verification for actions like registration or password reset.',
-      EmailDomainRestrictionEnabled: 'Only allow registrations from domains listed below.',
-      EmailDomainWhitelist: 'Comma-separated allowed email domains (e.g., gmail.com, example.com).',
+      PasswordLoginEnabled: t('system_settings.descriptions.PasswordLoginEnabled'),
+      PasswordRegisterEnabled: t('system_settings.descriptions.PasswordRegisterEnabled'),
+      RegisterEnabled: t('system_settings.descriptions.RegisterEnabled'),
+      EmailVerificationEnabled: t('system_settings.descriptions.EmailVerificationEnabled'),
+      EmailDomainRestrictionEnabled: t('system_settings.descriptions.EmailDomainRestrictionEnabled'),
+      EmailDomainWhitelist: t('system_settings.descriptions.EmailDomainWhitelist'),
 
       // OAuth / SSO Providers
-      GitHubOAuthEnabled: 'Enable GitHub OAuth login. Requires GitHub Client ID and Secret.',
-      GitHubClientId: 'GitHub OAuth Client ID used for login.',
-      GitHubClientSecret: 'GitHub OAuth Client Secret used to exchange authorization codes. Stored securely and never displayed.',
-      OidcEnabled: 'Enable OpenID Connect (OIDC) login. Requires OIDC endpoints and credentials.',
-      OidcClientId: 'OIDC Client ID used when initiating the OIDC login flow.',
-      OidcClientSecret: 'OIDC client secret used during the token exchange. Stored securely and never displayed.',
-      OidcWellKnown: 'OIDC well-known discovery URL (e.g., https://issuer/.well-known/openid-configuration).',
-      OidcAuthorizationEndpoint: 'OIDC authorization endpoint URL.',
-      OidcTokenEndpoint: 'OIDC token endpoint URL.',
-      OidcUserinfoEndpoint: 'OIDC userinfo endpoint URL.',
-      LarkClientId: 'Lark app ID for Lark OAuth login.',
-      LarkClientSecret: 'Lark app secret used for completing the OAuth flow. Stored securely and never displayed.',
-      WeChatAuthEnabled: 'Enable WeChat login. Requires WeChat server settings.',
-      WeChatServerAddress: 'WeChat login forwarder/server base URL.',
-      WeChatServerToken: 'Verification token for your WeChat server integration. Stored securely and never displayed.',
-      WeChatAccountQRCodeImageURL: 'URL of the WeChat account QR code image displayed to users.',
+      GitHubOAuthEnabled: t('system_settings.descriptions.GitHubOAuthEnabled'),
+      GitHubClientId: t('system_settings.descriptions.GitHubClientId'),
+      GitHubClientSecret: t('system_settings.descriptions.GitHubClientSecret'),
+      OidcEnabled: t('system_settings.descriptions.OidcEnabled'),
+      OidcClientId: t('system_settings.descriptions.OidcClientId'),
+      OidcClientSecret: t('system_settings.descriptions.OidcClientSecret'),
+      OidcWellKnown: t('system_settings.descriptions.OidcWellKnown'),
+      OidcAuthorizationEndpoint: t('system_settings.descriptions.OidcAuthorizationEndpoint'),
+      OidcTokenEndpoint: t('system_settings.descriptions.OidcTokenEndpoint'),
+      OidcUserinfoEndpoint: t('system_settings.descriptions.OidcUserinfoEndpoint'),
+      LarkClientId: t('system_settings.descriptions.LarkClientId'),
+      LarkClientSecret: t('system_settings.descriptions.LarkClientSecret'),
+      WeChatAuthEnabled: t('system_settings.descriptions.WeChatAuthEnabled'),
+      WeChatServerAddress: t('system_settings.descriptions.WeChatServerAddress'),
+      WeChatServerToken: t('system_settings.descriptions.WeChatServerToken'),
+      WeChatAccountQRCodeImageURL: t('system_settings.descriptions.WeChatAccountQRCodeImageURL'),
 
       // Anti-bot / Security
-      TurnstileCheckEnabled: 'Enable Cloudflare Turnstile on critical actions (registration/reset).',
-      TurnstileSiteKey: 'Cloudflare Turnstile site key used by the frontend.',
-      TurnstileSecretKey: 'Cloudflare Turnstile secret key used by the server. Keep this confidential.',
+      TurnstileCheckEnabled: t('system_settings.descriptions.TurnstileCheckEnabled'),
+      TurnstileSiteKey: t('system_settings.descriptions.TurnstileSiteKey'),
+      TurnstileSecretKey: t('system_settings.descriptions.TurnstileSecretKey'),
 
       // Email (SMTP)
-      SMTPServer: 'SMTP server hostname for sending emails.',
-      SMTPPort: 'SMTP server port (e.g., 587 for STARTTLS, 465 for SMTPS).',
-      SMTPAccount: 'SMTP username or account email used to authenticate.',
-      SMTPToken: 'SMTP password or application token used to authenticate. Stored securely and never displayed.',
-      SMTPFrom: 'From address used in outgoing emails (e.g., no-reply@yourdomain).',
+      SMTPServer: t('system_settings.descriptions.SMTPServer'),
+      SMTPPort: t('system_settings.descriptions.SMTPPort'),
+      SMTPAccount: t('system_settings.descriptions.SMTPAccount'),
+      SMTPToken: t('system_settings.descriptions.SMTPToken'),
+      SMTPFrom: t('system_settings.descriptions.SMTPFrom'),
 
       // Branding & Content
-      SystemName: 'System display name shown in the UI and emails.',
-      Logo: 'Logo URL displayed in the header/login screens.',
-      Footer: 'Footer text or HTML displayed site‑wide.',
-      Notice: 'Site‑wide announcement content shown to all users.',
-      About: 'About page content (markdown/HTML supported by frontend rendering).',
-      HomePageContent: 'Content displayed on the home page.',
-      Theme: 'UI theme (default, berry, air, modern).',
+      SystemName: t('system_settings.descriptions.SystemName'),
+      Logo: t('system_settings.descriptions.Logo'),
+      Footer: t('system_settings.descriptions.Footer'),
+      Notice: t('system_settings.descriptions.Notice'),
+      About: t('system_settings.descriptions.About'),
+      HomePageContent: t('system_settings.descriptions.HomePageContent'),
+      Theme: t('system_settings.descriptions.Theme'),
 
       // Links
-      TopUpLink: 'External link for users to purchase or top up quota.',
-      ChatLink: 'External chat/support link shown in the UI.',
-      ServerAddress: 'Public base URL of this server (used in links/callbacks).',
+      TopUpLink: t('system_settings.descriptions.TopUpLink'),
+      ChatLink: t('system_settings.descriptions.ChatLink'),
+      ServerAddress: t('system_settings.descriptions.ServerAddress'),
 
       // Quota & Billing
-      QuotaForNewUser: 'Initial quota granted to each newly registered user.',
-      QuotaForInviter: 'Quota reward granted to the inviter after a successful invite.',
-      QuotaForInvitee: 'Quota reward granted to the invitee upon successful registration.',
-      QuotaRemindThreshold: 'When remaining quota falls below this value, users will be reminded.',
-      PreConsumedQuota: 'Quota reserved at request start to avoid abuse. Unused part is returned after billing.',
-      GroupRatio: 'JSON mapping of group‑specific billing ratios. Controls discounts/premiums by user group.',
-      QuotaPerUnit: 'Conversion ratio for currency display. Higher value makes each $ represent more quota.',
-      DisplayInCurrencyEnabled: 'Show usage and quotas as currency in the UI, based on the configured conversion.',
-      DisplayTokenStatEnabled: 'Display token statistics in logs and dashboards when available.',
-      ApproximateTokenEnabled: 'Use a faster approximation for token counting to improve performance (may be slightly less accurate).',
+      QuotaForNewUser: t('system_settings.descriptions.QuotaForNewUser'),
+      QuotaForInviter: t('system_settings.descriptions.QuotaForInviter'),
+      QuotaForInvitee: t('system_settings.descriptions.QuotaForInvitee'),
+      QuotaRemindThreshold: t('system_settings.descriptions.QuotaRemindThreshold'),
+      PreConsumedQuota: t('system_settings.descriptions.PreConsumedQuota'),
+      GroupRatio: t('system_settings.descriptions.GroupRatio'),
+      QuotaPerUnit: t('system_settings.descriptions.QuotaPerUnit'),
+      DisplayInCurrencyEnabled: t('system_settings.descriptions.DisplayInCurrencyEnabled'),
+      DisplayTokenStatEnabled: t('system_settings.descriptions.DisplayTokenStatEnabled'),
+      ApproximateTokenEnabled: t('system_settings.descriptions.ApproximateTokenEnabled'),
 
       // Channels & Reliability
-      AutomaticDisableChannelEnabled: 'Automatically disable channels that show sustained failures.',
-      AutomaticEnableChannelEnabled: 'Automatically re‑enable previously disabled channels when healthy.',
-      ChannelDisableThreshold: 'Failure rate threshold (percentage) to auto‑disable a channel. Default 5%.',
-      RetryTimes: 'Automatic retry attempts for upstream requests on transient errors.',
+      AutomaticDisableChannelEnabled: t('system_settings.descriptions.AutomaticDisableChannelEnabled'),
+      AutomaticEnableChannelEnabled: t('system_settings.descriptions.AutomaticEnableChannelEnabled'),
+      ChannelDisableThreshold: t('system_settings.descriptions.ChannelDisableThreshold'),
+      RetryTimes: t('system_settings.descriptions.RetryTimes'),
 
       // Logging / Metrics / Integrations
-      LogConsumeEnabled: 'Record usage/consumption logs. Turn off to reduce storage overhead.',
-      MessagePusherAddress: 'Endpoint of the alert/notification pusher service for log events.',
-      MessagePusherToken: 'Authentication token for the alert/notification pusher. Stored securely and never displayed.',
+      LogConsumeEnabled: t('system_settings.descriptions.LogConsumeEnabled'),
+      MessagePusherAddress: t('system_settings.descriptions.MessagePusherAddress'),
+      MessagePusherToken: t('system_settings.descriptions.MessagePusherToken'),
     }),
-    []
+    [t]
   )
 
   const load = async () => {
@@ -290,14 +415,14 @@ export function SystemSettings() {
         }
         return prev.map((opt) => (opt.key === key ? { ...opt, value } : opt))
       })
-      notify({ type: 'success', title: 'Setting saved', message: `${key} updated successfully.` })
+      notify({ type: 'success', title: t('system_settings.saved_success'), message: t('system_settings.saved_message', { key }) })
     } catch (error: any) {
       console.error('Error saving option:', error)
       const errMsg = error?.response?.data?.message || error?.message || 'Unknown error'
-      notify({ type: 'error', title: 'Save failed', message: String(errMsg) })
+      notify({ type: 'error', title: t('system_settings.save_failed'), message: String(errMsg) })
       throw error
     }
-  }, [notify])
+  }, [notify, t])
 
   const optionsMap = useMemo(() => {
     const map: Record<string, OptionRow> = {}
@@ -316,13 +441,13 @@ export function SystemSettings() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>System Settings</CardTitle>
+          <CardTitle>{t('system_settings.title')}</CardTitle>
           <CardDescription>
-            Configure system-wide settings and options.
+            {t('system_settings.description')}
           </CardDescription>
         </div>
         <Button variant="outline" onClick={load} disabled={loading}>
-          Refresh
+          {t('system_settings.refresh')}
         </Button>
       </CardHeader>
       <CardContent>
@@ -365,8 +490,8 @@ export function SystemSettings() {
               {uncategorizedOptions.length > 0 && (
                 <section className="space-y-4">
                   <div className="space-y-1">
-                    <h3 className="text-lg font-semibold leading-6">Other Settings</h3>
-                    <p className="text-sm text-muted-foreground">Configuration keys that are not yet categorized.</p>
+                    <h3 className="text-lg font-semibold leading-6">{t('system_settings.groups.other.title')}</h3>
+                    <p className="text-sm text-muted-foreground">{t('system_settings.groups.other.description')}</p>
                   </div>
                   <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                     {uncategorizedOptions.map((opt) => (
@@ -386,11 +511,11 @@ export function SystemSettings() {
           </TooltipProvider>
         ) : hasLoaded ? (
           <div className="text-center text-sm text-muted-foreground py-8">
-            No options available or insufficient permissions.
+            {t('system_settings.no_options')}
           </div>
         ) : (
           <div className="text-center text-sm text-muted-foreground py-8">
-            Loading options…
+            {t('system_settings.loading')}
           </div>
         )}
       </CardContent>
@@ -407,6 +532,7 @@ interface OptionItemProps {
 }
 
 function OptionItem({ option, description, onSave, isSensitive, isBoolean }: OptionItemProps) {
+  const { t } = useTranslation()
   const [value, setValue] = useState(option.value)
   const [isSaving, setIsSaving] = useState(false)
 
@@ -493,12 +619,12 @@ function OptionItem({ option, description, onSave, isSensitive, isBoolean }: Opt
           />
         )}
         <Button variant="outline" onClick={() => handleSave()} disabled={isSaving}>
-          {isSaving ? 'Saving…' : 'Save'}
+          {isSaving ? t('system_settings.saving') : t('system_settings.save')}
         </Button>
       </div>
       {isSensitive && (
         <p className="text-xs text-muted-foreground">
-          Stored value is hidden. Enter a new value to overwrite the existing secret.
+          {t('system_settings.sensitive_hint')}
         </p>
       )}
     </div>
