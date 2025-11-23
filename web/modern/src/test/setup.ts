@@ -5,7 +5,7 @@ import enTranslations from '../i18n/locales/en'
 // Mock react-i18next
 vi.mock('react-i18next', async () => {
   const enTranslations = (await import('../i18n/locales/en')).default
-  
+
   const t = (key: string, arg2?: any, arg3?: any) => {
       // Handle overload: t(key, options) or t(key, defaultValue, options)
       let options = arg2;
@@ -32,7 +32,7 @@ vi.mock('react-i18next', async () => {
           return key;
         }
       }
-      
+
       // Handle interpolation if needed (simple version)
       if (options && typeof value === 'string') {
          Object.keys(options).forEach(k => {

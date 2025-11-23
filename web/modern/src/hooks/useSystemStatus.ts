@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
 import { loadSystemStatus, type SystemStatus } from '@/lib/utils'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
 const getInitialSystemStatus = (): SystemStatus => {
   try {

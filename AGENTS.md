@@ -4,7 +4,13 @@
 
 The purpose of the one‑api project is to let users freely use any of the ChatCompletion API, Response API, or Claude Messages API formats to request any model on any channel. one‑api transparently handles the request and response format conversions. Please make sure that all adapters support conversion among the three API formats.
 
-## Package Management
+### Codes
+
+All code must be written in English. Avoid using any other languages in code, comments, or documentation.
+
+Every single code file should not exceed 800 lines. If a file exceeds this limit, please split it into smaller files based on functionality. Automatically generated files are exempt from this rule.
+
+### Package Management
 
 Use `yarn` for managing packages. Avoid using `npm` to prevent potential conflicts in the `yarn.lock` file.
 
