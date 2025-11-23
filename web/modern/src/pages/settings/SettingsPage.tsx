@@ -1,15 +1,14 @@
-import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ResponsivePageContainer } from '@/components/ui/responsive-container'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useResponsive } from '@/hooks/useResponsive'
-import { PersonalSettings } from './PersonalSettings'
-import { SystemSettings } from './SystemSettings'
-import { OperationSettings } from './OperationSettings'
-import { OtherSettings } from './OtherSettings'
 import { useAuthStore } from '@/lib/stores/auth'
 import { cn } from '@/lib/utils'
+import { useTranslation } from 'react-i18next'
+import { OperationSettings } from './OperationSettings'
+import { OtherSettings } from './OtherSettings'
+import { PersonalSettings } from './PersonalSettings'
+import { SystemSettings } from './SystemSettings'
 
 export function SettingsPage() {
   const { t } = useTranslation()

@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { TopUpPage } from './TopUpPage'
-import { useAuthStore } from '@/lib/stores/auth'
 import { api } from '@/lib/api'
+import { useAuthStore } from '@/lib/stores/auth'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TopUpPage } from './TopUpPage'
 
 vi.mock('@/lib/api', () => {
   const get = vi.fn()

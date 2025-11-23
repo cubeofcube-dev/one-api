@@ -25,7 +25,17 @@
     "topup": "Top Up",
     "username": "Username",
     "users": "Users",
-    "welcome": "Welcome to One API"
+    "welcome": "Welcome to One API",
+    "pagination": {
+      "first_page": "First page",
+      "last_page": "Last page",
+      "next_page": "Next page",
+      "page_num": "Page {{page}}",
+      "per_page": "Per page:",
+      "previous_page": "Previous page",
+      "rows_per_page": "Rows per page:",
+      "showing": "Showing {{start}}-{{end}} of {{total}} items"
+    }
   },
   "header": {
     "confirm_logout": "Confirm logout",

@@ -6,6 +6,7 @@ import management from './management.json';
 import playground from './playground.json';
 import models from './models.json';
 import billing from './billing.json';
+import logs from './logs.json';
 
 const translations = {
   ...common,
@@ -16,6 +17,7 @@ const translations = {
   ...playground,
   ...models,
   ...billing,
+  ...logs,
 };
 
 export default translations;

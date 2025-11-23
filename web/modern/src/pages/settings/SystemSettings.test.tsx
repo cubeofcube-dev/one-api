@@ -2,9 +2,9 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 
-import { SystemSettings } from './SystemSettings'
 import { NotificationsProvider } from '@/components/ui/notifications'
 import { api } from '@/lib/api'
+import { SystemSettings } from './SystemSettings'
 
 describe('SystemSettings', () => {
   beforeEach(() => {

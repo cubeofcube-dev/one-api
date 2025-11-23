@@ -208,33 +208,19 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
     let active = true
     const loadTrace = async () => {
       if (!open || !hasTrace || !log) {
-        if (active) {
-          setTraceData(null)
-          setTraceError(null)
-          setTraceLoading(false)
-        }
         return
       }
 
       setTraceLoading(true)
-      setTraceError(null)
       try {
         const response = await api.get(`/api/trace/log/${log.id}`)
-        if (!active) {
-          return
-        }
-        if (response.data?.success) {
-          setTraceData(response.data.data as TraceData)
-        } else {
-          setTraceData(null)
-          setTraceError(response.data?.message || t('logs.details.load_failed', 'Failed to load trace information.'))
+        if (active) {
+          setTraceData(response.data.data)
         }
       } catch (error: any) {
-        if (!active) {
-          return
+        if (active) {
+          setTraceError(t('logs.details.load_failed'))
         }
-        setTraceData(null)
-        setTraceError(error?.response?.data?.message || t('logs.details.load_failed', 'Failed to load trace information.'))
       } finally {
         if (active) {
           setTraceLoading(false)
@@ -350,9 +336,9 @@ export function LogDetailsModal({ open, onOpenChange, log }: LogDetailsModalProp
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
+          </div>
         </div>
       </div>
-    </div>
   )
 
   const renderTimeline = (trace: TraceData) => {
