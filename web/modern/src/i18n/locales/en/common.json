@@ -1,0 +1,123 @@
+{
+  "common": {
+    "about": "About",
+    "back": "Back",
+    "cancel": "Cancel",
+    "channels": "Channels",
+    "confirm": "Confirm",
+    "dashboard": "Dashboard",
+    "email": "Email",
+    "language": "Language",
+    "login": "Login",
+    "logout": "Logout",
+    "logs": "Logs",
+    "models": "Models",
+    "or": "Or",
+    "password": "Password",
+    "playground": "Playground",
+    "redemptions": "Redemptions",
+    "register": "Register",
+    "settings": "Settings",
+    "status": "Status",
+    "submit": "Submit",
+    "to": "to",
+    "tokens": "Tokens",
+    "topup": "Top Up",
+    "username": "Username",
+    "users": "Users",
+    "welcome": "Welcome to One API"
+  },
+  "header": {
+    "confirm_logout": "Confirm logout",
+    "log_out": "Log out",
+    "logging_out": "Logging out...",
+    "logout_description": "Are you sure you want to log out? You'll need to sign in again to access your dashboard.",
+    "navigation": "Navigation",
+    "signed_in_as": "Signed in as"
+  },
+  "home": {
+    "iframe_title": "Home"
+  },
+  "about": {
+    "cta_models": "View Supported Models",
+    "cta_repo": "GitHub Repository",
+    "default": {
+      "description": "One API provides a unified interface for accessing multiple AI models and services through a single, consistent API.",
+      "features": [
+        "Unified API for multiple AI providers",
+        "Token-based usage tracking and billing",
+        "User management and role-based access",
+        "Channel management for different providers",
+        "Comprehensive logging and monitoring",
+        "Quota management and top-up system"
+      ],
+      "features_title": "Features",
+      "heading": "Welcome to One API"
+    },
+    "fallback_error": "About content failed to load.",
+    "iframe_title": "About",
+    "title": "About"
+  },
+  "notFound": {
+    "go_home": "Go Home Now",
+    "message": "Page not found",
+    "redirecting": "Redirecting to home in {{seconds}}s..."
+  },
+  "status": {
+    "badges": {
+      "auto_disabled": "Auto Disabled",
+      "enabled": "Enabled",
+      "manually_disabled": "Manually Disabled",
+      "unknown": "Unknown"
+    },
+    "controls": {
+      "items_per_page": "Items per page"
+    },
+    "details": {
+      "created": "Created",
+      "last_test": "Last Test",
+      "response_time": "Response Time"
+    },
+    "empty": {
+      "none": "No channels are configured in the system",
+      "search": "No channels match your search \"{{term}}\"",
+      "title": "No Channels Found"
+    },
+    "labels": {
+      "never": "Never",
+      "not_available": "N/A"
+    },
+    "loading": "Loading channel status...",
+    "notifications": {
+      "fetch_error": "Error fetching channel status: {{reason}}",
+      "fetch_failed": "Failed to fetch channel status: {{reason}}",
+      "unknown_error": "unknown error"
+    },
+    "pagination": {
+      "next": "Next",
+      "page_info": " (Page {{page}} of {{pages}})",
+      "previous": "Previous",
+      "showing": "Showing {{displayed}} of {{total}} channels",
+      "showing_filtered": "Showing {{displayed}} of {{total}} channels (filtered)"
+    },
+    "refresh": "Refresh",
+    "refreshing": "Refreshing...",
+    "search": {
+      "clear": "Clear Search",
+      "placeholder": "Search channels by name or status..."
+    },
+    "speed": {
+      "fast": "Fast",
+      "normal": "Normal",
+      "slow": "Slow"
+    },
+    "stats": {
+      "disabled": "Disabled",
+      "enabled": "Enabled",
+      "found": "Found",
+      "total": "Total Channels"
+    },
+    "subtitle": "Monitor the status and performance of all channels",
+    "title": "Channel Status"
+  }
+}

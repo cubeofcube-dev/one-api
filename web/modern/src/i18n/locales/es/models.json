@@ -1,0 +1,28 @@
+{
+  "models": {
+    "clear_filters": "Borrar filtros",
+    "description": "Explora todos los modelos compatibles con el servidor, agrupados por canal/adaptador con información de precios.",
+    "errors": {
+      "fetch_failed": "Error al obtener modelos"
+    },
+    "found": "Se encontraron {{count}} modelos en {{channels}} canales",
+    "labels": {
+      "free": "Gratis",
+      "unlimited": "Ilimitado"
+    },
+    "loading": "Cargando modelos...",
+    "no_models": "No se encontraron modelos",
+    "no_models_desc": "Intenta ajustar tus términos de búsqueda o filtros.",
+    "search": "Buscar modelos...",
+    "table": {
+      "cached_input_price": "Precio de entrada en caché",
+      "image_price": "Precio de imagen (por imagen)",
+      "input_price": "Precio de entrada (por 1M tokens)",
+      "max_tokens": "Tokens máximos",
+      "max_tokens_tooltip": "Total máximo de tokens que este canal permite por solicitud para el modelo, incluyendo tokens de prompt y completado. Un valor de 0 significa que el proveedor no anuncia un límite fijo.",
+      "model": "Modelo",
+      "output_price": "Precio de salida"
+    },
+    "title": "Modelos compatibles"
+  }
+}

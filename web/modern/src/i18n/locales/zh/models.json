@@ -1,0 +1,28 @@
+{
+  "models": {
+    "clear_filters": "清除筛选",
+    "description": "浏览服务器支持的所有模型，按渠道/适配器分组并显示定价信息。",
+    "errors": {
+      "fetch_failed": "获取模型失败"
+    },
+    "found": "在 {{channels}} 个渠道中找到 {{count}} 个模型",
+    "labels": {
+      "free": "免费",
+      "unlimited": "无限"
+    },
+    "loading": "正在加载模型...",
+    "no_models": "未找到模型",
+    "no_models_desc": "尝试调整您的搜索词或筛选条件。",
+    "search": "搜索模型...",
+    "table": {
+      "cached_input_price": "缓存输入价格",
+      "image_price": "图片价格 (每张)",
+      "input_price": "输入价格 (每 1M 令牌)",
+      "max_tokens": "最大令牌数",
+      "max_tokens_tooltip": "此渠道允许该模型每次请求的最大总令牌数，包括提示和补全令牌。值为 0 表示提供商未公布固定限制。",
+      "model": "模型",
+      "output_price": "输出价格"
+    },
+    "title": "支持的模型"
+  }
+}

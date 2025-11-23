@@ -1,0 +1,28 @@
+{
+  "models": {
+    "clear_filters": "Effacer les filtres",
+    "description": "Parcourez tous les modèles pris en charge par le serveur, regroupés par canal/adaptateur avec des informations de tarification.",
+    "errors": {
+      "fetch_failed": "Échec de la récupération des modèles"
+    },
+    "found": "Trouvé {{count}} modèles dans {{channels}} canaux",
+    "labels": {
+      "free": "Gratuit",
+      "unlimited": "Illimité"
+    },
+    "loading": "Chargement des modèles...",
+    "no_models": "Aucun modèle trouvé",
+    "no_models_desc": "Essayez d'ajuster vos termes de recherche ou vos filtres.",
+    "search": "Rechercher des modèles...",
+    "table": {
+      "cached_input_price": "Prix d'entrée mis en cache",
+      "image_price": "Prix de l'image (par image)",
+      "input_price": "Prix d'entrée (pour 1M de jetons)",
+      "max_tokens": "Jetons max",
+      "max_tokens_tooltip": "Nombre total maximum de jetons que ce canal autorise par requête pour le modèle, y compris les jetons d'invite et de complétion. Une valeur de 0 signifie que le fournisseur n'annonce pas de limite fixe.",
+      "model": "Modèle",
+      "output_price": "Prix de sortie"
+    },
+    "title": "Modèles pris en charge"
+  }
+}
