@@ -1,10 +1,10 @@
+import { useNotifications } from "@/components/ui/notifications";
+import { api } from "@/lib/api";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useNavigate, useParams } from "react-router-dom";
-import { useNotifications } from "@/components/ui/notifications";
-import { api } from "@/lib/api";
 import { CHANNEL_TYPES_WITH_DEDICATED_BASE_URL } from "../constants";
 import {
 	isValidJSON,
@@ -634,6 +634,48 @@ export const useChannelForm = () => {
 		}
 	};
 
+	const testChannel = async () => {
+		if (!channelId) return;
+
+		try {
+			setIsSubmitting(true);
+			const response = await api.get(`/api/channel/test/${channelId}`);
+			const { success, message } = response.data;
+
+			if (success) {
+				notify({
+					type: "success",
+					title: tr("test.success_title", "Success"),
+					message: tr("test.success_message", "Channel test successful!"),
+				});
+			} else {
+				notify({
+					type: "error",
+					title: tr("test.failed_title", "Failed"),
+					message: tr(
+						"test.failed_message",
+						"Channel test failed: {{message}}",
+						{ message: message || "Unknown error" },
+					),
+				});
+			}
+		} catch (error) {
+			notify({
+				type: "error",
+				title: tr("test.error_title", "Error"),
+				message: tr(
+					"test.error_message",
+					"Channel test failed: {{error}}",
+					{
+						error: error instanceof Error ? error.message : "Network error",
+					},
+				),
+			});
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	return {
 		form,
 		isEdit,
@@ -652,6 +694,7 @@ export const useChannelForm = () => {
 		watchConfig,
 		watchTooling,
 		onSubmit,
+		testChannel,
 		tr,
 		notify,
 	};

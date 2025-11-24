@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { barColor } from './DashboardPage'
+import { barColor } from './types'
 
 describe('Dashboard helpers', () => {
   it('barColor wraps palette', () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { normalizeChannelType } from './EditChannelPage'
+import { normalizeChannelType } from './helpers'
 
 describe('normalizeChannelType', () => {
   it('returns numbers as-is when finite', () => {
