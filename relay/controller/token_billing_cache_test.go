@@ -89,7 +89,7 @@ func TestPostConsumeQuota_OutputPricingIndependentOfCache(t *testing.T) {
 
 	// Allow for rounding differences (ceil applied twice) and potential +1 guard path; keep tight tolerance.
 	if absDiffI64(actualDelta, expectedDelta) > 2 {
-		t.Fatalf("unexpected quota delta: got %d, want ~%d (±2). no-cache=%d cached=%d", actualDelta, expectedDelta, quotaNoCache, quotaCached)
+		t.Fatalf("unexpected quota delta: got %d, want ~%d (+/-2). no-cache=%d cached=%d", actualDelta, expectedDelta, quotaNoCache, quotaCached)
 	}
 }
 
@@ -134,7 +134,7 @@ func TestPostConsumeQuota_CacheWriteDoesNotAffectOutput(t *testing.T) {
 	expectedDelta := int64(math.Ceil(float64(write5m) * (write5mPrice - normalInputPrice)))
 	actualDelta := withWrite - base
 	if absDiffI64(actualDelta, expectedDelta) > 2 {
-		t.Fatalf("unexpected write quota delta: got %d, want ~%d (±2). base=%d withWrite=%d", actualDelta, expectedDelta, base, withWrite)
+		t.Fatalf("unexpected write quota delta: got %d, want ~%d (+/-2). base=%d withWrite=%d", actualDelta, expectedDelta, base, withWrite)
 	}
 }
 
@@ -202,7 +202,7 @@ func TestPostConsumeResponseAPIQuota_UsesCachedInputPricing(t *testing.T) {
 	expectedDelta := int64(math.Ceil(float64(cachedPrompt) * (cachedInputPrice - normalInputPrice)))
 	actualDelta := withCache - base
 	if absDiffI64(actualDelta, expectedDelta) > 2 {
-		t.Fatalf("unexpected Response API cached quota delta: got %d, want ~%d (±2). base=%d cached=%d", actualDelta, expectedDelta, base, withCache)
+		t.Fatalf("unexpected Response API cached quota delta: got %d, want ~%d (+/-2). base=%d cached=%d", actualDelta, expectedDelta, base, withCache)
 	}
 
 	if math.Abs(cachedResult.UsedCompletionRatio-baseResult.UsedCompletionRatio) > 1e-12 {

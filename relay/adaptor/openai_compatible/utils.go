@@ -482,7 +482,7 @@ func ExtractThinkingContent(content string) (thinkingContent, regularContent str
 // This specialized handler is designed for Other provider sequential thinking format where thinking content
 // comes first, followed by the actual response content.
 //
-// Note: This now Optimized for efficiency with large streams using [strings.Builder] to avoid O(n²) string concatenation.
+// Note: This now Optimized for efficiency with large streams using [strings.Builder] to avoid O(n^2) string concatenation.
 func StreamHandlerWithThinking(c *gin.Context, resp *http.Response, promptTokens int, modelName string) (*model.ErrorWithStatusCode, *model.Usage) {
 	return UnifiedStreamProcessing(c, resp, promptTokens, modelName, true)
 }

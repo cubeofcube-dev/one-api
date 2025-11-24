@@ -19,7 +19,7 @@ func absDiffI64(a, b int64) int64 {
 }
 
 // TestComputeCachedInputPricing verifies that cached input tokens are billed using CachedInputRatio
-// while completion tokens always use Ratio × CompletionRatio irrespective of cache hits.
+// while completion tokens always use Ratio * CompletionRatio irrespective of cache hits.
 func TestComputeCachedInputPricing(t *testing.T) {
 	modelName := "gpt-4o"
 	adaptor := relay.GetAdaptor(channeltype.OpenAI)
@@ -76,7 +76,7 @@ func TestComputeCachedInputPricing(t *testing.T) {
 	expectedDelta := int64(math.Ceil(float64(cachedPrompt) * (cachedInputPrice - normalInputPrice)))
 	actualDelta := cached.TotalQuota - base.TotalQuota
 	if absDiffI64(actualDelta, expectedDelta) > 2 {
-		t.Fatalf("unexpected quota delta: got %d, want ~%d (±2). base=%d cached=%d", actualDelta, expectedDelta, base.TotalQuota, cached.TotalQuota)
+		t.Fatalf("unexpected quota delta: got %d, want ~%d (+/-2). base=%d cached=%d", actualDelta, expectedDelta, base.TotalQuota, cached.TotalQuota)
 	}
 
 	if math.Abs(cached.UsedCompletionRatio-base.UsedCompletionRatio) > 1e-12 {

@@ -149,7 +149,7 @@ func TestConvertRequest_EmptyAssistantMessageWithToolCalls(t *testing.T) {
 			},
 			{
 				Role:       "tool",
-				Content:    "It's sunny and 72°F",
+				Content:    "It's sunny and 72F",
 				ToolCallId: "call_123",
 			},
 		},
@@ -229,7 +229,7 @@ func TestConvertRequest_EmptyAssistantMessageWithToolCalls(t *testing.T) {
 	require.NotNil(t, toolMessage, "Should have tool result message")
 	require.Len(t, toolMessage.Content, 1)
 	assert.Equal(t, "tool_result", toolMessage.Content[0].Type)
-	assert.Equal(t, "It's sunny and 72°F", toolMessage.Content[0].Content)
+	assert.Equal(t, "It's sunny and 72F", toolMessage.Content[0].Content)
 	assert.Equal(t, "call_123", toolMessage.Content[0].ToolUseId)
 }
 

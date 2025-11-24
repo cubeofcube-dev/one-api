@@ -26,7 +26,6 @@ import (
 	"github.com/songquanpeng/one-api/common/client"
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/graceful"
-	"github.com/songquanpeng/one-api/common/i18n"
 	"github.com/songquanpeng/one-api/common/logger"
 	"github.com/songquanpeng/one-api/controller"
 	"github.com/songquanpeng/one-api/middleware"
@@ -137,11 +136,6 @@ func main() {
 	// Initialize global pricing manager
 	relay.InitializeGlobalPricing()
 
-	// Initialize i18n
-	if err := i18n.Init(); err != nil {
-		logger.Logger.Fatal("failed to initialize i18n", zap.Error(err))
-	}
-
 	logLevel := glog.LevelInfo
 	if config.DebugEnabled {
 		logLevel = glog.LevelDebug
@@ -162,7 +156,6 @@ func main() {
 	//server.Use(gzip.Gzip(gzip.DefaultCompression))
 	server.Use(middleware.RequestId())
 	server.Use(middleware.TracingMiddleware())
-	server.Use(middleware.Language())
 
 	// Add Prometheus middleware if enabled
 	if config.EnablePrometheusMetrics {

@@ -122,7 +122,7 @@ func normalizeResolutionKey(value string) string {
 		return ""
 	}
 	parts := strings.FieldsFunc(trimmed, func(r rune) bool {
-		return r == 'x' || r == '*' || r == '×'
+		return r == 'x' || r == '*' || r == '\u00D7'
 	})
 	if len(parts) != 2 {
 		return trimmed

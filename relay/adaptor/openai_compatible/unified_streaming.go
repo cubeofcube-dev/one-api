@@ -413,7 +413,7 @@ type StreamingContext struct {
 //   - Initial allocation reduces memory fragmentation and allocation overhead
 //
 // Performance Characteristics:
-//   - Initialization time: <1μs on modern hardware
+//   - Initialization time: less than 1 microsecond on modern hardware
 //   - Memory overhead: ~8KB base allocation for typical usage
 //   - Zero allocations during steady-state processing (within capacity)
 //   - CPU overhead: <0.1% for initialization relative to request processing
@@ -487,7 +487,7 @@ func NewStreamingContext(logger *log.LoggerT, enableThinking bool) *StreamingCon
 // Performance Characteristics:
 //   - Time Complexity: O(n) where n is current content length (for content copy)
 //   - Space Complexity: Temporarily doubles memory during reset operation
-//   - Execution time: 10-50μs for typical content sizes
+//   - Execution time: 10-50 microseconds for typical content sizes
 //   - Memory reduction: Up to 90% reduction in pathological cases
 //   - CPU overhead: <0.5% during normal operation, 5-10% during reset
 //
@@ -865,7 +865,7 @@ func (sc *StreamingContext) CalculateUsage(promptTokens int, modelName string) *
 //
 // Performance Characteristics:
 //   - Time Complexity: O(1) - simple counter and length checks
-//   - Execution time: <1μs on modern hardware
+//   - Execution time: less than 1 microsecond on modern hardware
 //   - Memory usage: Minimal - only accesses existing counters
 //   - CPU overhead: <0.001% of total request processing time
 //

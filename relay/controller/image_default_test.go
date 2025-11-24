@@ -11,7 +11,7 @@ import (
 	"github.com/songquanpeng/one-api/relay/pricing"
 )
 
-// Test that DALL·E 3 defaults quality to "standard" (not "auto").
+// Test that DALL-E 3 defaults quality to "standard" (not "auto").
 func TestGetImageRequest_DefaultQuality_DALLE3(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()

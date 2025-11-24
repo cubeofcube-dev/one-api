@@ -103,14 +103,14 @@ func renderReport(rep report) {
 		fmt.Println()
 		fmt.Println("Failures:")
 		for _, res := range failures {
-			fmt.Printf("- %s · %s → %s\n", res.Model, res.Label, shorten(res.ErrorReason, 200))
+			fmt.Printf("- %s - %s -> %s\n", res.Model, res.Label, shorten(res.ErrorReason, 200))
 		}
 	}
 	if len(skips) > 0 {
 		fmt.Println()
 		fmt.Println("Skipped (unsupported combinations):")
 		for _, res := range skips {
-			fmt.Printf("- %s · %s → %s\n", res.Model, res.Label, shorten(res.ErrorReason, 200))
+			fmt.Printf("- %s - %s -> %s\n", res.Model, res.Label, shorten(res.ErrorReason, 200))
 		}
 	}
 

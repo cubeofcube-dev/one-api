@@ -57,11 +57,11 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 	return map[string]adaptor.ModelConfig{
 		// XunfeiV2 Models - Based on https://www.xfyun.cn/doc/spark/Web.html#_1-%E6%8E%A5%E5%8F%A3%E8%AF%B4%E6%98%8E
 		"spark-lite":      {Ratio: 0.0 * MilliTokensRmb, CompletionRatio: 1},   // Free tier
-		"spark-pro":       {Ratio: 0.003 * MilliTokensRmb, CompletionRatio: 1}, // ¥0.003 / 1k tokens
-		"spark-pro-128k":  {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // ¥0.005 / 1k tokens
-		"spark-max":       {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // ¥0.005 / 1k tokens
-		"spark-max-32k":   {Ratio: 0.008 * MilliTokensRmb, CompletionRatio: 1}, // ¥0.008 / 1k tokens
-		"spark-4.0-ultra": {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // ¥0.005 / 1k tokens
+		"spark-pro":       {Ratio: 0.003 * MilliTokensRmb, CompletionRatio: 1}, // CNY 0.003 / 1k tokens
+		"spark-pro-128k":  {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // CNY 0.005 / 1k tokens
+		"spark-max":       {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // CNY 0.005 / 1k tokens
+		"spark-max-32k":   {Ratio: 0.008 * MilliTokensRmb, CompletionRatio: 1}, // CNY 0.008 / 1k tokens
+		"spark-4.0-ultra": {Ratio: 0.005 * MilliTokensRmb, CompletionRatio: 1}, // CNY 0.005 / 1k tokens
 	}
 }
 

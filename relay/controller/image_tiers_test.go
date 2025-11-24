@@ -13,7 +13,7 @@ import (
 	"github.com/songquanpeng/one-api/relay/pricing"
 )
 
-// Sanity check: usd_per_image * QuotaPerUsd with $0.04 → 0.04 * 500000 = 20000
+// Sanity check: usd_per_image * QuotaPerUsd with $0.04 -> 0.04 * 500000 = 20000
 // We purposely do not call adapters; this guards controller math/unit consistency.
 func TestImageUsdToQuotaMath(t *testing.T) {
 	const quotaPerUsd = 500000.0
@@ -26,7 +26,7 @@ func TestImageUsdToQuotaMath(t *testing.T) {
 
 // Test tier table values align with legacy logic for key models/sizes/qualities.
 func TestImageTierTablesParity(t *testing.T) {
-	// DALL·E 3 hd 1024x1024 → 2x; other sizes → 1.5x
+	// DALL-E 3 hd 1024x1024 -> 2x; other sizes -> 1.5x
 	cases := []struct {
 		model   string
 		size    string

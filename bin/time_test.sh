@@ -37,4 +37,4 @@ done
 
 standard_deviation=$(echo "scale=4; sqrt($sum_of_squares / $count)" | bc)
 
-echo "Average time: $average_time±$standard_deviation"
+echo "Average time: $average_time+/-$standard_deviation"

@@ -9,7 +9,6 @@ import (
 
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/helper"
-	"github.com/songquanpeng/one-api/common/i18n"
 	"github.com/songquanpeng/one-api/model"
 )
 
@@ -41,7 +40,7 @@ func UpdateOption(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": i18n.Translate(c, "invalid_parameter"),
+			"message": invalidParameterMessage,
 		})
 		return
 	}

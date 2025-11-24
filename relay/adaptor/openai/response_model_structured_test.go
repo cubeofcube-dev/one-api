@@ -1409,7 +1409,7 @@ func TestAdvancedStructuredOutputScenarios(t *testing.T) {
 				{
 					"step_number": 3,
 					"explanation": "Divide both sides by 3",
-					"calculation": "3x ÷ 3 = 15 ÷ 3",
+					"calculation": "3x / 3 = 15 / 3",
 					"result": "x = 5"
 				}
 			],

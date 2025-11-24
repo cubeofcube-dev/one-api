@@ -98,7 +98,7 @@ var ImageOriginModelName = map[string]string{
 //
 // Quality "default" applies when no specific quality tier is set.
 var ImageTierTables = map[string]map[string]map[string]float64{
-	// DALL·E 2: default tiers from ImageSizeRatios
+	// DALL-E 2: default tiers from ImageSizeRatios
 	"dall-e-2": {
 		"default": {
 			"256x256":   1,
@@ -106,7 +106,7 @@ var ImageTierTables = map[string]map[string]map[string]float64{
 			"1024x1024": 1.25,
 		},
 	},
-	// DALL·E 3: default + hd tiers
+	// DALL-E 3: default + hd tiers
 	"dall-e-3": {
 		"default": {
 			"1024x1024": 1,
