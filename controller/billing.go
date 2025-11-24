@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 
 	"github.com/songquanpeng/one-api/common/config"
@@ -36,7 +38,7 @@ func GetSubscription(c *gin.Context) {
 	}
 	if err != nil {
 		Error := relaymodel.Error{Message: err.Error(), Type: "upstream_error", RawError: err}
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"error": Error,
 		})
 		return
@@ -57,7 +59,7 @@ func GetSubscription(c *gin.Context) {
 		SystemHardLimitUSD: amount,
 		AccessUntil:        expiredTime,
 	}
-	c.JSON(200, subscription)
+	c.JSON(http.StatusOK, subscription)
 }
 
 // GetUsage returns the user's quota consumption wrapped in the OpenAI usage response shape.
@@ -75,7 +77,7 @@ func GetUsage(c *gin.Context) {
 	}
 	if err != nil {
 		Error := relaymodel.Error{Message: err.Error(), Type: "one_api_error", RawError: err}
-		c.JSON(200, gin.H{
+		c.JSON(http.StatusOK, gin.H{
 			"error": Error,
 		})
 		return
@@ -88,5 +90,5 @@ func GetUsage(c *gin.Context) {
 		Object:     "list",
 		TotalUsage: amount * 100,
 	}
-	c.JSON(200, usage)
+	c.JSON(http.StatusOK, usage)
 }

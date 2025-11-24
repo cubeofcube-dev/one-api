@@ -169,35 +169,39 @@ var cachedListAllModels = gutils.NewSingleItemExpCache[listAllModelsCacheEntry](
 
 // ListAllModels returns every known model in the OpenAI-compatible format regardless of user permissions.
 func ListAllModels(c *gin.Context) {
-	version, err := model.GetEnabledChannelsVersionSignature()
+	models, err := getSupportedModelsSnapshot()
 	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, errors.Wrap(err, "channels version signature"))
+		middleware.AbortWithError(c, http.StatusInternalServerError, errors.Wrap(err, "load supported models"))
 		return
 	}
 
+	c.JSON(http.StatusOK, gin.H{
+		"object": "list",
+		"data":   models,
+	})
+}
+
+func getSupportedModelsSnapshot() ([]OpenAIModels, error) {
+	version, err := model.GetEnabledChannelsVersionSignature()
+	if err != nil {
+		return nil, errors.Wrap(err, "channels version signature")
+	}
+
 	if entry, ok := cachedListAllModels.Get(); ok && entry.Version == version {
-		c.JSON(200, gin.H{
-			"object": "list",
-			"data":   entry.Models,
-		})
-		return
+		return entry.Models, nil
 	}
 
 	models, err := listAllSupportedModels()
 	if err != nil {
-		middleware.AbortWithError(c, http.StatusInternalServerError, errors.Wrap(err, "list models"))
-		return
+		return nil, errors.Wrap(err, "list models")
 	}
-	c.JSON(200, gin.H{
-		"object": "list",
-		"data":   models,
-	})
 
-	// update cache
 	cachedListAllModels.Set(listAllModelsCacheEntry{
 		Models:  models,
 		Version: version,
 	})
+
+	return models, nil
 }
 
 // ModelsDisplayResponse represents the response structure for the models display page
@@ -255,6 +259,8 @@ func mergeModelNamesWithOverrides(base []string, overrides map[string]model.Mode
 }
 
 // listAllSupportedModels builds a snapshot of every supported model, including admin-defined channel entries.
+//
+// TRADE OFF: deduplicate by case-insensitive model name, could miss some models with same name but different channels.
 func listAllSupportedModels() ([]OpenAIModels, error) {
 	models := make([]OpenAIModels, 0, len(allModels))
 	seen := make(map[string]struct{}, len(allModels))
@@ -574,94 +580,129 @@ func GetModelsDisplay(c *gin.Context) {
 // ListModels lists all models available to the user.
 func ListModels(c *gin.Context) {
 	userId := c.GetInt(ctxkey.Id)
-
 	ctx := gmw.Ctx(c)
+	lg := gmw.GetLogger(c)
+
 	userGroup, err := model.CacheGetUserGroup(ctx, userId)
 	if err != nil {
 		middleware.AbortWithError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	// Get available models with their channel names
 	availableAbilities, err := model.CacheGetGroupModelsV2(ctx, userGroup)
 	if err != nil {
 		middleware.AbortWithError(c, http.StatusBadRequest, err)
 		return
 	}
 
-	// fix(#39): Previously, to fix #31, I concatenated model_name with adaptor name to return models.
-	// But this caused an issue with OpenAI-compatible channels (including legacy custom entries), where the returned adaptor is "openai",
-	// resulting in adaptor name and ownedBy field mismatches when matching against allModels.
-	// For deepseek example, the adaptor is "openai" but ownedBy is "deepseek", causing mismatch.
-	// Our current solution: for models from OpenAI-compatible channels, don't concatenate adaptor name,
-	// just match by model name only. However, this may reintroduce the duplicate models bug
-	// mentioned in #31. A complete fix would require significant changes, so I'll leave it for now.
-
-	// Create ability maps for both exact matches and model-only matches
-	exactMatches := make(map[string]bool)
-	modelMatches := make(map[string]bool)
-
-	for _, ability := range availableAbilities {
-		adaptor := relay.GetAdaptor(channeltype.ToAPIType(ability.ChannelType))
-		// Store exact match
-		key := ability.Model + ":" + adaptor.GetChannelName()
-		exactMatches[key] = true
-
-		// Store model name for fallback matching
-		modelMatches[ability.Model] = true
+	snapshot, err := getSupportedModelsSnapshot()
+	if err != nil {
+		middleware.AbortWithError(c, http.StatusInternalServerError, errors.Wrap(err, "load supported models snapshot"))
+		return
 	}
 
-	userAvailableModels := make([]OpenAIModels, 0)
-	for _, model := range allModels {
-		key := model.Id + ":" + model.OwnedBy
+	snapshotByID := make(map[string]OpenAIModels, len(snapshot))
+	for _, model := range snapshot {
+		key := strings.ToLower(model.Id)
+		snapshotByID[key] = model
+	}
 
-		// Check for exact match first
-		if exactMatches[key] {
-			userAvailableModels = append(userAvailableModels, model)
+	allowed := make(map[string]OpenAIModels, len(availableAbilities))
+	channelCache := make(map[int]*model.Channel)
+	created := int(time.Now().Unix())
+
+	for _, ability := range availableAbilities {
+		modelName := strings.TrimSpace(ability.Model)
+		if modelName == "" {
+			continue
+		}
+		key := strings.ToLower(modelName)
+		if entry, ok := snapshotByID[key]; ok {
+			allowed[key] = entry
 			continue
 		}
 
-		// Fall back to model-only match if:
-		// 1. Model name matches
-		// 2. No exact match exists for this model name
-		if modelMatches[model.Id] {
-			hasExactMatch := false
-			for exactKey := range exactMatches {
-				if strings.HasPrefix(exactKey, model.Id+":") {
-					hasExactMatch = true
-					break
-				}
-			}
-
-			if !hasExactMatch {
-				userAvailableModels = append(userAvailableModels, model)
-			}
+		entry, ok := buildModelEntryFromAbility(modelName, ability.ChannelId, ability.ChannelType, created, channelCache)
+		if ok {
+			allowed[key] = entry
+			continue
+		}
+		if lg != nil {
+			lg.Debug("unable to build model entry for ability",
+				zap.String("model", modelName),
+				zap.Int("channel_id", ability.ChannelId),
+				zap.Int("channel_type", ability.ChannelType))
 		}
 	}
 
-	// Sort models alphabetically for consistent presentation
+	userAvailableModels := make([]OpenAIModels, 0, len(allowed))
+	for _, model := range allowed {
+		userAvailableModels = append(userAvailableModels, model)
+	}
+
 	sort.Slice(userAvailableModels, func(i, j int) bool {
 		return userAvailableModels[i].Id < userAvailableModels[j].Id
 	})
 
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"object": "list",
 		"data":   userAvailableModels,
 	})
+}
+
+func buildModelEntryFromAbility(modelName string, channelID int, channelType int, created int, cache map[int]*model.Channel) (OpenAIModels, bool) {
+	modelName = strings.TrimSpace(modelName)
+	if modelName == "" {
+		return OpenAIModels{}, false
+	}
+
+	owner := channeltype.IdToName(channelType)
+	if channelID > 0 {
+		if channel, ok := cache[channelID]; ok {
+			owner = channeltype.IdToName(channel.Type)
+			if owner == "" || owner == "unknown" {
+				owner = fmt.Sprintf("channel-%d", channel.Id)
+			}
+		} else {
+			channel, err := model.GetChannelById(channelID, false)
+			if err == nil {
+				cache[channelID] = channel
+				owner = channeltype.IdToName(channel.Type)
+				if owner == "" || owner == "unknown" {
+					owner = fmt.Sprintf("channel-%d", channel.Id)
+				}
+			} else if owner == "" {
+				owner = fmt.Sprintf("channel-%d", channelID)
+			}
+		}
+	}
+	if owner == "" {
+		owner = "unknown"
+	}
+
+	return OpenAIModels{
+		Id:         modelName,
+		Object:     "model",
+		Created:    created,
+		OwnedBy:    owner,
+		Permission: defaultModelPermissions,
+		Root:       modelName,
+		Parent:     nil,
+	}, true
 }
 
 // RetrieveModel returns details about a specific model or an error when it does not exist.
 func RetrieveModel(c *gin.Context) {
 	modelId := c.Param("model")
 	if model, ok := modelsMap[modelId]; ok {
-		c.JSON(200, model)
+		c.JSON(http.StatusOK, model)
 		return
 	}
 	lg := gmw.GetLogger(c)
 	if snapshot, err := listAllSupportedModels(); err == nil {
 		for _, m := range snapshot {
 			if strings.EqualFold(m.Id, modelId) {
-				c.JSON(200, m)
+				c.JSON(http.StatusOK, m)
 				return
 			}
 		}
@@ -670,7 +711,7 @@ func RetrieveModel(c *gin.Context) {
 	}
 	msg := fmt.Sprintf("The model '%s' does not exist", modelId)
 	Error := relaymodel.Error{Message: msg, Type: "invalid_request_error", Param: "model", Code: "model_not_found", RawError: errors.New(msg)}
-	c.JSON(200, gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"error": Error,
 	})
 }

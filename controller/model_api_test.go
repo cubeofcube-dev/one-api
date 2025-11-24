@@ -2,15 +2,21 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"slices"
 	"testing"
+	"time"
 
+	gutils "github.com/Laisky/go-utils/v6"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/songquanpeng/one-api/common"
+	"github.com/songquanpeng/one-api/common/ctxkey"
 	"github.com/songquanpeng/one-api/model"
 	"github.com/songquanpeng/one-api/relay"
 	"github.com/songquanpeng/one-api/relay/channeltype"
@@ -390,4 +396,137 @@ func TestChannelDefaultPricing(t *testing.T) {
 
 	t.Logf("✓ OpenAI-compatible channel has %d models from global pricing", len(compatibleModelRatios))
 	t.Logf("✓ Specific channel has %d models from its adapter", len(deepseekModelRatios))
+}
+
+func TestListModels_DeduplicatesModels(t *testing.T) {
+	setupListModelsTestEnv(t)
+	gin.SetMode(gin.TestMode)
+	group := fmt.Sprintf("group-%d", time.Now().UnixNano())
+	user := createTestUserForGroup(t, group)
+
+	createTestChannelForGroup(t, "groq-primary", group, "mixtral-8x7b", channeltype.Groq)
+	createTestChannelForGroup(t, "groq-secondary", group, "mixtral-8x7b", channeltype.Groq)
+
+	router := gin.New()
+	router.GET("/v1/models", func(c *gin.Context) {
+		c.Set(ctxkey.Id, user.Id)
+		ListModels(c)
+	})
+
+	req := httptest.NewRequest("GET", "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Object string `json:"object"`
+		Data   []struct {
+			Id string `json:"id"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, "list", resp.Object)
+
+	count := 0
+	for _, m := range resp.Data {
+		if m.Id == "mixtral-8x7b" {
+			count++
+		}
+	}
+	require.Equal(t, 1, count, "mixtral-8x7b should appear exactly once")
+}
+
+func TestListModels_IncludesCustomChannelModels(t *testing.T) {
+	setupListModelsTestEnv(t)
+	gin.SetMode(gin.TestMode)
+	group := fmt.Sprintf("group-%d", time.Now().UnixNano())
+	user := createTestUserForGroup(t, group)
+	customModel := "azure-gpt-5-nano"
+
+	createTestChannelForGroup(t, "azure-custom", group, customModel, channeltype.Azure)
+
+	router := gin.New()
+	router.GET("/v1/models", func(c *gin.Context) {
+		c.Set(ctxkey.Id, user.Id)
+		ListModels(c)
+	})
+
+	req := httptest.NewRequest("GET", "/v1/models", nil)
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	require.Equal(t, http.StatusOK, w.Code)
+
+	var resp struct {
+		Object string `json:"object"`
+		Data   []struct {
+			Id      string `json:"id"`
+			OwnedBy string `json:"owned_by"`
+		} `json:"data"`
+	}
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp))
+	require.Equal(t, "list", resp.Object)
+
+	found := false
+	for _, m := range resp.Data {
+		if m.Id == customModel {
+			found = true
+			require.Equal(t, "azure", m.OwnedBy)
+			break
+		}
+	}
+	require.True(t, found, "expected %s to appear in ListModels response", customModel)
+}
+
+func setupListModelsTestEnv(t *testing.T) {
+	t.Helper()
+	prevRedis := common.IsRedisEnabled()
+	common.SetRedisEnabled(false)
+	t.Cleanup(func() { common.SetRedisEnabled(prevRedis) })
+
+	originalSQLitePath := common.SQLitePath
+	tempDir := t.TempDir()
+	common.SQLitePath = filepath.Join(tempDir, "list-models.db")
+	t.Cleanup(func() { common.SQLitePath = originalSQLitePath })
+
+	model.InitDB()
+	model.InitLogDB()
+	t.Cleanup(func() {
+		if model.DB != nil {
+			require.NoError(t, model.CloseDB())
+			model.DB = nil
+			model.LOG_DB = nil
+		}
+	})
+
+	originalCache := cachedListAllModels
+	cachedListAllModels = gutils.NewSingleItemExpCache[listAllModelsCacheEntry](time.Minute)
+	t.Cleanup(func() { cachedListAllModels = originalCache })
+}
+
+func createTestUserForGroup(t *testing.T, group string) *model.User {
+	t.Helper()
+	user := &model.User{
+		Username: fmt.Sprintf("user-%s", group),
+		Password: "password",
+		Group:    group,
+		Status:   model.UserStatusEnabled,
+	}
+	require.NoError(t, model.DB.Create(user).Error)
+	return user
+}
+
+func createTestChannelForGroup(t *testing.T, name, group, models string, channelType int) *model.Channel {
+	t.Helper()
+	channel := &model.Channel{
+		Name:   name,
+		Type:   channelType,
+		Status: model.ChannelStatusEnabled,
+		Models: models,
+		Group:  group,
+	}
+	require.NoError(t, model.DB.Create(channel).Error)
+	require.NoError(t, channel.AddAbilities())
+	return channel
 }
