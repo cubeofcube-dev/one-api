@@ -220,7 +220,7 @@
 	/* Prevent absolutely-positioned descendants (e.g., injected inputs) from stretching document height */
 	.bounded-abs *[style*="position: absolute"],
 	.bounded-abs input[type="checkbox"][style*="position: absolute"] {
-		position: absolute !important;
+		position: absolute;
 		inset: auto auto auto auto;
 		/* do not push layout */
 	}
