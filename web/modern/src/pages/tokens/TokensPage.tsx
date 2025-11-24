@@ -1,1 +1,2 @@
-export { TokensPage as default, TokensPage } from "./TokensPage.impl";
+export { TokensPage as default } from './TokensPage.impl'
+export { TokensPage } from './TokensPage.impl'

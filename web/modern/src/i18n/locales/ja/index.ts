@@ -2,6 +2,7 @@ import auth from "./auth.json";
 import billing from "./billing.json";
 import common from "./common.json";
 import dashboard from "./dashboard.json";
+import logs from "./logs.json";
 import management from "./management.json";
 import models from "./models.json";
 import playground from "./playground.json";
@@ -16,6 +17,7 @@ const translations = {
 	...playground,
 	...models,
 	...billing,
+	...logs,
 };
 
 export default translations;

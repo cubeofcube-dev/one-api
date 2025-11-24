@@ -1,5 +1,15 @@
 {
 	"logs": {
+		"actions": {
+			"clear": "Clear",
+			"export": "Export",
+			"hide_stats": "Hide Stats",
+			"show_stats": "Show Stats"
+		},
+		"confirm": {
+			"delete_before": "Are you sure you want to delete logs before {{timestamp}}?"
+		},
+		"description": "View and search API usage logs",
 		"details": {
 			"cache_write_1h": "Cache Write 1h Tokens",
 			"cache_write_5m": "Cache Write 5m Tokens",
@@ -38,7 +48,7 @@
 			"prompt_tokens_input": "Prompt Tokens (input)",
 			"quota": "Quota",
 			"quota_raw": "Quota (raw units)",
-			"recorded_at": "Recorded At",
+			"recorded_at": "Recorded at",
 			"request_id": "Request ID",
 			"request_info": "Request Information",
 			"request_size": "Request Size",
@@ -57,6 +67,81 @@
 			"type": "Type",
 			"url": "URL",
 			"user": "User"
+		},
+		"export": {
+			"headers": {
+				"cache_write_1h": "Cache Write (1h)",
+				"cache_write_5m": "Cache Write (5m)",
+				"cached_completion_tokens": "Cached Completion Tokens",
+				"cached_prompt_tokens": "Cached Prompt Tokens",
+				"completion_tokens": "Completion Tokens",
+				"content": "Content",
+				"latency": "Latency",
+				"model": "Model",
+				"prompt_tokens": "Prompt Tokens",
+				"quota": "Quota",
+				"time": "Time",
+				"token": "Token",
+				"type": "Type",
+				"username": "Username"
+			}
+		},
+		"filters": {
+			"apply": "Apply Filters",
+			"channel": "Channel",
+			"channel_placeholder": "Enter channel ID",
+			"end": "End Time",
+			"model": "Model",
+			"model_placeholder": "Select model",
+			"start": "Start Time",
+			"title": "Filters",
+			"token": "Token",
+			"token_placeholder": "Select token",
+			"type": "Type",
+			"type_placeholder": "Select type",
+			"username": "Username",
+			"username_placeholder": "Select user"
+		},
+		"labels": {
+			"missing": "Unknown",
+			"not_available": "N/A"
+		},
+		"search": {
+			"log_entry": "Log Entry",
+			"quota": "Quota: {{value}}"
+		},
+		"stats": {
+			"total_quota": "Total Quota: {{value}}"
+		},
+		"table": {
+			"channel": "Channel",
+			"completion": "Completion",
+			"cost": "Cost",
+			"empty": "No logs found matching your criteria.",
+			"latency": "Latency",
+			"model": "Model",
+			"prompt": "Prompt",
+			"time": "Time",
+			"token": "Token",
+			"type": "Type",
+			"user": "User"
+		},
+		"title": "Logs",
+		"tooltip": {
+			"cache_write_1h": "Cache Write (1h): {{value}}",
+			"cache_write_5m": "Cache Write (5m): {{value}}",
+			"cached_tokens": "Cached: {{value}}",
+			"input_tokens": "Input: {{value}}",
+			"output_tokens": "Output: {{value}}"
+		},
+		"types": {
+			"all": "All",
+			"consume": "Consume",
+			"manage": "Manage",
+			"system": "System",
+			"test": "Test",
+			"topup": "Top Up",
+			"unknown": "Unknown"
 		}
 	}
 }

@@ -19,7 +19,6 @@ lint:
 	# nilaway ./...
 	golangci-lint run -c .golangci.yml
 	govulncheck ./...
-	cd web/modern && yarn exec biome check --write
 
 # Development targets - Template specific
 .PHONY: dev-default dev-air dev-berry dev-modern

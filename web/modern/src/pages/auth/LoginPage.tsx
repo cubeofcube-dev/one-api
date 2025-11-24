@@ -1,1 +1,2 @@
-export { LoginPage as default, LoginPage } from "./LoginPage.impl";
+export { LoginPage as default } from './LoginPage.impl'
+export { LoginPage } from './LoginPage.impl'
