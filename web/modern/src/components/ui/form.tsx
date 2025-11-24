@@ -1,6 +1,13 @@
-import * as React from 'react'
 import { cn } from '@/lib/utils'
-import { FormProvider, useFormContext } from 'react-hook-form'
+import * as React from 'react'
+import {
+  Controller,
+  type ControllerProps,
+  type FieldPath,
+  type FieldValues,
+  FormProvider,
+  useFormContext,
+} from 'react-hook-form'
 
 export const Form = FormProvider
 
@@ -16,12 +23,23 @@ export function FormControl({ className, ...props }: React.HTMLAttributes<HTMLDi
 export function FormMessage({ className, children, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return <p className={cn('text-xs text-destructive', className)} {...props}>{children}</p>
 }
-export function FormField<TFieldValues extends Record<string, any>>(props: {
-  name: keyof TFieldValues & string
-  control: any
-  render: (args: { field: any }) => React.ReactNode
-}) {
-  const { control, name, render } = props
-  const { register } = useFormContext()
-  return <>{render({ field: register(name) })}</>
+type FormFieldProps<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+> = Omit<ControllerProps<TFieldValues, TName>, 'control'> & {
+  control?: ControllerProps<TFieldValues, TName>['control']
+}
+
+export function FormField<
+  TFieldValues extends FieldValues = FieldValues,
+  TName extends FieldPath<TFieldValues> = FieldPath<TFieldValues>,
+>({ control, ...props }: FormFieldProps<TFieldValues, TName>) {
+  const formContext = useFormContext<TFieldValues>()
+  const resolvedControl = control ?? formContext?.control
+
+  if (!resolvedControl) {
+    throw new Error('FormField must be used within a Form provider or be given an explicit control')
+  }
+
+  return <Controller control={resolvedControl} {...props} />
 }

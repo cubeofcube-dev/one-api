@@ -14,6 +14,10 @@ Every single code file should not exceed 800 lines. If a file exceeds this limit
 
 Use `yarn` for managing packages. Avoid using `npm` to prevent potential conflicts in the `yarn.lock` file.
 
+### Debug & Logging
+
+When debugging, add targeted DEBUG logs that include essential details to help developers pinpoint hard‑to‑diagnose issues. After debugging, retain any logs that could be useful for future troubleshooting, but **never** include sensitive data like API keys or passwords in those logs.
+
 ### Frontend Templates
 
 This project has three different frontend templates: Modern, Default, Berry, and Air.

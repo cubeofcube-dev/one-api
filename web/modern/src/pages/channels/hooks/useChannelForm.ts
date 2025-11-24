@@ -86,7 +86,7 @@ export const useChannelForm = () => {
 		[watchType],
 	);
 
-	const loadDefaultPricing = async (channelType: number) => {
+	const loadDefaultPricing = useCallback(async (channelType: number) => {
 		try {
 			setDefaultPricing("");
 			setDefaultTooling("");
@@ -123,9 +123,11 @@ export const useChannelForm = () => {
 		} catch (error) {
 			console.error("Error loading default pricing:", error);
 		}
-	};
+	}, []);
 
-	const loadChannel = async () => {
+	const { reset, setValue, getValues } = form;
+
+	const loadChannel = useCallback(async () => {
 		if (!channelId) return;
 
 		try {
@@ -236,17 +238,29 @@ export const useChannelForm = () => {
 					),
 				};
 
+				console.debug('[EditChannel] Loaded channel payload', {
+					channelId: data.id ?? channelId,
+					channelType,
+					hasModelMapping: Boolean(data.model_mapping),
+					modelMappingLength:
+						typeof data.model_mapping === 'string'
+							? data.model_mapping.length
+							: 0,
+					hasModelConfigs: Boolean(data.model_configs),
+					hasSystemPrompt: Boolean(data.system_prompt),
+				});
+
 				if (channelType) {
 					await loadDefaultPricing(channelType);
 				}
 
 				setLoadedChannelType(channelType);
-				form.reset(formData);
+				reset(formData);
 				await new Promise((resolve) => setTimeout(resolve, 0));
 
-				const currentTypeValue = form.getValues("type");
+				const currentTypeValue = getValues("type");
 				if (currentTypeValue !== channelType) {
-					form.setValue("type", channelType, {
+					setValue("type", channelType, {
 						shouldValidate: true,
 						shouldDirty: false,
 					});
@@ -262,7 +276,8 @@ export const useChannelForm = () => {
 		} finally {
 			setLoading(false);
 		}
-	};
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [channelId, loadDefaultPricing]);
 
 	const loadModelsCatalog = useCallback(async () => {
 		try {
@@ -286,7 +301,7 @@ export const useChannelForm = () => {
 		}
 	}, []);
 
-	const loadGroups = async () => {
+	const loadGroups = useCallback(async () => {
 		try {
 			const response = await api.get("/api/option/");
 			const { success, data } = response.data;
@@ -309,7 +324,12 @@ export const useChannelForm = () => {
 			console.error("Error loading groups:", error);
 			setGroups(["default"]);
 		}
-	};
+	}, []);
+
+	useEffect(() => {
+		loadModelsCatalog();
+		loadGroups();
+	}, [loadModelsCatalog, loadGroups]);
 
 	useEffect(() => {
 		if (isEdit) {
@@ -317,9 +337,7 @@ export const useChannelForm = () => {
 		} else {
 			setLoading(false);
 		}
-		loadModelsCatalog();
-		loadGroups();
-	}, [isEdit, loadChannel, loadGroups, loadModelsCatalog]);
+	}, [isEdit, loadChannel]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -346,7 +364,7 @@ export const useChannelForm = () => {
 
 	useEffect(() => {
 		if (isEdit && formInitialized && loadedChannelType) {
-			const currentType = form.getValues("type");
+			const currentType = getValues("type");
 			const numericCurrentType =
 				typeof currentType === "number" ? currentType : Number(currentType);
 
@@ -354,13 +372,13 @@ export const useChannelForm = () => {
 				!Number.isFinite(numericCurrentType) ||
 				numericCurrentType !== loadedChannelType
 			) {
-				form.setValue("type", loadedChannelType, {
+				setValue("type", loadedChannelType, {
 					shouldValidate: true,
 					shouldDirty: false,
 				});
 			}
 		}
-	}, [isEdit, formInitialized, loadedChannelType, form]);
+	}, [isEdit, formInitialized, loadedChannelType, getValues, setValue]);
 
 	useEffect(() => {
 		if (
@@ -368,12 +386,12 @@ export const useChannelForm = () => {
 			loadedChannelType &&
 			normalizedChannelType !== loadedChannelType
 		) {
-			form.setValue("type", loadedChannelType, {
+			setValue("type", loadedChannelType, {
 				shouldValidate: true,
 				shouldDirty: false,
 			});
 		}
-	}, [isEdit, loadedChannelType, normalizedChannelType, form]);
+	}, [isEdit, loadedChannelType, normalizedChannelType, setValue]);
 
 	useEffect(() => {
 		if (normalizedChannelType !== null) {
