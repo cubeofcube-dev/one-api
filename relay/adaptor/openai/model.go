@@ -1,7 +1,14 @@
 package openai
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/binary"
+	"encoding/json"
+	"math"
 	"mime/multipart"
+
+	"github.com/Laisky/errors/v2"
 
 	"github.com/songquanpeng/one-api/relay/model"
 )
@@ -120,9 +127,60 @@ type TextResponse struct {
 }
 
 type EmbeddingResponseItem struct {
-	Object    string    `json:"object"`
-	Index     int       `json:"index"`
-	Embedding []float64 `json:"embedding"`
+	Object        string    `json:"object"`
+	Index         int       `json:"index"`
+	Embedding     []float64 `json:"embedding"`
+	Base64Encoded bool      `json:"-"`
+}
+
+// UnmarshalJSON supports embedding vectors delivered either as numeric arrays or
+// base64-encoded float32 blobs (Azure/OpenAI encoding_format=base64).
+func (item *EmbeddingResponseItem) UnmarshalJSON(data []byte) error {
+	type rawEmbeddingResponseItem struct {
+		Object    string          `json:"object"`
+		Index     int             `json:"index"`
+		Embedding json.RawMessage `json:"embedding"`
+	}
+	var raw rawEmbeddingResponseItem
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return errors.Wrap(err, "unmarshal embedding response item")
+	}
+	item.Object = raw.Object
+	item.Index = raw.Index
+	item.Base64Encoded = false
+	if len(raw.Embedding) == 0 {
+		item.Embedding = nil
+		return nil
+	}
+	trimmed := bytes.TrimSpace(raw.Embedding)
+	if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+		item.Embedding = nil
+		return nil
+	}
+	switch trimmed[0] {
+	case '[':
+		if err := json.Unmarshal(trimmed, &item.Embedding); err != nil {
+			return errors.Wrap(err, "decode numeric embedding")
+		}
+	case '"':
+		var encoded string
+		if err := json.Unmarshal(trimmed, &encoded); err != nil {
+			return errors.Wrap(err, "decode base64 embedding string")
+		}
+		floats, err := decodeBase64Embedding(encoded)
+		if err != nil {
+			return errors.Wrap(err, "convert base64 embedding payload")
+		}
+		item.Embedding = floats
+		item.Base64Encoded = true
+	default:
+		preview := trimmed
+		if len(preview) > 32 {
+			preview = preview[:32]
+		}
+		return errors.Errorf("unsupported embedding encoding prefix %q", string(preview))
+	}
+	return nil
 }
 
 type EmbeddingResponse struct {
@@ -203,4 +261,23 @@ func (u *ImageUsage) Convert2GeneralUsage() *model.Usage {
 			TextTokens:  u.InputTokensDetails.TextTokens,
 		},
 	}
+}
+
+func decodeBase64Embedding(encoded string) ([]float64, error) {
+	if encoded == "" {
+		return nil, nil
+	}
+	raw, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, errors.Wrap(err, "decode base64 string")
+	}
+	if len(raw)%4 != 0 {
+		return nil, errors.Errorf("invalid base64 embedding byte length %d", len(raw))
+	}
+	values := make([]float64, len(raw)/4)
+	for i := 0; i < len(values); i++ {
+		bits := binary.LittleEndian.Uint32(raw[i*4 : (i+1)*4])
+		values[i] = float64(math.Float32frombits(bits))
+	}
+	return values, nil
 }

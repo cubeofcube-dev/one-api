@@ -559,6 +559,22 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response, promptTokens int, mod
 			"missing_embedding_data", http.StatusInternalServerError), nil
 	}
 
+	base64Vectors := 0
+	base64Dims := 0
+	for _, item := range embeddingResponse.Data {
+		if item.Base64Encoded {
+			base64Vectors++
+			if base64Dims == 0 {
+				base64Dims = len(item.Embedding)
+			}
+		}
+	}
+	if base64Vectors > 0 {
+		logger.Debug("decoded base64 embeddings",
+			zap.Int("vectors", base64Vectors),
+			zap.Int("dimensions", base64Dims))
+	}
+
 	usage := embeddingResponse.Usage
 	if usage.PromptTokens == 0 && promptTokens > 0 {
 		usage.PromptTokens = promptTokens
