@@ -94,6 +94,32 @@ func TestIsInternalInfraError(t *testing.T) {
 	})
 }
 
+func TestIsAdaptorInternalError(t *testing.T) {
+	t.Run("detects adaptor errors", func(t *testing.T) {
+		err := &model.ErrorWithStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Error:      model.Error{Type: "one_api_error"},
+		}
+		require.True(t, isAdaptorInternalError(err))
+	})
+
+	t.Run("ignores non adaptor types", func(t *testing.T) {
+		err := &model.ErrorWithStatusCode{
+			StatusCode: http.StatusInternalServerError,
+			Error:      model.Error{Type: "server_error"},
+		}
+		require.False(t, isAdaptorInternalError(err))
+	})
+
+	t.Run("requires server error status", func(t *testing.T) {
+		err := &model.ErrorWithStatusCode{
+			StatusCode: http.StatusBadRequest,
+			Error:      model.Error{Type: "one_api_error"},
+		}
+		require.False(t, isAdaptorInternalError(err))
+	})
+}
+
 func TestProcessChannelRelayError_InternalInfraFailureDoesNotSuspend(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
@@ -120,6 +146,27 @@ func TestProcessChannelRelayError_InternalInfraFailureDoesNotSuspend(t *testing.
 
 	require.NotPanics(t, func() {
 		processChannelRelayError(ctx, 1, 2, "test-channel", "default", "whisper-1", relayErr)
+	})
+}
+
+func TestProcessChannelRelayError_InternalAdaptorFailureDoesNotSuspend(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	ctx := gmw.Ctx(c)
+
+	relayErr := model.ErrorWithStatusCode{
+		StatusCode: http.StatusInternalServerError,
+		Error: model.Error{
+			Message:  "embedding decode failed",
+			Type:     "one_api_error",
+			Code:     "embedding_decode_failed",
+			RawError: errors.New("decode failure"),
+		},
+	}
+
+	require.NotPanics(t, func() {
+		processChannelRelayError(ctx, 1, 2, "azure text-embedding-3-large", "default", "text-embedding-3-large", relayErr)
 	})
 }
 func TestProcessChannelRelayError_StatusTooManyRequests(t *testing.T) {

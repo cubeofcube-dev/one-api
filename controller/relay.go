@@ -364,6 +364,16 @@ func isInternalInfraError(rawErr error) bool {
 	return false
 }
 
+func isAdaptorInternalError(err *model.ErrorWithStatusCode) bool {
+	if err == nil {
+		return false
+	}
+	if err.StatusCode >= http.StatusInternalServerError && err.Type == "one_api_error" {
+		return true
+	}
+	return false
+}
+
 // classifyAuthLike returns true if error appears to be auth/permission/quota related
 func classifyAuthLike(e *model.ErrorWithStatusCode) bool {
 	if e == nil {
@@ -485,6 +495,18 @@ func processChannelRelayError(ctx context.Context, userId int, channelId int, ch
 			zap.String("channel_name", channelName),
 			zap.String("group", group),
 			zap.String("model", originalModel))
+		monitor.Emit(channelId, false)
+		return
+	}
+
+	if isAdaptorInternalError(&err) {
+		lg.Info("internal adaptor error, skipping channel suspension",
+			zap.Int("channel_id", channelId),
+			zap.String("channel_name", channelName),
+			zap.String("group", group),
+			zap.String("model", originalModel),
+			zap.Int("status_code", err.StatusCode),
+		)
 		monitor.Emit(channelId, false)
 		return
 	}
