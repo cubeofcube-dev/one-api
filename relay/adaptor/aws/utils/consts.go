@@ -149,6 +149,7 @@ var (
 //
 // Array.from(new Set(Array.from(document.querySelectorAll('pre.programlisting code')).map(e => e.textContent.trim()).filter(Boolean)));
 var CrossRegionInferences = []string{
+	"global.anthropic.claude-opus-4-5-20251101-v1:0",
 	"global.anthropic.claude-haiku-4-5-20251001-v1:0",
 	"global.anthropic.claude-sonnet-4-20250514-v1:0",
 	"global.anthropic.claude-sonnet-4-5-20250929-v1:0",
@@ -182,8 +183,6 @@ var CrossRegionInferences = []string{
 	"us.amazon.nova-micro-v1:0",
 	"us.amazon.nova-premier-v1:0",
 	"us.amazon.nova-pro-v1:0",
-	"us.writer.palmyra-x4-v1:0",
-	"us.writer.palmyra-x5-v1:0",
 	"us.twelvelabs.pegasus-1-2-v1:0",
 	"us.stability.stable-conservative-upscale-v1:0",
 	"us.stability.stable-image-control-sketch-v1:0",
@@ -200,6 +199,8 @@ var CrossRegionInferences = []string{
 	"us.stability.stable-style-transfer-v1:0",
 	"us.twelvelabs.marengo-embed-3-0-v1:0",
 	"us.twelvelabs.marengo-embed-2-7-v1:0",
+	"us.writer.palmyra-x4-v1:0",
+	"us.writer.palmyra-x5-v1:0",
 	"us-gov.anthropic.claude-3-haiku-20240307-v1:0",
 	"us-gov.anthropic.claude-3-5-sonnet-20240620-v1:0",
 	"us-gov.anthropic.claude-3-7-sonnet-20250219-v1:0",
