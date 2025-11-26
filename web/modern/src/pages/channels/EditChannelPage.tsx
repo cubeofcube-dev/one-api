@@ -25,6 +25,7 @@ export function EditChannelPage() {
     defaultPricing,
     defaultTooling,
     defaultBaseURL,
+    baseURLEditable,
     formInitialized,
     normalizedChannelType,
     watchType,
@@ -135,6 +136,7 @@ export function EditChannelPage() {
                   form={form}
                   normalizedChannelType={normalizedChannelType}
                   defaultBaseURL={defaultBaseURL}
+                  baseURLEditable={baseURLEditable}
                   tr={tr}
                 />
 

@@ -41,6 +41,7 @@ export const useChannelForm = () => {
 	const [defaultPricing, setDefaultPricing] = useState<string>("");
 	const [defaultTooling, setDefaultTooling] = useState<string>("");
 	const [defaultBaseURL, setDefaultBaseURL] = useState<string>("");
+	const [baseURLEditable, setBaseURLEditable] = useState<boolean>(true);
 	const [formInitialized, setFormInitialized] = useState(!isEdit);
 	const [loadedChannelType, setLoadedChannelType] = useState<number | null>(
 		null,
@@ -344,13 +345,16 @@ export const useChannelForm = () => {
 		const run = async () => {
 			try {
 				setDefaultBaseURL("");
+				setBaseURLEditable(true);
 				if (normalizedChannelType === null) return;
 				const res = await api.get(
 					`/api/channel/metadata?type=${normalizedChannelType}`,
 				);
 				const base = (res.data?.data?.default_base_url as string) || "";
+				const editable = res.data?.data?.base_url_editable !== false;
 				if (!cancelled) {
 					setDefaultBaseURL(base);
+					setBaseURLEditable(editable);
 				}
 			} catch (_) {
 				// ignore
@@ -705,6 +709,7 @@ export const useChannelForm = () => {
 		defaultPricing,
 		defaultTooling,
 		defaultBaseURL,
+		baseURLEditable,
 		formInitialized,
 		loadedChannelType,
 		normalizedChannelType,

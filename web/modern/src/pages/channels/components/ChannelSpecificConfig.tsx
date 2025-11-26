@@ -1,4 +1,4 @@
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Lock } from "lucide-react";
 import { Controller, type UseFormReturn } from "react-hook-form";
 import {
 	FormControl,
@@ -27,6 +27,7 @@ interface ChannelSpecificConfigProps {
 	form: UseFormReturn<ChannelForm>;
 	normalizedChannelType: number | null;
 	defaultBaseURL: string;
+	baseURLEditable: boolean;
 	tr: (
 		key: string,
 		defaultValue: string,
@@ -34,10 +35,15 @@ interface ChannelSpecificConfigProps {
 	) => string;
 }
 
+// Channel types that have their own dedicated base_url field in the channel-specific config
+// These should not show the common base URL field
+const CHANNEL_TYPES_WITH_INTERNAL_BASE_URL = new Set<number>([3, 50]);
+
 export const ChannelSpecificConfig = ({
 	form,
 	normalizedChannelType,
 	defaultBaseURL,
+	baseURLEditable,
 	tr,
 }: ChannelSpecificConfigProps) => {
 	const watchConfig = form.watch("config");
@@ -50,7 +56,62 @@ export const ChannelSpecificConfig = ({
 			? "border-destructive focus-visible:ring-destructive"
 			: "";
 
-	switch (normalizedChannelType) {
+	// Common base URL field - shown for all channel types except those with internal base_url
+	const showCommonBaseURL = normalizedChannelType !== null &&
+		!CHANNEL_TYPES_WITH_INTERNAL_BASE_URL.has(normalizedChannelType);
+
+	const commonBaseURLField = showCommonBaseURL ? (
+		<FormField
+			control={form.control}
+			name="base_url"
+			render={({ field }) => (
+				<FormItem>
+					<div className="flex items-center gap-2">
+						<LabelWithHelp
+							label={tr("common.base_url.label", "API Base URL")}
+							help={
+								baseURLEditable
+									? tr(
+										"common.base_url.help_editable",
+										"Custom API base URL. Leave empty to use the default URL.",
+									)
+									: tr(
+										"common.base_url.help_readonly",
+										"The API base URL for this channel type is fixed and cannot be modified.",
+									)
+							}
+						/>
+						{!baseURLEditable && (
+							<Lock className="h-3 w-3 text-muted-foreground" />
+						)}
+					</div>
+					<FormControl>
+						<Input
+							placeholder={
+								defaultBaseURL ||
+								tr("common.base_url.placeholder", "https://api.example.com")
+							}
+							className={`${errorClass("base_url")} ${!baseURLEditable ? "bg-muted cursor-not-allowed" : ""}`}
+							disabled={!baseURLEditable}
+							readOnly={!baseURLEditable}
+							{...field}
+							value={baseURLEditable ? field.value : (defaultBaseURL || field.value)}
+						/>
+					</FormControl>
+					{!baseURLEditable && defaultBaseURL && (
+						<span className="text-xs text-muted-foreground">
+							{tr("common.base_url.fixed_note", "Using default: {{url}}", { url: defaultBaseURL })}
+						</span>
+					)}
+					<FormMessage />
+				</FormItem>
+			)}
+		/>
+	) : null;
+
+	// Render channel-specific configuration
+	const renderChannelSpecificConfig = () => {
+		switch (normalizedChannelType) {
 		case 3: // Azure OpenAI
 			return (
 				<div className="space-y-4 p-4 border rounded-lg bg-blue-50/50">
@@ -660,5 +721,20 @@ export const ChannelSpecificConfig = ({
 
 		default:
 			return null;
+		}
+	};
+
+	const channelSpecificConfig = renderChannelSpecificConfig();
+
+	// Return both the common base URL field and any channel-specific config
+	if (!commonBaseURLField && !channelSpecificConfig) {
+		return null;
 	}
+
+	return (
+		<div className="space-y-4">
+			{commonBaseURLField}
+			{channelSpecificConfig}
+		</div>
+	);
 };
