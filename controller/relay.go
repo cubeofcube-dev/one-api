@@ -368,7 +368,7 @@ func isAdaptorInternalError(err *model.ErrorWithStatusCode) bool {
 	if err == nil {
 		return false
 	}
-	if err.StatusCode >= http.StatusInternalServerError && err.Type == "one_api_error" {
+	if err.StatusCode >= http.StatusInternalServerError && err.Type == model.ErrorTypeOneAPI {
 		return true
 	}
 	return false
@@ -385,7 +385,8 @@ func classifyAuthLike(e *model.ErrorWithStatusCode) bool {
 	}
 	// Check error type/code/message heuristics
 	t := e.Type
-	if t == "authentication_error" || t == "permission_error" || t == "insufficient_quota" || t == "forbidden" {
+	if t == model.ErrorTypeAuthentication || t == model.ErrorTypePermission ||
+		t == model.ErrorTypeInsufficientQuota || t == model.ErrorTypeForbidden {
 		return true
 	}
 	switch v := e.Code.(type) {
@@ -607,7 +608,7 @@ func RelayNotImplemented(c *gin.Context) {
 	msg := "API not implemented"
 	errObj := model.Error{
 		Message:  msg,
-		Type:     "one_api_error",
+		Type:     model.ErrorTypeOneAPI,
 		Param:    "",
 		Code:     "api_not_implemented",
 		RawError: errors.New(msg),
@@ -621,7 +622,7 @@ func RelayNotFound(c *gin.Context) {
 	msg := fmt.Sprintf("Invalid URL (%s %s)", c.Request.Method, c.Request.URL.Path)
 	errObj := model.Error{
 		Message:  msg,
-		Type:     "invalid_request_error",
+		Type:     model.ErrorTypeInvalidRequest,
 		Param:    "",
 		Code:     "",
 		RawError: errors.New(msg),

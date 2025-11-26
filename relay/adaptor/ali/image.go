@@ -50,7 +50,7 @@ func ImageHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCo
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  aliResponse.Output.Message,
-				Type:     "ali_error",
+				Type:     model.ErrorTypeAli,
 				Param:    "",
 				Code:     aliResponse.Output.Code,
 				RawError: errors.New(aliResponse.Output.Message),

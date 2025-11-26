@@ -154,7 +154,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  palmResponse.Error.Message,
-				Type:     palmResponse.Error.Status,
+				Type:     model.ErrorType(palmResponse.Error.Status),
 				Param:    "",
 				Code:     palmResponse.Error.Code,
 				RawError: errors.New(palmResponse.Error.Message),

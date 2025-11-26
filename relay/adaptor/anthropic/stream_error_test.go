@@ -15,7 +15,7 @@ func TestParseStreamErrorEvent(t *testing.T) {
 	if sr.Type != "error" {
 		t.Fatalf("expected type error, got %s", sr.Type)
 	}
-	if sr.Error.Type != "overloaded_error" {
+	if string(sr.Error.Type) != "overloaded_error" {
 		t.Fatalf("expected error.type overloaded_error, got %s", sr.Error.Type)
 	}
 	if sr.Error.Message != "Overloaded" {

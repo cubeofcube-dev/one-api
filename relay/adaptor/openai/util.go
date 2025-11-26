@@ -9,7 +9,7 @@ func ErrorWrapper(err error, code string, statusCode int) *model.ErrorWithStatus
 	// Avoid using global logger here; callers should log with request-scoped logger.
 	Error := model.Error{
 		Message:  err.Error(),
-		Type:     "one_api_error",
+		Type:     model.ErrorTypeOneAPI,
 		Code:     code,
 		RawError: err,
 	}

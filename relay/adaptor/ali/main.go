@@ -102,10 +102,11 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStat
 	}
 
 	if aliResponse.Code != "" {
+		errType := model.ErrorType(aliResponse.Code)
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  aliResponse.Message,
-				Type:     aliResponse.Code,
+				Type:     errType,
 				Param:    aliResponse.RequestId,
 				Code:     aliResponse.Code,
 				RawError: errors.New(aliResponse.Message),
@@ -257,10 +258,11 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 		return openai.ErrorWrapper(err, "unmarshal_response_body_failed", http.StatusInternalServerError), nil
 	}
 	if aliResponse.Code != "" {
+		errType := model.ErrorType(aliResponse.Code)
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  aliResponse.Message,
-				Type:     aliResponse.Code,
+				Type:     errType,
 				Param:    aliResponse.RequestId,
 				Code:     aliResponse.Code,
 				RawError: errors.New(aliResponse.Message),

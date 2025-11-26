@@ -543,7 +543,7 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response, promptTokens int, mod
 			embeddingResponse.Error.RawError = stdErrors.New(embeddingResponse.Error.Message)
 		}
 		logger.Debug("upstream returned embedding error response",
-			zap.String("error_type", embeddingResponse.Error.Type),
+			zap.String("error_type", string(embeddingResponse.Error.Type)),
 			zap.String("error_message", embeddingResponse.Error.Message),
 			zap.Error(embeddingResponse.Error.RawError))
 		return &model.ErrorWithStatusCode{

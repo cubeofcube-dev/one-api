@@ -212,7 +212,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  cohereResponse.Message,
-				Type:     cohereResponse.Message,
+				Type:     model.ErrorType(cohereResponse.Message),
 				Param:    "",
 				Code:     resp.StatusCode,
 				RawError: errors.New(cohereResponse.Message),

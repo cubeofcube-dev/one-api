@@ -139,14 +139,14 @@ func buildRerankError(body []byte, statusCode int) *model.ErrorWithStatusCode {
 	_ = json.Unmarshal(body, &errResp)
 
 	message := strings.TrimSpace(errResp.Message)
-	errType := "cohere_rerank_error"
+	errType := model.ErrorType("cohere_rerank_error")
 	var code any = statusCode
 	if errResp.Error != nil {
 		if strings.TrimSpace(errResp.Error.Message) != "" {
 			message = strings.TrimSpace(errResp.Error.Message)
 		}
 		if strings.TrimSpace(errResp.Error.Type) != "" {
-			errType = errResp.Error.Type
+			errType = model.ErrorType(errResp.Error.Type)
 		}
 		if errResp.Error.Code != nil {
 			code = errResp.Error.Code

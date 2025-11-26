@@ -12,6 +12,7 @@ import (
 	"github.com/songquanpeng/one-api/common"
 	"github.com/songquanpeng/one-api/common/config"
 	"github.com/songquanpeng/one-api/common/helper"
+	"github.com/songquanpeng/one-api/relay/model"
 )
 
 // AbortWithError aborts the request with an error message
@@ -30,7 +31,7 @@ func AbortWithError(c *gin.Context, statusCode int, err error) {
 	c.JSON(statusCode, gin.H{
 		"error": gin.H{
 			"message": helper.MessageWithRequestId(err.Error(), c.GetString(helper.RequestIdKey)),
-			"type":    "one_api_error",
+			"type":    string(model.ErrorTypeOneAPI),
 		},
 	})
 	c.Abort()

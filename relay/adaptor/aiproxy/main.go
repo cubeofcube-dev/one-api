@@ -169,10 +169,11 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 		return openai.ErrorWrapper(err, "unmarshal_response_body_failed", http.StatusInternalServerError), nil
 	}
 	if AIProxyLibraryResponse.ErrCode != 0 {
+		errType := model.ErrorType(strconv.Itoa(AIProxyLibraryResponse.ErrCode))
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  AIProxyLibraryResponse.Message,
-				Type:     strconv.Itoa(AIProxyLibraryResponse.ErrCode),
+				Type:     errType,
 				Code:     AIProxyLibraryResponse.ErrCode,
 				RawError: errors.New(AIProxyLibraryResponse.Message),
 			},

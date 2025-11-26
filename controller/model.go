@@ -710,7 +710,7 @@ func RetrieveModel(c *gin.Context) {
 		lg.Debug("failed to build supported models snapshot for lookup", zap.Error(err))
 	}
 	msg := fmt.Sprintf("The model '%s' does not exist", modelId)
-	Error := relaymodel.Error{Message: msg, Type: "invalid_request_error", Param: "model", Code: "model_not_found", RawError: errors.New(msg)}
+	Error := relaymodel.Error{Message: msg, Type: relaymodel.ErrorTypeInvalidRequest, Param: "model", Code: "model_not_found", RawError: errors.New(msg)}
 	c.JSON(http.StatusOK, gin.H{
 		"error": Error,
 	})

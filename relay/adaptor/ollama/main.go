@@ -196,7 +196,7 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStat
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  ollamaResponse.Error,
-				Type:     "ollama_error",
+				Type:     model.ErrorTypeOllama,
 				Param:    "",
 				Code:     "ollama_error",
 				RawError: errors.New(ollamaResponse.Error),
@@ -253,7 +253,7 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  ollamaResponse.Error,
-				Type:     "ollama_error",
+				Type:     model.ErrorTypeOllama,
 				Param:    "",
 				Code:     "ollama_error",
 				RawError: errors.New(ollamaResponse.Error),

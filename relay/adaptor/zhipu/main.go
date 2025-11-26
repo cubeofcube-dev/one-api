@@ -231,7 +231,7 @@ func Handler(c *gin.Context, resp *http.Response) (*model.ErrorWithStatusCode, *
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  zhipuResponse.Msg,
-				Type:     "zhipu_error",
+				Type:     model.ErrorTypeZhipu,
 				Param:    "",
 				Code:     zhipuResponse.Code,
 				RawError: errors.New(zhipuResponse.Msg),

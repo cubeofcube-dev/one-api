@@ -1080,7 +1080,7 @@ func ClaudeNativeHandler(c *gin.Context, resp *http.Response, promptTokens int, 
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  claudeResponse.Error.Message,
-				Type:     claudeResponse.Error.Type,
+				Type:     model.ErrorType(claudeResponse.Error.Type),
 				Param:    "",
 				Code:     claudeResponse.Error.Type,
 				RawError: errors.New(claudeResponse.Error.Message),
@@ -1147,7 +1147,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  claudeResponse.Error.Message,
-				Type:     claudeResponse.Error.Type,
+				Type:     model.ErrorType(claudeResponse.Error.Type),
 				Param:    "",
 				Code:     claudeResponse.Error.Type,
 				RawError: errors.New(claudeResponse.Error.Message),

@@ -64,7 +64,7 @@ func RelayErrorHandler(resp *http.Response) (ErrorWithStatusCode *model.ErrorWit
 			StatusCode: 500,
 			Error: model.Error{
 				Message:  "resp is nil",
-				Type:     "upstream_error",
+				Type:     model.ErrorTypeUpstream,
 				Code:     "bad_response",
 				RawError: errors.New("resp is nil"),
 			},
@@ -75,7 +75,7 @@ func RelayErrorHandler(resp *http.Response) (ErrorWithStatusCode *model.ErrorWit
 		StatusCode: resp.StatusCode,
 		Error: model.Error{
 			Message:  "",
-			Type:     "upstream_error",
+			Type:     model.ErrorTypeUpstream,
 			Code:     "bad_response_status_code",
 			Param:    strconv.Itoa(resp.StatusCode),
 			RawError: errors.Errorf("bad response %d", resp.StatusCode),
@@ -132,7 +132,7 @@ func RelayErrorHandlerWithContext(c *gin.Context, resp *http.Response) *model.Er
 	// Read and restore response body for downstream use
 	responseBody, _ := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
-	logUpstreamResponseFromBytes(gmw.GetLogger(c), resp, responseBody, "upstream_error")
+	logUpstreamResponseFromBytes(gmw.GetLogger(c), resp, responseBody, string(model.ErrorTypeUpstream))
 	// Reconstruct a new ReadCloser for any further reads (not commonly needed here)
 	resp.Body = io.NopCloser(bytes.NewReader(responseBody))
 	return RelayErrorHandler(resp)

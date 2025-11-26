@@ -100,7 +100,7 @@ func ErrorWrapper(err error, code string, statusCode int) *model.ErrorWithStatus
 	return &model.ErrorWithStatusCode{
 		Error: model.Error{
 			Message:  err.Error(),
-			Type:     "one_api_error",
+			Type:     model.ErrorTypeOneAPI,
 			Code:     code,
 			RawError: err,
 		},
@@ -223,7 +223,7 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStat
 			embeddingResponse.Error.RawError = errors.New(embeddingResponse.Error.Message)
 		}
 		logger.Debug("upstream returned embedding error response",
-			zap.String("error_type", embeddingResponse.Error.Type),
+			zap.String("error_type", string(embeddingResponse.Error.Type)),
 			zap.String("error_message", embeddingResponse.Error.Message),
 			// Prefer recording the raw upstream error for diagnostics
 			zap.Error(embeddingResponse.Error.RawError))
@@ -307,7 +307,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 			textResponse.Error.RawError = errors.New(textResponse.Error.Message)
 		}
 		logger.Debug("upstream returned error response",
-			zap.String("error_type", textResponse.Error.Type),
+			zap.String("error_type", string(textResponse.Error.Type)),
 			zap.String("error_message", textResponse.Error.Message),
 			// Prefer recording the raw upstream error for diagnostics
 			zap.Error(textResponse.Error.RawError))
@@ -523,7 +523,7 @@ func HandlerWithThinking(c *gin.Context, resp *http.Response, promptTokens int, 
 			textResponse.Error.RawError = errors.New(textResponse.Error.Message)
 		}
 		logger.Debug("upstream returned error response",
-			zap.String("error_type", textResponse.Error.Type),
+			zap.String("error_type", string(textResponse.Error.Type)),
 			zap.String("error_message", textResponse.Error.Message),
 			// Prefer recording the raw upstream error for diagnostics
 			zap.Error(textResponse.Error.RawError))

@@ -41,7 +41,7 @@ func TestProcessError_Policies(t *testing.T) {
 	cases := []Case{
 		{
 			name:           "429 triggers rate limit suspension",
-			err:            model.ErrorWithStatusCode{StatusCode: http.StatusTooManyRequests, Error: model.Error{Type: "rate_limit_error"}},
+			err:            model.ErrorWithStatusCode{StatusCode: http.StatusTooManyRequests, Error: model.Error{Type: model.ErrorTypeRateLimit}},
 			wantSuspend429: true,
 		},
 		{
@@ -65,7 +65,7 @@ func TestProcessError_Policies(t *testing.T) {
 		},
 		{
 			name:            "auth-like by type triggers auth suspension",
-			err:             model.ErrorWithStatusCode{StatusCode: 400, Error: model.Error{Type: "authentication_error"}},
+			err:             model.ErrorWithStatusCode{StatusCode: 400, Error: model.Error{Type: model.ErrorTypeAuthentication}},
 			wantSuspendAuth: true,
 		},
 		{

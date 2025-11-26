@@ -15,7 +15,7 @@ func TestShouldDisableChannel_RespectsFlag(t *testing.T) {
 	// Construct an error that normally would trigger disable
 	err := &relaymodel.Error{
 		Message: "invalid api key",
-		Type:    "authentication_error",
+		Type:    relaymodel.ErrorTypeAuthentication,
 		Code:    "invalid_api_key",
 	}
 

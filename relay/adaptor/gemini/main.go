@@ -783,7 +783,7 @@ func Handler(c *gin.Context, resp *http.Response, promptTokens int, modelName st
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  "No candidates returned",
-				Type:     "server_error",
+				Type:     model.ErrorTypeServer,
 				Param:    "",
 				Code:     500,
 				RawError: errors.New("No candidates returned"),
@@ -844,7 +844,7 @@ func EmbeddingHandler(c *gin.Context, resp *http.Response) (*model.ErrorWithStat
 		return &model.ErrorWithStatusCode{
 			Error: model.Error{
 				Message:  geminiEmbeddingResponse.Error.Message,
-				Type:     "gemini_error",
+				Type:     model.ErrorTypeGemini,
 				Param:    "",
 				Code:     geminiEmbeddingResponse.Error.Code,
 				RawError: errors.New(geminiEmbeddingResponse.Error.Message),

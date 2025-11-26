@@ -58,7 +58,12 @@ func TestClassifyAuthLike(t *testing.T) {
 	})
 
 	t.Run("type-based", func(t *testing.T) {
-		for _, typ := range []string{"authentication_error", "permission_error", "insufficient_quota", "forbidden"} {
+		for _, typ := range []model.ErrorType{
+			model.ErrorTypeAuthentication,
+			model.ErrorTypePermission,
+			model.ErrorTypeInsufficientQuota,
+			model.ErrorTypeForbidden,
+		} {
 			e := &model.ErrorWithStatusCode{Error: model.Error{Type: typ}}
 			assert.True(t, classifyAuthLike(e), typ)
 		}

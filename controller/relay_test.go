@@ -98,7 +98,7 @@ func TestIsAdaptorInternalError(t *testing.T) {
 	t.Run("detects adaptor errors", func(t *testing.T) {
 		err := &model.ErrorWithStatusCode{
 			StatusCode: http.StatusInternalServerError,
-			Error:      model.Error{Type: "one_api_error"},
+			Error:      model.Error{Type: model.ErrorTypeOneAPI},
 		}
 		require.True(t, isAdaptorInternalError(err))
 	})
@@ -106,7 +106,7 @@ func TestIsAdaptorInternalError(t *testing.T) {
 	t.Run("ignores non adaptor types", func(t *testing.T) {
 		err := &model.ErrorWithStatusCode{
 			StatusCode: http.StatusInternalServerError,
-			Error:      model.Error{Type: "server_error"},
+			Error:      model.Error{Type: model.ErrorTypeServer},
 		}
 		require.False(t, isAdaptorInternalError(err))
 	})
@@ -114,7 +114,7 @@ func TestIsAdaptorInternalError(t *testing.T) {
 	t.Run("requires server error status", func(t *testing.T) {
 		err := &model.ErrorWithStatusCode{
 			StatusCode: http.StatusBadRequest,
-			Error:      model.Error{Type: "one_api_error"},
+			Error:      model.Error{Type: model.ErrorTypeOneAPI},
 		}
 		require.False(t, isAdaptorInternalError(err))
 	})
@@ -138,7 +138,7 @@ func TestProcessChannelRelayError_InternalInfraFailureDoesNotSuspend(t *testing.
 		StatusCode: http.StatusInternalServerError,
 		Error: model.Error{
 			Message:  "internal ffprobe missing",
-			Type:     "internal_error",
+			Type:     model.ErrorTypeInternal,
 			Code:     "count_audio_tokens_failed",
 			RawError: outerErr,
 		},
@@ -159,7 +159,7 @@ func TestProcessChannelRelayError_InternalAdaptorFailureDoesNotSuspend(t *testin
 		StatusCode: http.StatusInternalServerError,
 		Error: model.Error{
 			Message:  "embedding decode failed",
-			Type:     "one_api_error",
+			Type:     model.ErrorTypeOneAPI,
 			Code:     "embedding_decode_failed",
 			RawError: errors.New("decode failure"),
 		},
@@ -216,7 +216,7 @@ func TestProcessChannelRelayError_StatusTooManyRequests(t *testing.T) {
 				StatusCode: tt.statusCode,
 				Error: model.Error{
 					Message: "Test error message",
-					Type:    "rate_limit_error",
+					Type:    model.ErrorTypeRateLimit,
 				},
 			}
 
@@ -325,7 +325,7 @@ func TestProcessChannelRelayError_ModelLevelGranularity(t *testing.T) {
 		StatusCode: http.StatusTooManyRequests,
 		Error: model.Error{
 			Message: "Rate limit exceeded",
-			Type:    "rate_limit_error",
+			Type:    model.ErrorTypeRateLimit,
 		},
 	}
 
@@ -372,7 +372,7 @@ func TestRelay429ErrorHandling(t *testing.T) {
 				StatusCode: http.StatusTooManyRequests,
 				Error: model.Error{
 					Message: "Rate limit exceeded",
-					Type:    "rate_limit_error",
+					Type:    model.ErrorTypeRateLimit,
 				},
 			},
 			retryTimes:            3,
@@ -385,7 +385,7 @@ func TestRelay429ErrorHandling(t *testing.T) {
 				StatusCode: http.StatusInternalServerError,
 				Error: model.Error{
 					Message: "Internal server error",
-					Type:    "server_error",
+					Type:    model.ErrorTypeServer,
 				},
 			},
 			retryTimes:            3,
@@ -398,7 +398,7 @@ func TestRelay429ErrorHandling(t *testing.T) {
 				StatusCode: http.StatusNotFound,
 				Error: model.Error{
 					Message: "Not found",
-					Type:    "not_found_error",
+					Type:    model.ErrorTypeNotFound,
 				},
 			},
 			retryTimes:            3,
@@ -683,7 +683,7 @@ func TestProcessChannelRelayError(t *testing.T) {
 			testError := model.ErrorWithStatusCode{
 				Error: model.Error{
 					Message: "Test error message",
-					Type:    "test_error",
+					Type:    model.ErrorTypeTest,
 					Code:    tt.statusCode,
 				},
 				StatusCode: tt.statusCode,

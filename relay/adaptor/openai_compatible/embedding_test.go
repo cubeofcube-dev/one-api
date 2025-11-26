@@ -11,6 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/songquanpeng/one-api/relay/model"
 )
 
 func TestEmbeddingHandler_Success(t *testing.T) {
@@ -113,7 +115,7 @@ func TestEmbeddingHandler_ErrorResponse(t *testing.T) {
 	require.NotNil(t, errResp)
 	require.Nil(t, usage)
 	assert.Equal(t, http.StatusUnauthorized, errResp.StatusCode)
-	assert.Equal(t, "authentication_error", errResp.Error.Type)
+	assert.Equal(t, model.ErrorTypeAuthentication, errResp.Error.Type)
 	assert.Equal(t, "Invalid API key", errResp.Error.Message)
 }
 

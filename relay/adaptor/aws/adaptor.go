@@ -749,7 +749,7 @@ func ValidateUnsupportedParameters(request *model.GeneralOpenAIRequest, modelNam
 			StatusCode: http.StatusBadRequest,
 			Error: model.Error{
 				Message:  errorMessage,
-				Type:     "invalid_request_error",
+				Type:     model.ErrorTypeInvalidRequest,
 				Code:     "unsupported_parameter",
 				RawError: errors.New(errorMessage),
 			},

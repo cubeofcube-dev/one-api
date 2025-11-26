@@ -29,11 +29,54 @@ type Usage struct {
 	CacheWrite1hTokens int `json:"cache_write_1h_tokens,omitempty"`
 }
 
+// ErrorType enumerates the standardized error categories we expose to clients.
+// Keeping them centralized avoids magic strings across the codebase.
+type ErrorType string
+
+const (
+	// ErrorTypeUnknown is the default zero value when no error type is provided by upstream.
+	ErrorTypeUnknown ErrorType = ""
+	// ErrorTypeUpstream indicates the upstream provider returned an unexpected payload.
+	ErrorTypeUpstream ErrorType = "upstream_error"
+	// ErrorTypeInternal represents failures originating inside one-api infrastructure.
+	ErrorTypeInternal ErrorType = "internal_error"
+	// ErrorTypeServer indicates a generic 5xx-style server failure surfaced to clients.
+	ErrorTypeServer ErrorType = "server_error"
+	// ErrorTypeOneAPI is used for validation errors raised by one-api before contacting upstream.
+	ErrorTypeOneAPI ErrorType = "one_api_error"
+	// ErrorTypeInvalidRequest signals that the caller's request payload is malformed.
+	ErrorTypeInvalidRequest ErrorType = "invalid_request_error"
+	// ErrorTypeAuthentication covers invalid credentials or authentication failures.
+	ErrorTypeAuthentication ErrorType = "authentication_error"
+	// ErrorTypePermission is returned when the token lacks permission for the requested action.
+	ErrorTypePermission ErrorType = "permission_error"
+	// ErrorTypeInsufficientQuota indicates the account has run out of quota or credit.
+	ErrorTypeInsufficientQuota ErrorType = "insufficient_quota"
+	// ErrorTypeForbidden captures policy violations or organization restrictions from providers.
+	ErrorTypeForbidden ErrorType = "forbidden"
+	// ErrorTypeRateLimit denotes rate limiting responses (typically HTTP 429).
+	ErrorTypeRateLimit ErrorType = "rate_limit_error"
+	// ErrorTypeNotFound maps to missing resources such as jobs or files.
+	ErrorTypeNotFound ErrorType = "not_found_error"
+	// ErrorTypeTest is reserved for synthetic failures inside tests.
+	ErrorTypeTest ErrorType = "test_error"
+	// ErrorTypeAli represents errors emitted by Aliyun DashScope endpoints.
+	ErrorTypeAli ErrorType = "ali_error"
+	// ErrorTypeBaidu represents errors emitted by Baidu Wenxin endpoints.
+	ErrorTypeBaidu ErrorType = "baidu_error"
+	// ErrorTypeZhipu represents errors returned by Zhipu/ChatGLM providers.
+	ErrorTypeZhipu ErrorType = "zhipu_error"
+	// ErrorTypeOllama represents errors returned by local Ollama runtimes.
+	ErrorTypeOllama ErrorType = "ollama_error"
+	// ErrorTypeGemini represents errors returned by Google Gemini APIs.
+	ErrorTypeGemini ErrorType = "gemini_error"
+)
+
 type Error struct {
-	Message string `json:"message"`
-	Type    string `json:"type"`
-	Param   string `json:"param"`
-	Code    any    `json:"code"`
+	Message string    `json:"message"`
+	Type    ErrorType `json:"type"`
+	Param   string    `json:"param"`
+	Code    any       `json:"code"`
 	// RawError preserves the original upstream or internal error for diagnostics.
 	// Omitted from JSON to avoid leaking provider internals.
 	RawError error `json:"-"`
