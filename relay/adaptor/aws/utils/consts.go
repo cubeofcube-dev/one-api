@@ -79,6 +79,34 @@ var (
 			"eu-west-1",
 			"ap-northeast-1",
 		},
+		// claude-opus-4-5 requires the global inference profile for on-demand invocation.
+		// AWS does not support direct model ID invocation for this model.
+		// Source: https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html
+		"anthropic.claude-opus-4-5-20251101-v1:0": {
+			"us-west-1",
+			"us-west-2",
+			"us-east-1",
+			"us-east-2",
+			"sa-east-1",
+			"eu-west-1",
+			"eu-west-2",
+			"eu-west-3",
+			"eu-south-1",
+			"eu-south-2",
+			"eu-north-1",
+			"eu-central-1",
+			"eu-central-2",
+			"ca-central-1",
+			"ap-south-1",
+			"ap-south-2",
+			"ap-southeast-1",
+			"ap-southeast-2",
+			"ap-southeast-3",
+			"ap-southeast-4",
+			"ap-northeast-1",
+			"ap-northeast-2",
+			"ap-northeast-3",
+		},
 		"anthropic.claude-sonnet-4-5-20250929-v1:0": {
 			"us-west-1",
 			"us-west-2",
@@ -148,6 +176,8 @@ var (
 // https://docs.aws.amazon.com/bedrock/latest/userguide/inference-profiles-support.html
 //
 // Array.from(new Set(Array.from(document.querySelectorAll('pre.programlisting code')).map(e => e.textContent.trim()).filter(Boolean)));
+//
+// Note: should also update GlobalProfileSourceRegions accordingly!
 var CrossRegionInferences = []string{
 	"global.anthropic.claude-opus-4-5-20251101-v1:0",
 	"global.anthropic.claude-haiku-4-5-20251001-v1:0",
@@ -390,31 +420,53 @@ func testModelAvailability(ctx context.Context, client *bedrockruntime.Client, m
 func ConvertModelID2CrossRegionProfile(ctx context.Context, model, region string) string {
 	lg := gmw.GetLogger(ctx)
 
+	// First check if this model requires a global inference profile
 	if allowedRegions, exists := GlobalProfileSourceRegions[model]; exists {
 		if slices.Contains(allowedRegions, region) {
 			globalModel := "global." + model
 			if slices.Contains(CrossRegionInferences, globalModel) {
-				lg.Debug("convert model to global cross-region profile", zap.String("model", model), zap.String("cross_region_profile", globalModel))
+				lg.Debug("convert model to global cross-region profile",
+					zap.String("model", model),
+					zap.String("region", region),
+					zap.String("cross_region_profile", globalModel))
 				return globalModel
 			}
+			lg.Debug("global profile not found in CrossRegionInferences",
+				zap.String("model", model),
+				zap.String("region", region),
+				zap.String("expected_global_profile", globalModel))
+		} else {
+			lg.Debug("region not in GlobalProfileSourceRegions allowed list",
+				zap.String("model", model),
+				zap.String("region", region),
+				zap.Strings("allowed_regions", allowedRegions))
 		}
 	}
 
 	regionPrefixes := getRegionPrefixes(region)
 	if len(regionPrefixes) == 0 {
-		lg.Debug("unsupported region for cross-region inference", zap.String("region", region))
+		lg.Debug("unsupported region for cross-region inference, using raw model ID",
+			zap.String("model", model),
+			zap.String("region", region))
 		return model
 	}
 
 	for _, regionPrefix := range regionPrefixes {
 		newModelID := regionPrefix + "." + model
 		if slices.Contains(CrossRegionInferences, newModelID) {
-			lg.Debug("convert model to cross-region profile", zap.String("model", model), zap.String("region_prefix", regionPrefix), zap.String("cross_region_profile", newModelID))
+			lg.Debug("convert model to cross-region profile",
+				zap.String("model", model),
+				zap.String("region", region),
+				zap.String("region_prefix", regionPrefix),
+				zap.String("cross_region_profile", newModelID))
 			return newModelID
 		}
 	}
 
-	lg.Debug("no cross-region profile found", zap.String("model", model), zap.String("region", region))
+	lg.Debug("no cross-region profile found, using raw model ID",
+		zap.String("model", model),
+		zap.String("region", region),
+		zap.Strings("tried_prefixes", regionPrefixes))
 	return model
 }
 
