@@ -15,6 +15,7 @@ import { Ban, CheckCircle, Plus, RefreshCw, Settings, TestTube, Trash2 } from 'l
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { resolveChannelColor } from './utils/colorGenerator'
 
 interface Channel {
   id: number
@@ -108,9 +109,14 @@ export function ChannelsPage() {
   const skipFirstSortEffect = useRef(true)
 
   const renderChannelTypeBadge = (type: number) => {
-    const channelType = CHANNEL_TYPES[type] || { name: t('channels.type_unknown', { type }), color: 'gray' }
+    const channelType = CHANNEL_TYPES[type] || { name: t('channels.type_unknown', { type }), color: undefined }
+    const colorValue = resolveChannelColor(channelType.color, type)
     return (
-      <Badge variant="outline" className="text-xs">
+      <Badge variant="outline" className="text-xs gap-1.5">
+        <span
+          className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+          style={{ backgroundColor: colorValue }}
+        />
         {channelType.name}
       </Badge>
     )

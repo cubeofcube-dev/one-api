@@ -22,6 +22,7 @@ import {
 import { getKeyPrompt } from "../helpers";
 import type { ChannelForm } from "../schemas";
 import { LabelWithHelp } from "./LabelWithHelp";
+import { resolveChannelColor } from "../utils/colorGenerator";
 
 interface ChannelBasicInfoProps {
 	form: UseFormReturn<ChannelForm>;
@@ -32,6 +33,8 @@ interface ChannelBasicInfoProps {
 		defaultValue: string,
 		options?: Record<string, unknown>,
 	) => string;
+	/** Callback to request a type change (may trigger confirmation dialog in edit mode) */
+	onTypeChange?: (newType: number) => void;
 }
 
 export const ChannelBasicInfo = ({
@@ -39,6 +42,7 @@ export const ChannelBasicInfo = ({
 	groups,
 	normalizedChannelType,
 	tr,
+	onTypeChange,
 }: ChannelBasicInfoProps) => {
 	const watchType = form.watch("type");
 	const channelTypeOverridesKeyField =
@@ -123,7 +127,11 @@ export const ChannelBasicInfo = ({
 							onValueChange={(value) => {
 								const numVal = Number(value);
 								if (!Number.isNaN(numVal)) {
-									field.onChange(numVal);
+									if (onTypeChange) {
+										onTypeChange(numVal);
+									} else {
+										field.onChange(numVal);
+									}
 								}
 							}}
 							value={field.value ? String(field.value) : undefined}
@@ -139,14 +147,20 @@ export const ChannelBasicInfo = ({
 								</SelectTrigger>
 							</FormControl>
 							<SelectContent className="max-h-[300px]">
-								{CHANNEL_TYPES.map((type) => (
-									<SelectItem key={type.key} value={String(type.value)}>
-										<span
-											className={`mr-2 inline-block w-2 h-2 rounded-full bg-${type.color}-500`}
-										/>
-										{type.text}
-									</SelectItem>
-								))}
+								{CHANNEL_TYPES.map((type) => {
+									const colorValue = resolveChannelColor(type.color, type.value);
+									return (
+										<SelectItem key={type.key} value={String(type.value)}>
+											<span className="flex items-center gap-2">
+												<span
+													className="inline-block w-2 h-2 rounded-full flex-shrink-0"
+													style={{ backgroundColor: colorValue }}
+												/>
+												{type.text}
+											</span>
+										</SelectItem>
+									);
+								})}
 							</SelectContent>
 						</Select>
 						<FormMessage />

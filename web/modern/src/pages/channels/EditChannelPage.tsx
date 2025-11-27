@@ -11,6 +11,7 @@ import { ChannelBasicInfo } from './components/ChannelBasicInfo'
 import { ChannelModelSettings } from './components/ChannelModelSettings'
 import { ChannelSpecificConfig } from './components/ChannelSpecificConfig'
 import { ChannelToolingSettings } from './components/ChannelToolingSettings'
+import { ChannelTypeChangeDialog } from './components/ChannelTypeChangeDialog'
 import { CHANNEL_TYPES } from './constants'
 import { useChannelForm } from './hooks/useChannelForm'
 
@@ -33,6 +34,11 @@ export function EditChannelPage() {
     testChannel,
     tr,
     notify,
+    // Type change handling
+    pendingTypeChange,
+    requestTypeChange,
+    confirmTypeChange,
+    cancelTypeChange,
   } = useChannelForm()
 
   const selectedChannelType = CHANNEL_TYPES.find(t => t.value === normalizedChannelType)
@@ -80,9 +86,27 @@ export function EditChannelPage() {
     }
   }
 
+  // Get type names for the confirmation dialog
+  const getTypeName = (typeValue: number) => {
+    const type = CHANNEL_TYPES.find(t => t.value === typeValue)
+    return type?.text || `Type ${typeValue}`
+  }
+
   return (
     <div className="container mx-auto px-4 py-6">
       <TooltipProvider>
+        {/* Channel Type Change Confirmation Dialog */}
+        <ChannelTypeChangeDialog
+          open={pendingTypeChange !== null}
+          onOpenChange={(open) => {
+            if (!open) cancelTypeChange()
+          }}
+          fromType={pendingTypeChange ? getTypeName(pendingTypeChange.fromType) : ''}
+          toType={pendingTypeChange ? getTypeName(pendingTypeChange.toType) : ''}
+          onConfirm={confirmTypeChange}
+          onCancel={cancelTypeChange}
+          tr={tr}
+        />
         <Card>
           <CardHeader>
             <CardTitle>
@@ -130,6 +154,7 @@ export function EditChannelPage() {
                   groups={groups}
                   normalizedChannelType={normalizedChannelType}
                   tr={tr}
+                  onTypeChange={requestTypeChange}
                 />
 
                 <ChannelSpecificConfig

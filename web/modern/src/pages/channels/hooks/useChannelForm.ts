@@ -46,6 +46,11 @@ export const useChannelForm = () => {
 	const [loadedChannelType, setLoadedChannelType] = useState<number | null>(
 		null,
 	);
+	// State for channel type change confirmation dialog
+	const [pendingTypeChange, setPendingTypeChange] = useState<{
+		fromType: number;
+		toType: number;
+	} | null>(null);
 
 	const form = useForm<ChannelForm>({
 		resolver: zodResolver(channelSchema),
@@ -366,36 +371,8 @@ export const useChannelForm = () => {
 		};
 	}, [normalizedChannelType]);
 
-	useEffect(() => {
-		if (isEdit && formInitialized && loadedChannelType) {
-			const currentType = getValues("type");
-			const numericCurrentType =
-				typeof currentType === "number" ? currentType : Number(currentType);
-
-			if (
-				!Number.isFinite(numericCurrentType) ||
-				numericCurrentType !== loadedChannelType
-			) {
-				setValue("type", loadedChannelType, {
-					shouldValidate: true,
-					shouldDirty: false,
-				});
-			}
-		}
-	}, [isEdit, formInitialized, loadedChannelType, getValues, setValue]);
-
-	useEffect(() => {
-		if (
-			isEdit &&
-			loadedChannelType &&
-			normalizedChannelType !== loadedChannelType
-		) {
-			setValue("type", loadedChannelType, {
-				shouldValidate: true,
-				shouldDirty: false,
-			});
-		}
-	}, [isEdit, loadedChannelType, normalizedChannelType, setValue]);
+	// Removed: useEffect that prevented channel type changes when editing
+	// Channel type changes are now allowed with a confirmation dialog
 
 	useEffect(() => {
 		if (normalizedChannelType !== null) {
@@ -656,6 +633,54 @@ export const useChannelForm = () => {
 		}
 	};
 
+	/**
+	 * Initiates a channel type change request.
+	 * When in edit mode, this sets up a pending change that requires confirmation.
+	 * When creating a new channel, the change is applied immediately.
+	 */
+	const requestTypeChange = useCallback(
+		(newType: number) => {
+			const currentType = getValues("type");
+			if (isEdit && loadedChannelType !== null && currentType !== newType) {
+				// In edit mode, show confirmation dialog
+				setPendingTypeChange({
+					fromType: currentType,
+					toType: newType,
+				});
+			} else {
+				// In create mode or same type, just set the value
+				setValue("type", newType, {
+					shouldValidate: true,
+					shouldDirty: true,
+				});
+			}
+		},
+		[isEdit, loadedChannelType, getValues, setValue],
+	);
+
+	/**
+	 * Confirms a pending type change and applies it to the form.
+	 */
+	const confirmTypeChange = useCallback(() => {
+		if (pendingTypeChange) {
+			setValue("type", pendingTypeChange.toType, {
+				shouldValidate: true,
+				shouldDirty: true,
+			});
+			// Clear related fields that may not be compatible with the new type
+			setValue("base_url", "");
+			setValue("other", "");
+			setPendingTypeChange(null);
+		}
+	}, [pendingTypeChange, setValue]);
+
+	/**
+	 * Cancels a pending type change and reverts the selection.
+	 */
+	const cancelTypeChange = useCallback(() => {
+		setPendingTypeChange(null);
+	}, []);
+
 	const testChannel = async () => {
 		if (!channelId) return;
 
@@ -720,5 +745,10 @@ export const useChannelForm = () => {
 		testChannel,
 		tr,
 		notify,
+		// Type change handling
+		pendingTypeChange,
+		requestTypeChange,
+		confirmTypeChange,
+		cancelTypeChange,
 	};
 };
