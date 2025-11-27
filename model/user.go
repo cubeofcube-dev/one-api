@@ -168,11 +168,11 @@ func (user *User) Insert(ctx context.Context, inviterId int) error {
 	}
 	if inviterId != 0 {
 		if config.QuotaForInvitee > 0 {
-			_ = IncreaseUserQuota(user.Id, config.QuotaForInvitee)
+			_ = IncreaseUserQuota(ctx, user.Id, config.QuotaForInvitee)
 			RecordLog(ctx, user.Id, LogTypeSystem, fmt.Sprintf("Gifted %s for using invitation code", common.LogQuota(config.QuotaForInvitee)))
 		}
 		if config.QuotaForInviter > 0 {
-			_ = IncreaseUserQuota(inviterId, config.QuotaForInviter)
+			_ = IncreaseUserQuota(ctx, inviterId, config.QuotaForInviter)
 			RecordLog(ctx, inviterId, LogTypeSystem, fmt.Sprintf("Gifted %s for inviting user", common.LogQuota(config.QuotaForInviter)))
 		}
 	}
@@ -435,7 +435,12 @@ func GetUserGroup(id int) (group string, err error) {
 	return group, nil
 }
 
-func IncreaseUserQuota(id int, quota int64) (err error) {
+// IncreaseUserQuota increases the quota for a user by the given amount.
+// ctx is the context for the operation; if nil, context.Background() is used.
+func IncreaseUserQuota(ctx context.Context, id int, quota int64) (err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if quota < 0 {
 		return errors.New("quota cannot be negative!")
 	}
@@ -443,11 +448,14 @@ func IncreaseUserQuota(id int, quota int64) (err error) {
 		addNewRecord(BatchUpdateTypeUserQuota, id, quota)
 		return nil
 	}
-	return increaseUserQuota(id, quota)
+	return increaseUserQuota(ctx, id, quota)
 }
 
-func increaseUserQuota(id int, quota int64) (err error) {
-	err = runWithSQLiteBusyRetry(context.TODO(), func() error {
+func increaseUserQuota(ctx context.Context, id int, quota int64) (err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	err = runWithSQLiteBusyRetry(ctx, func() error {
 		return DB.Model(&User{}).Where("id = ?", id).Update("quota", gorm.Expr("quota + ?", quota)).Error
 	})
 	if err != nil {
@@ -456,7 +464,12 @@ func increaseUserQuota(id int, quota int64) (err error) {
 	return nil
 }
 
-func DecreaseUserQuota(id int, quota int64) (err error) {
+// DecreaseUserQuota decreases the quota for a user by the given amount.
+// ctx is the context for the operation; if nil, context.Background() is used.
+func DecreaseUserQuota(ctx context.Context, id int, quota int64) (err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	if quota < 0 {
 		return errors.New("quota cannot be negative!")
 	}
@@ -464,12 +477,15 @@ func DecreaseUserQuota(id int, quota int64) (err error) {
 		addNewRecord(BatchUpdateTypeUserQuota, id, -quota)
 		return nil
 	}
-	return decreaseUserQuota(id, quota)
+	return decreaseUserQuota(ctx, id, quota)
 }
 
-func decreaseUserQuota(id int, quota int64) (err error) {
+func decreaseUserQuota(ctx context.Context, id int, quota int64) (err error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	var result *gorm.DB
-	err = runWithSQLiteBusyRetry(nil, func() error {
+	err = runWithSQLiteBusyRetry(ctx, func() error {
 		result = DB.Model(&User{}).
 			Where("id = ? AND quota >= ?", id, quota).
 			Update("quota", gorm.Expr("quota - ?", quota))

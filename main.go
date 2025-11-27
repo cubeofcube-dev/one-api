@@ -226,6 +226,12 @@ func main() {
 		logger.Logger.Error("server shutdown error", zap.Error(err))
 	}
 
+	// Stop batch updater and flush pending changes before draining other tasks.
+	// This is critical because batch updater holds uncommitted quota changes in memory.
+	if config.BatchUpdateEnabled {
+		model.StopBatchUpdater(shutdownCtx)
+	}
+
 	// Drain critical background tasks (billing, refunds, etc.)
 	if err := graceful.Drain(shutdownCtx); err != nil {
 		logger.Logger.Error("graceful drain finished with timeout/error", zap.Error(err))

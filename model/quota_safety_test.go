@@ -103,14 +103,14 @@ func TestQuotaDecrementConcurrencyGuards(t *testing.T) {
 
 	// Initial decrement succeeds
 	require.NoError(t, decreaseTokenQuota(ctx, token.Id, 30))
-	require.NoError(t, decreaseUserQuota(user.Id, 20))
+	require.NoError(t, decreaseUserQuota(ctx, user.Id, 20))
 
 	// Subsequent decrement that would go negative should fail for both token and user
 	err := decreaseTokenQuota(ctx, token.Id, 25)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "insufficient token quota")
 
-	err = decreaseUserQuota(user.Id, 50)
+	err = decreaseUserQuota(ctx, user.Id, 50)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "insufficient user quota")
 

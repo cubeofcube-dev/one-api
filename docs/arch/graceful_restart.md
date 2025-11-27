@@ -94,10 +94,10 @@ While not strictly part of a single request, coordinated shutdown should also ca
 
 - Option & channel cache sync loops: `model.SyncOptions`, `model.SyncChannelCache`
 - Channel auto‑tests: `controller.AutomaticallyTestChannels`
-- Batch updater: `model.InitBatchUpdater`
+- Batch updater: `model.InitBatchUpdater` → stopped via `model.StopBatchUpdater(ctx)` during shutdown
 - Prometheus DB/Redis monitoring initialization
 
-These loops should get a parent context and be cancelled on shutdown, but they don’t block graceful request draining.
+The batch updater is particularly critical as it holds uncommitted quota changes in memory. During graceful shutdown, `StopBatchUpdater` signals the updater to perform a final flush before exiting. This is registered as a critical task via `graceful.GoCritical` to ensure the drain process waits for completion.
 
 ## 2) Observed gaps in current startup/shutdown
 

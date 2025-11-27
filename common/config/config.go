@@ -68,6 +68,8 @@ var (
 	BatchUpdateEnabled = env.Bool("BATCH_UPDATE_ENABLED", false)
 	// BatchUpdateInterval sets the flush cadence (seconds) for the batch updater.
 	BatchUpdateInterval = env.Int("BATCH_UPDATE_INTERVAL", 5)
+	// BatchUpdateTimeoutSec is the maximum time allowed for a single batch update cycle (seconds).
+	BatchUpdateTimeoutSec = env.Int("BATCH_UPDATE_TIMEOUT", 180)
 
 	// RelayTimeout bounds upstream HTTP requests (seconds) before aborting them.
 	RelayTimeout = env.Int("RELAY_TIMEOUT", 0)

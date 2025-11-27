@@ -1450,7 +1450,7 @@ func AdminTopUp(c *gin.Context) {
 		})
 		return
 	}
-	err = model.IncreaseUserQuota(req.UserId, int64(req.Quota))
+	err = model.IncreaseUserQuota(ctx, req.UserId, int64(req.Quota))
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
