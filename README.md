@@ -159,6 +159,8 @@ The initial default account and password are `root` / `123456`. Listening port c
 
 Run one-api using docker-compose:
 
+> All environment variables can be set via the `environment` section in the `docker-compose.yml` file, please refer to <./common/config/config.go> for all available configuration options.
+
 ```yaml
 oneapi:
   image: ppcelery/one-api:latest
@@ -167,110 +169,6 @@ oneapi:
     driver: "json-file"
     options:
       max-size: "10m"
-  environment:
-    # --- Session & Security ---
-    # (optional) SESSION_SECRET set a fixed session secret so that user sessions won't be invalidated after server restart
-    SESSION_SECRET: xxxxxxx
-    # (optional) ENABLE_COOKIE_SECURE enable secure cookies, must be used with HTTPS
-    ENABLE_COOKIE_SECURE: "true"
-    # (optional) COOKIE_MAXAGE_HOURS sets the session cookie's max age in hours. Default is `168` (7 days); adjust to control session lifetime.
-    COOKIE_MAXAGE_HOURS: 168
-
-    # --- Core Runtime ---
-    # (optional) PORT override the listening port used by the HTTP server, default is `3000`
-    PORT: 3000
-    # (optional) GIN_MODE set Gin runtime mode; defaults to release when unset
-    GIN_MODE: release
-    # (optional) SHUTDOWN_TIMEOUT_SEC controls how long to wait for graceful shutdown and drains (seconds)
-    SHUTDOWN_TIMEOUT_SEC: 360
-    # (optional) DEBUG enable debug mode
-    DEBUG: "true"
-    # (optional) DEBUG_SQL display SQL logs
-    DEBUG_SQL: "true"
-    # (optional) ENABLE_PROMETHEUS_METRICS expose /metrics for Prometheus scraping when true
-    ENABLE_PROMETHEUS_METRICS: "true"
-    # (optional) LOG_RETENTION_DAYS set log retention days; default is not to delete any logs
-    LOG_RETENTION_DAYS: 7
-    # (optional) TRACE_RENTATION_DAYS retain trace records for the specified number of days; default is 30 and 0 disables cleanup
-    TRACE_RENTATION_DAYS: 30
-
-    # --- Storage & Cache ---
-    # (optional) SQL_DSN set SQL database connection; leave empty to use SQLite (supports mysql, postgresql, sqlite3)
-    SQL_DSN: "postgres://laisky:xxxxxxx@1.2.3.4/oneapi"
-    # (optional) SQLITE_PATH override SQLite file path when SQL_DSN is empty
-    SQLITE_PATH: "/data/one-api.db"
-    # (optional) SQL_MAX_IDLE_CONNS tune database idle connection pool size
-    SQL_MAX_IDLE_CONNS: 200
-    # (optional) SQL_MAX_OPEN_CONNS tune database max open connections
-    SQL_MAX_OPEN_CONNS: 2000
-    # (optional) SQL_MAX_LIFETIME tune database connection lifetime in seconds
-    SQL_MAX_LIFETIME: 300
-    # (optional) REDIS_CONN_STRING set Redis cache connection
-    REDIS_CONN_STRING: redis://100.122.41.16:6379/1
-    # (optional) REDIS_PASSWORD set Redis password when authentication is required
-    REDIS_PASSWORD: ""
-    # (optional) SYNC_FREQUENCY refresh in-memory caches every N seconds when enabled
-    SYNC_FREQUENCY: 600
-    # (optional) MEMORY_CACHE_ENABLED force memory cache usage even without Redis
-    MEMORY_CACHE_ENABLED: "true"
-
-    # --- Usage & Billing ---
-    # (optional) ENFORCE_INCLUDE_USAGE require upstream API responses to include usage field
-    ENFORCE_INCLUDE_USAGE: "true"
-    # (optional) PRECONSUME_TOKEN_FOR_BACKGROUND_REQUEST reserve quota for background requests that report usage later
-    PRECONSUME_TOKEN_FOR_BACKGROUND_REQUEST: 15000
-    # (optional) DEFAULT_MAX_TOKEN set the default maximum number of tokens for requests, default is 2048
-    DEFAULT_MAX_TOKEN: 2048
-    # (optional) DEFAULT_USE_MIN_MAX_TOKENS_MODEL opt-in to the min/max token contract for supported channels
-    DEFAULT_USE_MIN_MAX_TOKENS_MODEL: "false"
-
-    # --- Rate Limiting ---
-    # (optional) GLOBAL_API_RATE_LIMIT maximum API requests per IP within three minutes, default is 1000
-    GLOBAL_API_RATE_LIMIT: 1000
-    # (optional) GLOBAL_WEB_RATE_LIMIT maximum web page requests per IP within three minutes, default is 1000
-    GLOBAL_WEB_RATE_LIMIT: 1000
-    # (optional) GLOBAL_RELAY_RATE_LIMIT /v1 API ratelimit for each token
-    GLOBAL_RELAY_RATE_LIMIT: 1000
-    # (optional) GLOBAL_CHANNEL_RATE_LIMIT whether to ratelimit per channel; 0 is unlimited, 1 enables rate limiting
-    GLOBAL_CHANNEL_RATE_LIMIT: 1
-    # (optional) CRITICAL_RATE_LIMIT tighten rate limits for admin-only APIs (seconds window matches defaults)
-    CRITICAL_RATE_LIMIT: 20
-
-    # --- Channel Automation ---
-    # (optional) CHANNEL_SUSPEND_SECONDS_FOR_429 set the suspension duration (seconds) after receiving a 429 error, default is 60 seconds
-    CHANNEL_SUSPEND_SECONDS_FOR_429: 60
-    # (optional) CHANNEL_TEST_FREQUENCY run automatic channel health checks every N seconds (0 disables)
-    CHANNEL_TEST_FREQUENCY: 0
-    # (optional) BATCH_UPDATE_ENABLED enable background batch quota updater
-    BATCH_UPDATE_ENABLED: "false"
-    # (optional) BATCH_UPDATE_INTERVAL batch quota flush interval in seconds
-    BATCH_UPDATE_INTERVAL: 5
-
-    # --- Frontend & Proxies ---
-    # (optional) FRONTEND_BASE_URL redirect page requests to specified address, server-side setting only
-    FRONTEND_BASE_URL: https://oneapi.laisky.com
-    # (optional) RELAY_PROXY forward upstream model calls through an HTTP proxy
-    RELAY_PROXY: ""
-    # (optional) USER_CONTENT_REQUEST_PROXY proxy for fetching user-provided assets
-    USER_CONTENT_REQUEST_PROXY: ""
-    # (optional) USER_CONTENT_REQUEST_TIMEOUT timeout (seconds) for fetching user assets
-    USER_CONTENT_REQUEST_TIMEOUT: 30
-
-    # --- Media & Pagination ---
-    # (optional) MAX_ITEMS_PER_PAGE maximum items per page, default is 100
-    MAX_ITEMS_PER_PAGE: 100
-    # (optional) MAX_INLINE_IMAGE_SIZE_MB set the maximum allowed image size (in MB) for inlining images as base64, default is 30
-    MAX_INLINE_IMAGE_SIZE_MB: 30
-
-    # --- Integrations ---
-    # (optional) OPENROUTER_PROVIDER_SORT set sorting method for OpenRouter Providers, default is throughput
-    OPENROUTER_PROVIDER_SORT: throughput
-    # (optional) LOG_PUSH_API set the API address for pushing error logs to external services
-    # https://github.com/Laisky/laisky-blog-graphql/blob/master/internal/web/telegram/README.md
-    LOG_PUSH_API: "https://gq.laisky.com/query/"
-    LOG_PUSH_TYPE: "oneapi"
-    LOG_PUSH_TOKEN: "xxxxxxx"
-
   volumes:
     - /var/lib/oneapi:/data
   ports:

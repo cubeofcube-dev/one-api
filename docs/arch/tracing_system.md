@@ -191,7 +191,7 @@ Retrieve tracing information for a specific log entry.
 - Admin users have full trace visibility
 
 ### Data Retention
-- Configurable trace data retention policies (`TRACE_RENTATION_DAYS`, default 30; set to 0 to disable cleanup)
+- Configurable trace data retention policies (`TRACE_RETENTION_DAYS`, default 30; set to 0 to disable cleanup)
 - Automatic cleanup of old trace records via the daily trace retention worker
 - Privacy-compliant data handling
 
