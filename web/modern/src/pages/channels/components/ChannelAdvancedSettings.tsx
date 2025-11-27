@@ -8,6 +8,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { INFERENCE_PROFILE_ARN_MAP_EXAMPLE } from "../constants";
 import { formatJSON } from "../helpers";
 import type { ChannelForm } from "../schemas";
 import { LabelWithHelp } from "./LabelWithHelp";
@@ -181,6 +182,13 @@ export const ChannelAdvancedSettings = ({
 									placeholder={tr(
 										"inference_profile.placeholder",
 										'{"anthropic.claude-3-5-sonnet-20240620-v1:0": "arn:aws:bedrock:..."}',
+										{
+											example: JSON.stringify(
+												INFERENCE_PROFILE_ARN_MAP_EXAMPLE,
+												null,
+												2,
+											),
+										},
 									)}
 									className={`font-mono text-xs min-h-[100px] ${errorClass("inference_profile_arn_map")}`}
 									{...field}

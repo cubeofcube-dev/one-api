@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { TOOLING_CONFIG_EXAMPLE } from "../constants";
 import { useChannelTooling } from "../hooks/useChannelTooling";
 import type { ChannelForm } from "../schemas";
 import { LabelWithHelp } from "./LabelWithHelp";
@@ -78,6 +79,7 @@ export const ChannelToolingSettings = ({
 							placeholder={tr(
 								"tooling.placeholder",
 								'{"whitelist": ["web_search"], "pricing": {"web_search": {"usd_per_call": 0.025}}}',
+								{ example: JSON.stringify(TOOLING_CONFIG_EXAMPLE, null, 2) },
 							)}
 							className={`font-mono text-xs min-h-[150px] ${errorClass("tooling")}`}
 							{...field}

@@ -366,16 +366,23 @@ export const ChannelSpecificConfig = ({
 											"JSON configuration for Coze OAuth JWT: client_type, client_id, coze_www_base, coze_api_base, private_key, public_key_id.",
 										)}
 									/>
-									<FormControl>
-										<Textarea
-											placeholder={tr(
-												"coze.jwt.placeholder",
-												`OAuth JWT configuration in JSON format:\n${JSON.stringify(OAUTH_JWT_CONFIG_EXAMPLE, null, 2)}`,
-											)}
-											className={`font-mono text-sm min-h-[120px] ${errorClass("key")}`}
-											{...field}
-										/>
-									</FormControl>
+								<FormControl>
+									<Textarea
+										placeholder={tr(
+											"coze.jwt.placeholder",
+											`OAuth JWT configuration in JSON format:\n${JSON.stringify(OAUTH_JWT_CONFIG_EXAMPLE, null, 2)}`,
+											{
+												example: JSON.stringify(
+													OAUTH_JWT_CONFIG_EXAMPLE,
+													null,
+													2,
+												),
+											},
+										)}
+										className={`font-mono text-sm min-h-[120px] ${errorClass("key")}`}
+										{...field}
+									/>
+								</FormControl>
 									<div className="text-xs text-muted-foreground">
 										{tr(
 											"coze.jwt.required",

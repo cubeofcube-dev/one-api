@@ -160,3 +160,8 @@ export const OAUTH_JWT_CONFIG_EXAMPLE = {
 	private_key: "-----BEGIN PRIVATE KEY-----\n***\n-----END PRIVATE KEY-----",
 	public_key_id: "***********************************************************",
 };
+
+export const INFERENCE_PROFILE_ARN_MAP_EXAMPLE = {
+	"anthropic.claude-3-5-sonnet-20240620-v1:0":
+		"arn:aws:bedrock:us-east-1:123456789012:inference-profile/us.anthropic.claude-3-5-sonnet-20240620-v1:0",
+};

@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { MODEL_CONFIGS_EXAMPLE, MODEL_MAPPING_EXAMPLE } from "../constants";
 import { formatJSON } from "../helpers";
 import type { ChannelForm } from "../schemas";
 import { LabelWithHelp } from "./LabelWithHelp";
@@ -293,6 +294,7 @@ export const ChannelModelSettings = ({
 									placeholder={tr(
 										"model_mapping.placeholder",
 										'{"gpt-3.5-turbo-0301": "gpt-3.5-turbo"}',
+										{ example: JSON.stringify(MODEL_MAPPING_EXAMPLE, null, 2) },
 									)}
 									className={`font-mono text-xs min-h-[150px] ${errorClass("model_mapping")}`}
 									{...field}
@@ -344,6 +346,7 @@ export const ChannelModelSettings = ({
 									placeholder={tr(
 										"model_configs.placeholder",
 										'{"gpt-4": {"ratio": 0.03, "completion_ratio": 2.0}}',
+										{ example: JSON.stringify(MODEL_CONFIGS_EXAMPLE, null, 2) },
 									)}
 									className={`font-mono text-xs min-h-[150px] ${errorClass("model_configs")}`}
 									{...field}
