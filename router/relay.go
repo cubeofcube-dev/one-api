@@ -17,6 +17,11 @@ func SetRelayRouter(router *gin.Engine) {
 		middleware.RewriteClaudeMessagesPrefix("/openai/v1/v1/messages", router),
 		middleware.RewriteClaudeMessagesPrefix("/api/v1/v1/messages", router),
 	)
+
+	// Auto-detect API format for misrouted requests (e.g., Response API sent to chat/completions).
+	// This must be placed early in the chain, before authentication and other middlewares,
+	// so that misrouted requests are redirected to the correct endpoint with all middlewares applied.
+	router.Use(middleware.APIFormatAutoDetect(router))
 	router.Use(middleware.CORS())
 	router.Use(middleware.GzipDecodeMiddleware())
 	// https://platform.openai.com/docs/api-reference/introduction

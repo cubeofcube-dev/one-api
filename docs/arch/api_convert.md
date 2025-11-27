@@ -29,7 +29,8 @@ Key points:
 ## 2. Request Routing Overview
 
 ```text
-Incoming request --> Identify controller (Chat / Response / Claude)
+Incoming request --> Auto-detect API format (if misrouted)
+                  --> Identify controller (Chat / Response / Claude)
                   --> Parse model + channel metadata
                   --> Apply capability gates + sanitizers
                   --> Convert request if upstream protocol differs
@@ -40,15 +41,57 @@ Incoming request --> Identify controller (Chat / Response / Claude)
 
 Important building blocks:
 
+- `relay/format` – fast format detection based on payload structure.
+- `middleware.APIFormatAutoDetect` – middleware that re-routes mismatched requests.
 - `meta.Meta` stores routing facts (channel, model mapping, URL path, fallback flags).
 - Conversion utilities live primarily in `relay/adaptor/openai` and `relay/adaptor/openai_compatible`.
 - Controllers (`relay/controller/*.go`) coordinate conversion, quota, and response rewriting.
 
 ---
 
-## 3. Entry Point Details
+## 3. Automatic Format Detection
 
-### 3.1 Chat Completions (`/v1/chat/completions`)
+Some popular AI clients (e.g., Cursor) may mistakenly send requests to the wrong endpoint (for example, Response API format to `/v1/chat/completions`). one-api includes automatic format detection to handle these cases transparently.
+
+### 3.1 Format Detection Logic
+
+The `relay/format.DetectFormat` function analyzes the request payload and identifies the format based on distinguishing fields:
+
+| Format          | Key Indicators                                                                                                               |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Response API    | Has `input` field (without `messages`), or `instructions`, or `max_output_tokens`                                            |
+| Claude Messages | Has `messages` with Claude-specific indicators: `system` field, `tool_use`/`tool_result` content, or `input_schema` in tools |
+| ChatCompletion  | Has `messages` with standard OpenAI format (no Claude-specific indicators)                                                   |
+
+### 3.2 Configuration
+
+Control auto-detection behavior via environment variables:
+
+| Variable                        | Default       | Description                                                                                          |
+| ------------------------------- | ------------- | ---------------------------------------------------------------------------------------------------- |
+| `AUTO_DETECT_API_FORMAT`        | `true`        | Enable/disable automatic format detection                                                            |
+| `AUTO_DETECT_API_FORMAT_ACTION` | `transparent` | Action when mismatch detected: `transparent` (re-route internally) or `redirect` (HTTP 302 redirect) |
+
+### 3.3 Handling Modes
+
+- **Transparent (default):** The middleware rewrites the request path and re-dispatches to the correct handler internally. The client receives the response in the format they actually sent.
+
+- **Redirect:** Returns an HTTP 302 redirect to the correct endpoint. Query parameters are preserved in the redirect URL. Note that most API clients may not follow POST redirects correctly, so `transparent` mode is recommended.
+
+### 3.4 Implementation
+
+The middleware (`middleware.APIFormatAutoDetect`) runs early in the request chain:
+
+1. Reads and buffers the request body
+2. Calls `format.DetectFormat` to identify the actual payload format
+3. Compares with the expected format based on the URL path
+4. On mismatch, either re-routes transparently or returns a redirect
+
+---
+
+## 4. Entry Point Details
+
+### 4.1 Chat Completions (`/v1/chat/completions`)
 
 1. Controller parses the payload into `relay/model.GeneralOpenAIRequest`.
 2. If the downstream channel is OpenAI **and** `IsModelsOnlySupportedByChatCompletionAPI` returns `false` **and** the original URL was `/v1/chat/completions`, the adaptor upgrades the request to a Responses payload via `ConvertChatCompletionToResponseAPI`.
@@ -56,7 +99,7 @@ Important building blocks:
 4. When the adaptor detects that the channel only offers Chat Completions (search models or third-party compatibles), it forwards the original request unchanged.
 5. Response handling mirrors the request decision: Responses bodies are converted with `ResponseAPIHandler`, while vanilla Chat Completion bodies use the standard handler.
 
-### 3.2 Responses (`/v1/responses`)
+### 4.2 Responses (`/v1/responses`)
 
 1. The controller parses the JSON into `openai.ResponseAPIRequest`, then runs `sanitizeResponseAPIRequest` to clear unsupported parameters (for example, reasoning models drop `temperature`/`top_p`).
 2. `normalizeResponseAPIRawBody` rewrites the raw JSON in-place so that forbidden fields are removed before the request ever leaves the proxy. This keeps upstream validation errors from leaking to callers.
@@ -65,7 +108,7 @@ Important building blocks:
 5. The adaptor call proceeds. If a fallback was used, the upstream Chat Completion response is transformed back into a Responses envelope via `ResponseAPIHandler` (non-streaming) or `ResponseAPIStreamHandler` (streaming). The helper registered under `ctxkey.ResponseRewriteHandler` performs the final rewrite before bytes are flushed to the client.
 6. `normalizeResponseAPIRawBody` also deletes `temperature`/`top_p` keys from the raw payload when the sanitized struct dropped them, ensuring double coverage for channels that reject those parameters outright.
 
-### 3.3 Claude Messages (`/v1/messages`)
+### 4.3 Claude Messages (`/v1/messages`)
 
 1. `RelayClaudeMessagesHelper` inspects the requested model to determine the target channel.
 2. Anthropic-native channels set `ctxkey.ClaudeMessagesNative` and forward the request untouched.
@@ -75,7 +118,7 @@ Important building blocks:
 
 ---
 
-## 4. Capability Detection & Sanitisation
+## 5. Capability Detection & Sanitisation
 
 | Concern                                 | Implementation                                                                        | Notes                                                                            |
 | --------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
@@ -89,7 +132,7 @@ These safeguards execute before every upstream call, so the same rules apply to 
 
 ---
 
-## 5. Streaming Behaviour
+## 6. Streaming Behaviour
 
 - **Responses → Chat fallback:** `ResponseAPIStreamHandler` rebuilds SSE sequences (`response.created`, `response.output_text.delta`, etc.) from Chat Completion chunks and emits the `response.completed` summary once usage is known. The helper also ensures a terminating `data: [DONE]` envelope for clients.
 - **Chat → Responses upgrade:** When `/v1/chat/completions` requests are upgraded to Responses, `ResponseAPIDirectStreamHandler` passes through upstream Responses SSE untouched.
@@ -97,7 +140,7 @@ These safeguards execute before every upstream call, so the same rules apply to 
 
 ---
 
-## 6. Error Handling & Billing
+## 7. Error Handling & Billing
 
 1. Controllers pre-consume quota using the same logic regardless of protocol. Response fallback calls use the Chat Completion quota helpers but reconcile against the final Responses usage once conversion completes.
 2. All adaptor errors are wrapped with `openai.ErrorWrapper` (or the channel equivalent) so HTTP status codes and machine-readable error bodies survive conversions.
@@ -106,7 +149,7 @@ These safeguards execute before every upstream call, so the same rules apply to 
 
 ---
 
-## 7. Context Keys & Runtime Flags
+## 8. Context Keys & Runtime Flags
 
 | Key                                                               | Purpose                                                                                                 |
 | ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -121,10 +164,12 @@ Refer to `common/ctxkey/key.go` and `relay/meta/relay_meta.go` for the authorita
 
 ---
 
-## 8. Testing Coverage
+## 9. Testing Coverage
 
 Relevant test suites validating the behaviour above:
 
+- `relay/format/detect_test.go` – comprehensive tests for API format detection heuristics.
+- `middleware/api_format_detect_test.go` – validates automatic format detection middleware behavior.
 - `relay/adaptor/openai/channel_conversion_test.go` – ensures Chat ↔ Responses conversion toggles correctly for OpenAI, Azure, GPT-OSS, etc.
 - `relay/controller/response_fallback_test.go`
   - `TestRelayResponseAPIHelper_FallbackStreaming` exercises SSE rewriting.
@@ -143,15 +188,18 @@ GOFLAGS=-race go test ./...
 
 ---
 
-## 9. Summary & Further Reading
+## 10. Summary & Further Reading
 
-- All three chat-style APIs can be used interchangeably from the client’s perspective; one-api will translate on the fly.
+- All three chat-style APIs can be used interchangeably from the client's perspective; one-api will translate on the fly.
+- Automatic format detection handles clients that send requests to incorrect endpoints (configurable via `AUTO_DETECT_API_FORMAT` and `AUTO_DETECT_API_FORMAT_ACTION`).
 - Capability detection ensures each upstream sees only the fields it supports, falling back to Chat Completions when Responses is unavailable.
 - Streaming and billing remain accurate across conversions thanks to shared handlers and usage reconciliation.
 - Internal flags (`ConvertedRequest`, `ResponseAPIFallback`, `ClaudeMessagesConversion`, etc.) tie the request/response lifecycles together.
 
 For deeper implementation insight, explore:
 
+- `relay/format/detect.go` – format detection logic
+- `middleware/api_format_detect.go` – auto-detection middleware
 - `relay/controller/response.go`
 - `relay/adaptor/openai/adaptor.go`
 - `relay/controller/claude_messages.go`

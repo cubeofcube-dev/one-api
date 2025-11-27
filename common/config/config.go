@@ -57,6 +57,15 @@ var (
 	// MemoryCacheEnabled forces the in-process cache to stay enabled even without Redis.
 	MemoryCacheEnabled = env.Bool("MEMORY_CACHE_ENABLED", false)
 
+	// AutoDetectAPIFormat enables automatic detection of API request format when a client sends
+	// a request to an incorrect endpoint (e.g., Response API format to /v1/chat/completions).
+	// Default is true to provide seamless compatibility with misbehaving clients.
+	AutoDetectAPIFormat = env.Bool("AUTO_DETECT_API_FORMAT", true)
+	// AutoDetectAPIFormatAction specifies the action when a format mismatch is detected.
+	// Options: "transparent" (default) - process the request transparently in the correct format
+	//          "redirect" - return a 302 redirect to the correct endpoint
+	AutoDetectAPIFormatAction = strings.ToLower(strings.TrimSpace(env.String("AUTO_DETECT_API_FORMAT_ACTION", "transparent")))
+
 	// PreconsumeTokenForBackgroundRequest reserves quota for asynchronous background requests that only report usage after completion.
 	PreconsumeTokenForBackgroundRequest = env.Int("PRECONSUME_TOKEN_FOR_BACKGROUND_REQUEST", 15000)
 	// SyncFrequency controls how frequently option/channel caches refresh from the database when enabled.
