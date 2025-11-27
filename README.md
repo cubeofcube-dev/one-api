@@ -7,7 +7,7 @@ Open‑source version of OpenRouter, managed through a unified gateway that hand
 1. Aggregating chat, image, speech, TTS, embeddings, rerank and other capabilities.
 2. Aggregating multiple model providers such as OpenAI, Anthropic, Azure, Google Vertex, OpenRouter, DeepSeek, Replicate, AWS Bedrock, etc.
 3. Aggregating various upstream API request formats like Chat Completion, Response, Claude Messages.
-4. Supporting different request formats; users can issue requests via Chat Completion, Response, or Claude Messages, which are automatically and transparently converted to the native request format of the upstream model.
+4. Supporting different request formats; users can issue requests via Chat Completion, Response, or Claude Messages, which are automatically and transparently converted to the native request format of the upstream model. Even if the client sends a mismatched request format to wrong api endpoint, it will still be correctly processed.
 5. Supporting multi‑tenant management, allowing each tenant to set distinct quotas and permissions.
 6. Supporting generation of sub‑API Keys; each tenant can create multiple sub‑API Keys, each of which can be bound to different models and quotas.
 
@@ -159,7 +159,7 @@ The initial default account and password are `root` / `123456`. Listening port c
 
 Run one-api using docker-compose:
 
-> All environment variables can be set via the `environment` section in the `docker-compose.yml` file, please refer to <./common/config/config.go> for all available configuration options.
+> All environment variables can be set via the `environment` section in the `docker-compose.yml` file, please refer to [./common/config/config.go](./common/config/config.go) for all available configuration options.
 
 ```yaml
 oneapi:
