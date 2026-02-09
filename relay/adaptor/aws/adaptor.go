@@ -68,7 +68,10 @@ func (a *Adaptor) ConvertRequest(c *gin.Context, relayMode int, request *model.G
 
 	adaptor := GetAdaptor(request.Model)
 	if adaptor == nil {
-		return nil, errors.New("adaptor not found")
+		gmw.GetLogger(c).Error("adaptor not found for model",
+			zap.String("model", request.Model),
+		)
+		return nil, errors.Errorf("adaptor not found for model: %s", request.Model)
 	}
 
 	// Validate parameters using the new model-based validation
@@ -229,6 +232,7 @@ func (a *Adaptor) GetDefaultModelPricing() map[string]adaptor.ModelConfig {
 		"claude-opus-4-1-20250805":   {Ratio: 15 * ratio.MilliTokensUsd, CompletionRatio: 75.0 / 15, CachedInputRatio: 1.5 * ratio.MilliTokensUsd, CacheWrite5mRatio: 18.75 * ratio.MilliTokensUsd, CacheWrite1hRatio: 30 * ratio.MilliTokensUsd},
 		"claude-opus-4-5":            {Ratio: 5 * ratio.MilliTokensUsd, CompletionRatio: 25.0 / 5, CachedInputRatio: 0.5 * ratio.MilliTokensUsd, CacheWrite5mRatio: 6.25 * ratio.MilliTokensUsd, CacheWrite1hRatio: 10 * ratio.MilliTokensUsd},
 		"claude-opus-4-5-20251101":   {Ratio: 5 * ratio.MilliTokensUsd, CompletionRatio: 25.0 / 5, CachedInputRatio: 0.5 * ratio.MilliTokensUsd, CacheWrite5mRatio: 6.25 * ratio.MilliTokensUsd, CacheWrite1hRatio: 10 * ratio.MilliTokensUsd},
+		"claude-opus-4-6": {Ratio: 5 * ratio.MilliTokensUsd, CompletionRatio: 25.0 / 5, CachedInputRatio: 0.5 * ratio.MilliTokensUsd, CacheWrite5mRatio: 6.25 * ratio.MilliTokensUsd, CacheWrite1hRatio: 10 * ratio.MilliTokensUsd},
 
 		// Llama Models on AWS Bedrock
 		// Note: Pricing may need to be updated later; also this model is significantly faster on AWS GPUs.

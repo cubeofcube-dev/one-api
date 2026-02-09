@@ -60,6 +60,8 @@ var AwsModelIDMap = map[string]string{
 	"claude-opus-4-1-20250805": "anthropic.claude-opus-4-1-20250805-v1:0",
 	"claude-opus-4-5":          "anthropic.claude-opus-4-5-20251101-v1:0",
 	"claude-opus-4-5-20251101": "anthropic.claude-opus-4-5-20251101-v1:0",
+
+	"claude-opus-4-6": "anthropic.claude-opus-4-6-v1",
 }
 
 func AwsModelID(requestModel string) (string, error) {
